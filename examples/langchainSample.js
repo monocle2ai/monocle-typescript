@@ -7,11 +7,13 @@ setupMonocle(
   [
     new BatchSpanProcessor(
       new ConsoleSpanExporter(),
-      config = {
+      {
         scheduledDelayMillis: 5
       })
   ]
 )
+// const fs = require("node:fs/promises")
+
 
 const { ChatOpenAI, OpenAIEmbeddings } = require("@langchain/openai")
 
@@ -23,7 +25,11 @@ const {
   RunnablePassthrough,
 } = require("@langchain/core/runnables");
 const { StringOutputParser } = require("@langchain/core/output_parsers");
-
+// const {
+//   Document,
+//   MetadataMode,
+//   VectorStoreIndex,
+// } = require("llamaindex")
 
 const model = new ChatOpenAI({});
 
