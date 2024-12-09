@@ -4,7 +4,7 @@ exports.config = [
         "object": "Completions",
         "method": "create",
         "output_processor": [
-            require("./attributes/openai_attributes.js").config
+            require("./openai_attributes.js").config
         ]
     }
 ]

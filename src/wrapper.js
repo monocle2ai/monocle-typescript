@@ -43,7 +43,7 @@ const getPatchedMain = function ({ tracer, ...element }) {
                     // processSpan({span, instance: this, args: arguments, outputProcessor})
                     const returnValue = await original.apply(this, arguments);
                     postProcessSpan({ span, instance: this, args: arguments, wrapperConfig: element, returnValue })
-                    processSpan({ span, instance: this, args: arguments, outputProcessor: element.output_processor, returnValue })
+                    processSpan({ span, instance: this, args: arguments, outputProcessor: element.output_processor, returnValue, package: element.package })
                     span.end()
                     return returnValue
                 }
@@ -54,7 +54,7 @@ const getPatchedMain = function ({ tracer, ...element }) {
 }
 
 const WORKFLOW_TYPE_MAP = {
-    "llama_index": "workflow.llamaindex",
+    "llamaindex": "workflow.llamaindex",
     "langchain": "workflow.langchain",
     "haystack": "workflow.haystack"
 }
@@ -68,7 +68,7 @@ function getWorkflowName(span) {
     }
 }
 
-function setWorkflowAttributes({ packageName, span, spanIndex }) {
+function setWorkflowAttributes({ package, span, spanIndex }) {
     let returnValue = 1;
     let workflowName = getWorkflowName(span);
     if (workflowName) {
@@ -77,8 +77,8 @@ function setWorkflowAttributes({ packageName, span, spanIndex }) {
         // workflow type
     }
     let workflowTypeSet = false;
-    for (let [package, workflowType] of Object.entries(WORKFLOW_TYPE_MAP)) {
-        if (packageName !== undefined && packageName.includes(package)) {
+    for (let [packageName, workflowType] of Object.entries(WORKFLOW_TYPE_MAP)) {
+        if (package !== undefined && package.includes(packageName)) {
             span.setAttribute(`entity.${spanIndex}.type`, workflowType);
             workflowTypeSet = true;
         }
@@ -91,11 +91,11 @@ function setWorkflowAttributes({ packageName, span, spanIndex }) {
 
 
 
-function processSpan({ span, instance, args, returnValue, outputProcessor }) {
+function processSpan({ span, instance, args, returnValue, outputProcessor, package }) {
     let spanIndex = 1;
 
     if (isRootSpan(span)) {
-        spanIndex += setWorkflowAttributes({ packageName: "", span, spanIndex });
+        spanIndex += setWorkflowAttributes({ package, span, spanIndex });
         // spanIndex += setAppHostingIdentifierAttribute(span, spanIndex);
     }
 

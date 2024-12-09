@@ -1,3 +1,5 @@
+const { extractMessages, extractAssistantMessage } = require("../utils.js")   
+
 exports.config = {
     "type": "inference",
     "attributes": [
@@ -6,10 +8,12 @@ exports.config = {
                 "_comment": "provider type ,name , deployment , inference_endpoint",
                 "attribute": "type",
                 "accessor": function ({ instance }) {
-                    if (instance?.constructor?.name?.toLowerCase().includes("azurechatopenai")) {
+                    const constructorName = instance?.constructor?.name?.toLowerCase()
+                    if (
+                        constructorName?.includes("azurechatopenai") || constructorName?.includes("azureopenai")) {
                         return "inference.azure_openai"
                     }
-                    if (instance?.constructor?.name?.toLowerCase().includes("chatopenai")) {
+                    if (constructorName?.includes("chatopenai") || constructorName?.includes("openai")) {
                         return "inference.openai"
                     }
                 }
@@ -23,7 +27,7 @@ exports.config = {
             {
                 "attribute": "inference_endpoint",
                 "accessor": function ({ instance }) {
-                    return instance.azure_endpoint || instance.api_base || instance?.client?.baseURL
+                    return instance.azure_endpoint || instance.api_base || instance?.client?.baseURL || instance?.session?.openai?.baseURL
                 }
             }
         ],
@@ -55,7 +59,17 @@ exports.config = {
                         args,
                         // instance 
                     }) {
-                        return args[0].value
+                        return extractMessages(args)[0]
+                    }
+                },
+                {
+                    "_comment": "this is user instruction to LLM",
+                    "attribute": "user",
+                    "accessor": function ({
+                        args,
+                        // instance 
+                    }) {
+                        return extractMessages(args)[1]
                     }
                 }
             ]
@@ -68,9 +82,7 @@ exports.config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        if (typeof response.content == "string") {
-                            return response.content
-                        }
+                        return extractAssistantMessage(response)
                     }
                 }
             ]

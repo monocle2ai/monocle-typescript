@@ -6,7 +6,7 @@ exports.config = [
         "method": "invoke",
         "spanName": "langchain.chat",
         "output_processor": [
-           require("./attributes/langchain_attributes.js").config
+           require("./langchain_attributes.js").config
         ]
     },
     {

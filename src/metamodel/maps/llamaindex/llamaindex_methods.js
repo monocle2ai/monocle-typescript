@@ -17,7 +17,7 @@ exports.config = [
         "method": "chat",
         "spanName": "llamaindex.openai_chat",
         "output_processor": [
-           require("./attributes/llamaindex_attributes.js").config
+           require("./llamaindex_attributes.js").config
         ]
 
     },
