@@ -49,6 +49,9 @@ async function main() {
      
     });
   }
+  setTimeout(() => {
+    console.log("shutting exporter")
+  }, 1000);
 
 }
 

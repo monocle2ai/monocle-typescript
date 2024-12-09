@@ -59,14 +59,11 @@ Question: {question}`);
   chain.invoke("What is the powerhouse of the cell?").then(
     (res) => {
       console.log("result:" + res)
-      // setTimeout(() => {
-      //   console.log("shutting exporter")
-      // }, 5000);
     }
   ).finally(() => {
     setTimeout(() => {
       console.log("shutting exporter")
-    }, 20);
+    }, 1000);
   })
 
 

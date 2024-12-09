@@ -1,7 +1,6 @@
 const AWS = require('@aws-sdk/client-s3');
 const { ExportResultCode, hrTimeToMicroseconds } = require('@opentelemetry/core');
 
-
 class AWSS3SpanExporter {
     constructor({ bucketName, keyPrefix, region, fileNameGenerator }) {
         this.bucketName = bucketName || process.env.MONOCLE_S3_BUCKET_NAME || "default-bucket";

@@ -26,6 +26,10 @@ async function main() {
         model: 'gpt-4o',
     });
     console.log(chatCompletion.choices[0].message.content);
+
+    setTimeout(() => {
+        console.log("shutting exporter")
+    }, 1000);
 }
 
 main()
