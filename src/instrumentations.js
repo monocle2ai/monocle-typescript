@@ -13,7 +13,7 @@ const { AWS_CONSTANTS } = require('./constants')
 const path = require('path')
 const import_in_the_middle_1 = require("import-in-the-middle");
 const require_in_the_middle_1 = require("require-in-the-middle");
-const { AWSS3SpanExporter } = require('./exporters/AWSS3SpanExporter')
+const { AWSS3SpanExporter } = require('./exporters/aws/AWSS3SpanExporter')
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
