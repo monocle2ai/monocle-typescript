@@ -1,13 +1,14 @@
 const { setupMonocle } = require("../src")
 const { BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
+const { MonocleConsoleSpanExporter } = require("../src/exporters/monocle/MonocleConsoleSpanExporter")
 
 setupMonocle(
     "openai.app",
     [
         new BatchSpanProcessor(
-            new ConsoleSpanExporter(),
+            new MonocleConsoleSpanExporter(),
             {
-                scheduledDelayMillis: 1
+                scheduledDelayMillis: 0
             })
     ]
 )
