@@ -6,7 +6,7 @@ const isRootSpan = function (span) {
 
 const preProcessSpan = function ({ span, instance, args, wrapperConfig, outputProcessor }) {
     const sdkVersion = "0.0.1"
-    span.setAttribute("okahu-observability.version", sdkVersion)
+    span.setAttribute("monocle-typescript.version", sdkVersion)
 
     if (outputProcessor) {
         outputProcessor(
@@ -109,7 +109,6 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, packa
             }
 
             if (outputProcessor.attributes) {
-                spanIndex = 1;
 
                 outputProcessor.attributes.forEach((processors) => {
                     let attributeSet = false;
@@ -140,9 +139,6 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, packa
                 });
             } else {
                 console.warn("attributes not found or incorrect written in entity json");
-            }
-            if (spanIndex > 0) {
-                span.setAttribute("entity.count", spanIndex - 1);
             }
 
             if (outputProcessor.events) {
@@ -186,6 +182,9 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, packa
         } else {
             console.warn("empty or entities json is not in correct format");
         }
+    }
+    if (spanIndex > 1) {
+        span.setAttribute("entity.count", spanIndex - 1);
     }
 }
 

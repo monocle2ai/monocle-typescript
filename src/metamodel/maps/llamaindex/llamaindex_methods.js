@@ -3,6 +3,10 @@ exports.config = [
         "package": "llamaindex",
         "object": "VectorIndexRetriever",
         "method": "retrieve",
+        "spanName": "llamaindex.vector_retrieval",
+        output_processor: [
+            require("./llamaindex_retrieval_attributes.js").config
+        ]
 
     },
     {

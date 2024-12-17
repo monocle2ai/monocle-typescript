@@ -28,6 +28,9 @@ exports.config = [
         "object": "VectorStoreRetriever",
         "method": "_getRelevantDocuments",
         "spanName": "langchain.vectorstore_retriever",
+        "output_processor": [
+            require("./langchain_retrieval_attributes.js").config
+        ]
     },
     {
         "package": "@langchain/core/prompts",
