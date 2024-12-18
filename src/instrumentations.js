@@ -152,7 +152,7 @@ const setupMonocle = (
 
 function addSpanProcessors(okahuProcessors = []) {
     if (Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
-        okahuProcessors.push(new BatchSpanProcessor(new AWSS3SpanExporter()))
+        okahuProcessors.push(new BatchSpanProcessor(new AWSS3SpanExporter({})))
         okahuProcessors.push(new BatchSpanProcessor(new ConsoleSpanExporter()))
     }
 }
