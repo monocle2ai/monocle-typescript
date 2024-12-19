@@ -6,7 +6,7 @@ exports.config = [
         "method": "invoke",
         "spanName": "langchain.chat",
         "output_processor": [
-           require("./langchain_attributes.js").config
+           require("./entities/inference.js").config
         ]
     },
     {
@@ -29,7 +29,7 @@ exports.config = [
         "method": "_getRelevantDocuments",
         "spanName": "langchain.vectorstore_retriever",
         "output_processor": [
-            require("./langchain_retrieval_attributes.js").config
+            require("./entities/retrieval.js").config
         ]
     },
     {

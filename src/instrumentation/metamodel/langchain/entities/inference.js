@@ -1,42 +1,46 @@
-const { extractAssistantMessage } = require("../utils.js")
+const { extractAssistantMessage } = require("../../utils.js")   
 
 exports.config = {
-    "type": "retrieval",
+    "type": "inference",
     "attributes": [
         [
             {
-                "_comment": "vector store name",
-                "attribute": "name",
-                "accessor": function ({ instance, args }) {
-                    return instance?.index?.vectorStores?.TEXT?.constructor.name
-                }
-            },
-            {
-                "attribute": "vector store type",
+                "_comment": "provider type ,name , deployment , inference_endpoint",
+                "attribute": "type",
                 "accessor": function ({ instance }) {
-                    return "vectorstore." + instance?.index?.vectorStores?.TEXT?.constructor.name
+                    if (instance?.constructor?.name?.toLowerCase().includes("azurechatopenai")) {
+                        return "inference.azure_openai"
+                    }
+                    if (instance?.constructor?.name?.toLowerCase().includes("chatopenai")) {
+                        return "inference.openai"
+                    }
                 }
             },
             {
                 "attribute": "deployment",
-                "accessor": function ({ instance, args }) {
-                    return ""
+                "accessor": function ({ instance }) {
+                    return instance.engine || instance.deployment || instance.deployment_name || instance.deployment_id || instance.azure_deployment
+                }
+            },
+            {
+                "attribute": "inference_endpoint",
+                "accessor": function ({ instance }) {
+                    return instance.azure_endpoint || instance.api_base || instance?.client?.baseURL
                 }
             }
         ],
         [
             {
-                "_comment": "Embedding model name",
+                "_comment": "LLM Model",
                 "attribute": "name",
                 "accessor": function ({ instance }) {
-                    return instance.index.vectorStores.TEXT.embedModel.model
+                    return instance.model_name || instance.model
                 }
             },
             {
-                _comment: "Embedding model type",
                 "attribute": "type",
                 "accessor": function ({ instance }) {
-                    return "model.embedding." + instance.index.vectorStores.TEXT.embedModel.model
+                    return "model.llm" + (instance.model_name || instance.model)
                 }
             }
         ]

@@ -1,4 +1,4 @@
-const { extractAssistantMessage } = require("../utils.js")   
+const { extractAssistantMessage } = require("../../utils")   
 
 exports.config = {
     "type": "retrieval",

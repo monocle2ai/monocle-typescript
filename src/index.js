@@ -1,1 +1,1 @@
-exports.setupMonocle = require("./instrumentations").setupMonocle
+exports.setupMonocle = require("./instrumentation/common/instrumentations").setupMonocle

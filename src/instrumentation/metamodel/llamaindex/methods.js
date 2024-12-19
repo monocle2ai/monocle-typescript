@@ -5,7 +5,7 @@ exports.config = [
         "method": "retrieve",
         "spanName": "llamaindex.vector_retrieval",
         output_processor: [
-            require("./llamaindex_retrieval_attributes.js").config
+            require("./entities/retrieval.js").config
         ]
 
     },
@@ -21,7 +21,7 @@ exports.config = [
         "method": "chat",
         "spanName": "llamaindex.openai_chat",
         "output_processor": [
-           require("./llamaindex_attributes.js").config
+           require("./entities/inference.js").config
         ]
 
     },

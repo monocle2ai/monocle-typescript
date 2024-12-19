@@ -38,7 +38,6 @@ const getPatchedMain = function ({ tracer, ...element }) {
             return tracer.startActiveSpan(
                 element.spanName || element.package || '' + element.object || '' + element.method || '',
                 async (span) => {
-                    console.log("startActiveSpan")
                     preProcessSpan({ span: span, instance: this, args: arguments, wrapperConfig: element })
                     // processSpan({span, instance: this, args: arguments, outputProcessor})
                     const returnValue = await original.apply(this, arguments);
