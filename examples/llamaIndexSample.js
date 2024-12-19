@@ -7,7 +7,7 @@ setupMonocle(
     new BatchSpanProcessor(
       new ConsoleSpanExporter(),
       config = {
-        scheduledDelayMillis: 20
+        scheduledDelayMillis: 1
       })
   ]
 )
@@ -49,6 +49,9 @@ async function main() {
      
     });
   }
+  setTimeout(() => {
+    console.log("shutting exporter")
+  }, 1000);
 
 }
 
