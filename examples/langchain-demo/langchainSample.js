@@ -1,22 +1,4 @@
-
-const { setupMonocle } = require("../src")
-const { BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
-
-setupMonocle(
-  "langchain.app",
-  [
-    new BatchSpanProcessor(
-      new ConsoleSpanExporter(),
-      {
-        scheduledDelayMillis: 5
-      })
-  ]
-)
-// const fs = require("node:fs/promises")
-
-
 const { ChatOpenAI, OpenAIEmbeddings } = require("@langchain/openai")
-
 const { HNSWLib } = require("@langchain/community/vectorstores/hnswlib")
 const { formatDocumentsAsString } = require("langchain/util/document");
 const { PromptTemplate } = require("@langchain/core/prompts");
@@ -25,16 +7,12 @@ const {
   RunnablePassthrough,
 } = require("@langchain/core/runnables");
 const { StringOutputParser } = require("@langchain/core/output_parsers");
-// const {
-//   Document,
-//   MetadataMode,
-//   VectorStoreIndex,
-// } = require("llamaindex")
+const fs = require("fs")
 
 const model = new ChatOpenAI({});
-
+const text = fs.readFileSync('./text.txt', 'utf8')
 HNSWLib.fromTexts(
-  ["mitochondria is the powerhouse of the cell"],
+  [text],
   [{ id: 1 }],
   new OpenAIEmbeddings()
 ).then((vectorStore) => {
@@ -42,7 +20,8 @@ HNSWLib.fromTexts(
 
   const prompt =
     PromptTemplate.fromTemplate(`Answer the question based only on the following context:
-{context}
+{context} .
+If you don't know the answer, you can say "I don't know".
 
 Question: {question}`);
 
@@ -56,24 +35,15 @@ Question: {question}`);
     new StringOutputParser(),
   ]);
 
-  chain.invoke("What is the powerhouse of the cell?").then(
+  chain.invoke("What is coffee?").then(
     (res) => {
       console.log("result:" + res)
     }
   ).finally(() => {
-    setTimeout(() => {
-      console.log("shutting exporter")
-    }, 1000);
+    
   })
 
 
 
   //console.log(result);
 })
-
-
-
-
-/*
-  "The powerhouse of the cell is the mitochondria."
-*/

@@ -1,0 +1,2 @@
+export OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+MONOCLE_EXPORTER=file node ./langchainSampleWithMonocle.js
