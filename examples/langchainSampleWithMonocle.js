@@ -1,3 +1,10 @@
+
+const { setupMonocle } = require("../src")
+
+setupMonocle(
+  "langchain.app"
+)
+
 const { ChatOpenAI, OpenAIEmbeddings } = require("@langchain/openai")
 const { HNSWLib } = require("@langchain/community/vectorstores/hnswlib")
 const { formatDocumentsAsString } = require("langchain/util/document");
