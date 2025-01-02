@@ -1,16 +1,7 @@
 const { setupMonocle } = require("../src")
-const { BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
-const { MonocleConsoleSpanExporter } = require("../src/exporters/monocle/MonocleConsoleSpanExporter")
 
 setupMonocle(
-    "openai.app",
-    [
-        new BatchSpanProcessor(
-            new MonocleConsoleSpanExporter(),
-            {
-                scheduledDelayMillis: 0
-            })
-    ]
+    "openai.app"
 )
 
 const { OpenAI } = require('openai')
@@ -26,10 +17,6 @@ async function main() {
         model: 'gpt-4o',
     });
     console.log(chatCompletion.choices[0].message.content);
-
-    setTimeout(() => {
-        console.log("shutting exporter")
-    }, 1000);
 }
 
 main()

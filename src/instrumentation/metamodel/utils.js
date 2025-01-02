@@ -88,3 +88,42 @@ exports.extractAssistantMessage = function extractAssistantMessage(response) {
         return "";
     }
 }
+
+exports.getVectorstoreDeployment = function getVectorstoreDeployment(myMap) {
+    if (typeof myMap === 'object' && !Array.isArray(myMap)) {
+        if ('_client_settings' in myMap) {
+            const client = myMap['_client_settings'];
+            const { host, port } = getKeysAsTuple(client, 'host', 'port');
+            if (host) {
+                return port ? `${host}:${port}` : host;
+            }
+        }
+        const keysToCheck = ['client', '_client'];
+        const host = getHostFromMap(myMap, keysToCheck);
+        if (host) {
+            return host;
+        }
+    } else {
+        if (myMap.client && '_endpoint' in myMap.client) {
+            return myMap.client['_endpoint'];
+        }
+        const { host, port } = getKeysAsTuple(myMap, 'host', 'port');
+        if (host) {
+            return port ? `${host}:${port}` : host;
+        }
+    }
+    return null;
+}
+
+function getKeysAsTuple(obj, key1, key2) {
+    return { [key1]: obj[key1], [key2]: obj[key2] };
+}
+
+function getHostFromMap(map, keys) {
+    for (const key of keys) {
+        if (key in map) {
+            return map[key];
+        }
+    }
+    return null;
+}

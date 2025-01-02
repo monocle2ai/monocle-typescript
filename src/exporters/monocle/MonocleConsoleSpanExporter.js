@@ -1,5 +1,6 @@
 
-const { ExportResultCode, hrTimeToTimeStamp } = require("@opentelemetry/core");
+const { ExportResultCode } = require("@opentelemetry/core");
+const { exportInfo } = require("../utils");
 
 exports.MonocleConsoleSpanExporter = class MonocleConsoleSpanExporter {
 
@@ -17,32 +18,7 @@ exports.MonocleConsoleSpanExporter = class MonocleConsoleSpanExporter {
     }
 
     _exportInfo(span) {
-        const span_object = {
-            name: span.name,
-            context: span.spanContext(),
-            kind: span.kind,
-            parent_id: span.parentSpanId,
-            instrumentationScope: span.instrumentationLibrary,
-            start_time: hrTimeToTimeStamp(span.startTime),
-            end_time: hrTimeToTimeStamp(span.endTime),
-            status: span.status,
-            attributes: span.attributes,
-            events: span.events,
-            links: span.links,
-            resource: {
-                attributes: span.resource.attributes,
-            },
-        };
-        if (span_object.events && span_object.events.length > 0) {
-            span_object.events = span_object.events.map(event => {
-                return {
-                    name: event?.name,
-                    time: hrTimeToTimeStamp(event.time),
-                    attributes: event?.attributes
-                }
-            });
-        }
-        return span_object;
+        return exportInfo(span);
     }
 
     _sendSpans(spans, done) {

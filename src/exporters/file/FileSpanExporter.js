@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { ExportResultCode, hrTimeToMicroseconds } = require('@opentelemetry/core');
+const { ExportResultCode } = require('@opentelemetry/core');
+const { exportInfo } = require('../utils');
+const { consoleLog } = require('../../common/logging');
 
 class FileSpanExporter {
     constructor({ outPath, file_prefix }) {
@@ -10,7 +12,7 @@ class FileSpanExporter {
     }
 
     export(spans, resultCallback) {
-        console.log('exporting spans to file:', spans);
+        consoleLog('exporting spans to file.');
         return this._sendSpans(spans, resultCallback);
     }
 
@@ -24,21 +26,7 @@ class FileSpanExporter {
     }
 
     _exportInfo(span) {
-        var _a;
-        console.log('exporting span:', span);
-        return {
-            traceId: span.spanContext().traceId,
-            parentId: span.parentSpanId,
-            traceState: (_a = span.spanContext().traceState) === null || _a === void 0 ? void 0 : _a.serialize(),
-            name: span.name,
-            spanId: span.spanContext().spanId,
-            kind: span.kind,
-            startTime: hrTimeToMicroseconds(span.startTime),
-            endTime: hrTimeToMicroseconds(span.endTime),
-            attributes: span.attributes,
-            events: span.events,
-            links: span.links,
-        };
+        return exportInfo(span);
     }
 
     async _sendSpans(spans, done) {
@@ -46,12 +34,12 @@ class FileSpanExporter {
         const fileName = `${this.file_prefix}${timestamp}.json`;
         const filePath = path.join(this.outPath, fileName);
         const body = JSON.stringify(spans.map(span => this._exportInfo(span)));
-        console.log('writing spans to file:', filePath, body);
+        consoleLog('writing spans to file:', filePath);
 
         try {
-            console.log('try to write spans to file:', filePath);
+            consoleLog('try to write spans to file:', filePath);
             fs.writeFileSync(filePath, body, 'utf8');
-            console.log('successfully wrote spans to file:', filePath);
+            consoleLog('successfully wrote spans to file:', filePath);
             if (done) {
                 return done({ code: ExportResultCode.SUCCESS });
             }

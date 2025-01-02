@@ -7,12 +7,14 @@ const { Resource } = require("@opentelemetry/resources")
 const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node")
 const { AsyncHooksContextManager } = require("@opentelemetry/context-async-hooks")
 const { combinedPackages } = require("./packages")
-const { BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
+const { ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
 const { getPatchedMain } = require("./wrapper")
 const { AWS_CONSTANTS } = require('./constants')
 const path = require('path')
 const import_in_the_middle_1 = require("import-in-the-middle");
 const require_in_the_middle_1 = require("require-in-the-middle");
+const { getMonocleExporter } = require('../../exporters')
+const { PatchedBatchSpanProcessor } = require('./opentelemetryUtils')
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
@@ -152,8 +154,30 @@ const setupMonocle = (
 function addSpanProcessors(okahuProcessors = []) {
     if (Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
         const { AWSS3SpanExporter } = require('../../exporters/aws/AWSS3SpanExporter')
-        okahuProcessors.push(new BatchSpanProcessor(new AWSS3SpanExporter({})))
-        okahuProcessors.push(new BatchSpanProcessor(new ConsoleSpanExporter()))
+        okahuProcessors.push(
+            new PatchedBatchSpanProcessor(
+                new AWSS3SpanExporter({}),
+                {
+                    scheduledDelayMillis: 5
+                }
+            )
+
+        )
+        okahuProcessors.push(new PatchedBatchSpanProcessor(
+            new ConsoleSpanExporter(),
+            {
+                scheduledDelayMillis: 5
+            }
+        ))
+    }
+    else {
+        okahuProcessors.push(
+            new PatchedBatchSpanProcessor(
+                getMonocleExporter(),
+                {
+                    scheduledDelayMillis: 5
+                }
+            ))
     }
 }
 
