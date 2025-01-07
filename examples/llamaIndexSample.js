@@ -1,15 +1,7 @@
 const { setupMonocle } = require("../src")
-const { BatchSpanProcessor, ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
 
 setupMonocle(
-  "llamaindex.app",
-  [
-    new BatchSpanProcessor(
-      new ConsoleSpanExporter(),
-      config = {
-        scheduledDelayMillis: 1
-      })
-  ]
+  "llamaindex.app"
 )
 
 const fs = require("node:fs/promises")
@@ -49,9 +41,6 @@ async function main() {
      
     });
   }
-  setTimeout(() => {
-    console.log("shutting exporter")
-  }, 1000);
 
 }
 

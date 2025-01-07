@@ -1,8 +1,12 @@
 {
   "name": "monocle2ai-ts",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.2",
   "description": "",
   "main": "src/index.js",
+  "files": [
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,7 +18,8 @@
     "@opentelemetry/resources": "^1.28.0",
     "@opentelemetry/sdk-trace-node": "^1.28.0",
     "import-in-the-middle": "1.11.2",
-    "require-in-the-middle": "7.4.0"
+    "require-in-the-middle": "7.4.0",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.705.0",
@@ -27,6 +32,8 @@
     "hnswlib-node": "^3.0.0",
     "langchain": "^0.2.5",
     "llamaindex": "^0.4.1",
-    "mongodb": "^6.7.0"
+    "mongodb": "^6.7.0",
+    "@langchain/core": "^0.3.23",
+    "@opensearch-project/opensearch": "^2.13.0"
   }
 }
