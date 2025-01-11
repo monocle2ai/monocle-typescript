@@ -7,10 +7,10 @@ class AzureBlobSpanExporter {
     constructor({ containerName, blobPrefix, connectionString, fileNameGenerator }) {
         this.containerName = containerName || process.env.MONOCLE_BLOB_CONTAINER_NAME || "default-container";
         this.blobPrefix = blobPrefix || process.env.MONOCLE_AZURE_BLOB_PREFIX || "monocle_trace__";
-        const connectionString = connectionString || process.env.MONOCLE_BLOB_CONNECTION_STRING || process.env.AZURE_STORAGE_CONNECTION_STRING;
-        if (!connectionString)
+        const blobConnectionString = connectionString || process.env.MONOCLE_BLOB_CONNECTION_STRING || process.env.AZURE_STORAGE_CONNECTION_STRING;
+        if (!blobConnectionString)
             throw new Error('Azure Blob Storage connection string is required in  MONOCLE_BLOB_CONNECTION_STRING or AZURE_STORAGE_CONNECTION_STRING');
-        this.blobServiceClient = BlobServiceClient.fromConnectionString();
+        this.blobServiceClient = BlobServiceClient.fromConnectionString(blobConnectionString);
         this.fileNameGenerator = typeof fileNameGenerator == "function" ? fileNameGenerator : () => `${this.blobPrefix}${Date.now().toString()}`;
     }
 
