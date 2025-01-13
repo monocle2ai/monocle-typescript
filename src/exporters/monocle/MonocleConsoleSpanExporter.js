@@ -23,7 +23,7 @@ exports.MonocleConsoleSpanExporter = class MonocleConsoleSpanExporter {
 
     _sendSpans(spans, done) {
         for (const span of spans) {
-            console.dir(this._exportInfo(span), { depth: 3 });
+            console.log(JSON.stringify(this._exportInfo(span)));
         }
         if (done) {
             return done({ code: ExportResultCode.SUCCESS });
