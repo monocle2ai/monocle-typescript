@@ -1,13 +1,13 @@
-const { extractAssistantMessage } = require("../../utils")   
+import { extractAssistantMessage } from "../../utils"   
 
-exports.config = {
+export const config = {
     "type": "retrieval",
     "attributes": [
         [
             {
                 "_comment": "vector store name",
                 "attribute": "name",
-                "accessor": function ({ instance, args }) {
+                "accessor": function ({ instance, /*args*/ }) {
                     if (instance?.vectorStore?.constructor?.name) {
                         return instance?.vectorStore?.constructor?.name
                     }
@@ -19,11 +19,12 @@ exports.config = {
                     if (instance?.vectorStore?.constructor?.name) {
                         return "vectorstore." + instance?.vectorStore?.constructor?.name
                     }
+                    return "";
                 }
             },
             {
                 "attribute": "deployment",
-                "accessor": function ({ instance, args }) {
+                "accessor": function ({ /*instance, args*/ }) {
                     return ""
                 }
             }

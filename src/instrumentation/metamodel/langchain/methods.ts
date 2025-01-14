@@ -1,4 +1,4 @@
-exports.config = [
+export const config = [
     {
 
         "package": "@langchain/core/language_models/chat_models",

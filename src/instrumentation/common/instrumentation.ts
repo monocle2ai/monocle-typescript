@@ -1,20 +1,20 @@
-const {
+import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
-} = require('@opentelemetry/instrumentation')
-const { context } = require("@opentelemetry/api")
-const { Resource } = require("@opentelemetry/resources")
-const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node")
-const { AsyncHooksContextManager } = require("@opentelemetry/context-async-hooks")
-const { combinedPackages } = require("./packages")
-const { ConsoleSpanExporter } = require("@opentelemetry/sdk-trace-node")
-const { getPatchedMain } = require("./wrapper")
-const { AWS_CONSTANTS } = require('./constants')
-const path = require('path')
-const import_in_the_middle_1 = require("import-in-the-middle");
-const require_in_the_middle_1 = require("require-in-the-middle");
-const { getMonocleExporter } = require('../../exporters')
-const { PatchedBatchSpanProcessor } = require('./opentelemetryUtils')
+} from '@opentelemetry/instrumentation';
+import { context } from "@opentelemetry/api";
+import { Resource } from "@opentelemetry/resources";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
+import { combinedPackages } from "./packages";
+import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
+import { getPatchedMain } from "./wrapper";
+import { AWS_CONSTANTS } from './constants';
+import path from 'path';
+import import_in_the_middle_1 from "import-in-the-middle";
+import require_in_the_middle_1 from "require-in-the-middle";
+import { getMonocleExporter } from '../../exporters';
+import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
@@ -31,6 +31,7 @@ class MonocleInstrumentation extends InstrumentationBase {
      */
     init() {
         const modules = []
+        // @ts-ignore: custom field access
         const packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
         packagesForInstrumentation.forEach(element => {
             const module = new InstrumentationNodeModuleDefinition(
@@ -45,12 +46,16 @@ class MonocleInstrumentation extends InstrumentationBase {
     }
 
     enable() {
+        // @ts-ignore: private field access required
         if (this._enabled) {
             return;
         }
+        // @ts-ignore: private field access required
         this._enabled = true;
         // already hooked, just call patch again
+        // @ts-ignore: private field access required
         if (this._hooks.length > 0) {
+            // @ts-ignore: private field access required
             for (const module of this._modules) {
                 if (typeof module.patch === 'function' && module.moduleExports) {
                     this._diag.debug('Applying instrumentation patch for nodejs module on instrumentation enabled', {
@@ -72,7 +77,9 @@ class MonocleInstrumentation extends InstrumentationBase {
             }
             return;
         }
+        // @ts-ignore: private field access required
         this._warnOnPreloadedModules();
+        // @ts-ignore: private field access required
         for (const module of this._modules) {
             const hookFn = (exports, name, baseDir) => {
                 if (!baseDir && path.isAbsolute(name)) {
@@ -80,17 +87,21 @@ class MonocleInstrumentation extends InstrumentationBase {
                     name = parsedPath.name;
                     baseDir = parsedPath.dir;
                 }
+                // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
             const onRequire = (exports, name, baseDir) => {
+                // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
             // `RequireInTheMiddleSingleton` does not support absolute paths.
             // For an absolute paths, we must create a separate instance of the
             // require-in-the-middle `Hook`.
             const hook = new require_in_the_middle_1.Hook([module.name], { internals: true }, onRequire);
+            // @ts-ignore: private field access required
             this._hooks.push(hook);
-            const esmHook = new import_in_the_middle_1.Hook([module.name], { internals: false }, hookFn);
+            const esmHook = new import_in_the_middle_1([module.name], { internals: false }, hookFn);
+            // @ts-ignore: private field access required
             this._hooks.push(esmHook);
         }
     }
@@ -181,4 +192,4 @@ function addSpanProcessors(okahuProcessors = []) {
     }
 }
 
-exports.setupMonocle = setupMonocle
+export { setupMonocle };

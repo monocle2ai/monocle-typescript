@@ -1,6 +1,6 @@
-const { extractAssistantMessage } = require("../../utils.js")   
+import { extractAssistantMessage } from "../../utils.js"   
 
-exports.config = {
+export const config = {
     "type": "inference",
     "attributes": [
         [
@@ -14,6 +14,7 @@ exports.config = {
                     if (instance?.constructor?.name?.toLowerCase().includes("chatopenai")) {
                         return "inference.openai"
                     }
+                    return "";
                 }
             },
             {

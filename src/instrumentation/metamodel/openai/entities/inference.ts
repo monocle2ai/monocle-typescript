@@ -1,4 +1,4 @@
-exports.config = {
+export const config = {
     "type": "inference",
     "events": [
         {

@@ -1,13 +1,13 @@
-const { format } = require("date-fns")
-const { hrTimeToTimeStamp } = require("@opentelemetry/core");
+import { format } from "date-fns";
+import { hrTimeToTimeStamp } from "@opentelemetry/core";
 
 
-exports.getUrlFriendlyTime = function getUrlFriendlyTime(date = new Date()) {
+export function getUrlFriendlyTime(date = new Date()) {
   return format(date, "yyyyMMdd'T'HHmmss");
 }
 
 // generate random alphanumeric string of given length
-exports.makeid = function makeid(length) {
+export function makeid(length) {
   let result = '';
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
@@ -19,7 +19,7 @@ exports.makeid = function makeid(length) {
   return result;
 }
 
-exports.exportInfo = function exportInfo(span) {
+export function exportInfo(span) {
   const span_object = {
     name: span.name,
     context: span.spanContext(),
