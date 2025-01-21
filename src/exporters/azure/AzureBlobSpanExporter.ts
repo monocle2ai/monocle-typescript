@@ -3,13 +3,20 @@ import { ExportResultCode } from '@opentelemetry/core';
 import { exportInfo } from '../utils';
 import { consoleLog } from '../../common/logging';
 
+interface AzureBlobSpanExporterConfig {
+    containerName?: string;
+    blobPrefix?: string;
+    connectionString?: string;
+    fileNameGenerator?: () => string;
+}
+
 class AzureBlobSpanExporter {
     containerName: string;
     blobPrefix: string;
     blobServiceClient: BlobServiceClient;
     fileNameGenerator: () => string;
 
-    constructor({ containerName, blobPrefix, connectionString, fileNameGenerator }) {
+    constructor({ containerName, blobPrefix, connectionString, fileNameGenerator }: AzureBlobSpanExporterConfig) {
         this.containerName = containerName || process.env.MONOCLE_BLOB_CONTAINER_NAME || "default-container";
         this.blobPrefix = blobPrefix || process.env.MONOCLE_AZURE_BLOB_PREFIX || "monocle_trace__";
         const blobConnectionString = connectionString || process.env.MONOCLE_BLOB_CONNECTION_STRING || process.env.AZURE_STORAGE_CONNECTION_STRING;

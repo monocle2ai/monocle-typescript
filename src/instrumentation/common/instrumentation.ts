@@ -11,8 +11,8 @@ import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { getPatchedMain } from "./wrapper";
 import { AWS_CONSTANTS } from './constants';
 import path from 'path';
-import import_in_the_middle_1 from "import-in-the-middle";
-import require_in_the_middle_1 from "require-in-the-middle";
+import { Hook as ImportHook } from "import-in-the-middle";
+import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporter } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 
@@ -30,7 +30,7 @@ class MonocleInstrumentation extends InstrumentationBase {
      *   the plugin should patch multiple modules or versions.
      */
     init() {
-        const modules = []
+        const modules: any[] = []
         // @ts-ignore: custom field access
         const packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
         packagesForInstrumentation.forEach(element => {
@@ -97,10 +97,10 @@ class MonocleInstrumentation extends InstrumentationBase {
             // `RequireInTheMiddleSingleton` does not support absolute paths.
             // For an absolute paths, we must create a separate instance of the
             // require-in-the-middle `Hook`.
-            const hook = new require_in_the_middle_1.Hook([module.name], { internals: true }, onRequire);
+            const hook = new RequireHook([module.name], { internals: true }, onRequire);
             // @ts-ignore: private field access required
             this._hooks.push(hook);
-            const esmHook = new import_in_the_middle_1([module.name], { internals: false }, hookFn);
+            const esmHook = new ImportHook([module.name], { internals: false }, hookFn);
             // @ts-ignore: private field access required
             this._hooks.push(esmHook);
         }
@@ -125,8 +125,8 @@ class MonocleInstrumentation extends InstrumentationBase {
 
 const setupMonocle = (
     workflowName,
-    spanProcessors = [],
-    wrapperMethods = []
+    spanProcessors: any[] = [],
+    wrapperMethods: any[] = []
 ) => {
     const resource = new Resource({
         SERVICE_NAME: workflowName
@@ -148,8 +148,8 @@ const setupMonocle = (
     });
     // for (let processor of spanProcessors)
     //     tracerProvider.addSpanProcessor(processor)
-    const userWrapperMethods = []
-    wrapperMethods.forEach(wrapperMethod => {
+    const userWrapperMethods: any[] = []
+    wrapperMethods.forEach((wrapperMethod: any[]) => {
         if (Array.isArray(wrapperMethod)) {
             userWrapperMethods.push(...wrapperMethod)
         }
@@ -159,10 +159,11 @@ const setupMonocle = (
     });
 
     monocleInstrumentation.setTracerProvider(tracerProvider);
+
     monocleInstrumentation.enable();
 }
 
-function addSpanProcessors(okahuProcessors = []) {
+function addSpanProcessors(okahuProcessors: any[] = []) {
     if (Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
         const { AWSS3SpanExporter } = require('../../exporters/aws/AWSS3SpanExporter')
         okahuProcessors.push(
