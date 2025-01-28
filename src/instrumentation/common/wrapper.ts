@@ -4,7 +4,7 @@ const isRootSpan = function (span) {
     return true;
 };
 
-const preProcessSpan = function ({ span, instance, args, wrapperConfig, outputProcessor }) {
+const preProcessSpan = function ({ span, instance, args, outputProcessor }) {
     const sdkVersion = "0.0.1"
     span.setAttribute("monocle-typescript.version", sdkVersion)
 
@@ -19,7 +19,7 @@ const preProcessSpan = function ({ span, instance, args, wrapperConfig, outputPr
     }
 }
 
-const postProcessSpan = function ({ span, instance, args, wrapperConfig, returnValue, outputProcessor }) {
+const postProcessSpan = function ({ span, instance, args, returnValue, outputProcessor }) {
 
     if (typeof outputProcessor === "function") {
         outputProcessor(
@@ -38,11 +38,11 @@ const getPatchedMain = function ({ tracer, ...element }) {
             return tracer.startActiveSpan(
                 element.spanName || element.package || '' + element.object || '' + element.method || '',
                 async (span) => {
-                    preProcessSpan({ span: span, instance: this, args: arguments, wrapperConfig: element })
+                    preProcessSpan({ span: span, instance: this, args: arguments, outputProcessor: null })
                     // processSpan({span, instance: this, args: arguments, outputProcessor})
                     const returnValue = await original.apply(this, arguments);
-                    postProcessSpan({ span, instance: this, args: arguments, wrapperConfig: element, returnValue })
-                    processSpan({ span, instance: this, args: arguments, outputProcessor: element.output_processor, returnValue, package: element.package })
+                    postProcessSpan({ span, instance: this, args: arguments, returnValue, outputProcessor: null })
+                    processSpan({ span, instance: this, args: arguments, outputProcessor: element.output_processor, returnValue, wrappedPackage: element.package })
                     span.end()
                     return returnValue
                 }
@@ -67,7 +67,7 @@ function getWorkflowName(span) {
     }
 }
 
-function setWorkflowAttributes({ package, span, spanIndex }) {
+function setWorkflowAttributes({ wrappedPackage, span, spanIndex }) {
     let returnValue = 1;
     let workflowName = getWorkflowName(span);
     if (workflowName) {
@@ -77,7 +77,7 @@ function setWorkflowAttributes({ package, span, spanIndex }) {
     }
     let workflowTypeSet = false;
     for (let [packageName, workflowType] of Object.entries(WORKFLOW_TYPE_MAP)) {
-        if (package !== undefined && package.includes(packageName)) {
+        if (wrappedPackage !== undefined && wrappedPackage.includes(packageName)) {
             span.setAttribute(`entity.${spanIndex}.type`, workflowType);
             workflowTypeSet = true;
         }
@@ -90,11 +90,11 @@ function setWorkflowAttributes({ package, span, spanIndex }) {
 
 
 
-function processSpan({ span, instance, args, returnValue, outputProcessor, package }) {
+function processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage }) {
     let spanIndex = 1;
 
     if (isRootSpan(span)) {
-        spanIndex += setWorkflowAttributes({ package, span, spanIndex });
+        spanIndex += setWorkflowAttributes({ wrappedPackage, span, spanIndex });
         // spanIndex += setAppHostingIdentifierAttribute(span, spanIndex);
     }
 
@@ -187,4 +187,5 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, packa
     }
 }
 
-exports.getPatchedMain = getPatchedMain
+const _getPatchedMain = getPatchedMain;
+export { _getPatchedMain as getPatchedMain };

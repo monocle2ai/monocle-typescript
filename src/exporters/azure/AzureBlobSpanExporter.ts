@@ -1,10 +1,22 @@
-const { BlobServiceClient } = require('@azure/storage-blob');
-const { ExportResultCode } = require('@opentelemetry/core');
-const { exportInfo } = require('../utils');
-const { consoleLog } = require('../../common/logging');
+import { BlobServiceClient } from '@azure/storage-blob';
+import { ExportResultCode } from '@opentelemetry/core';
+import { exportInfo } from '../utils';
+import { consoleLog } from '../../common/logging';
+
+interface AzureBlobSpanExporterConfig {
+    containerName?: string;
+    blobPrefix?: string;
+    connectionString?: string;
+    fileNameGenerator?: () => string;
+}
 
 class AzureBlobSpanExporter {
-    constructor({ containerName, blobPrefix, connectionString, fileNameGenerator }) {
+    containerName: string;
+    blobPrefix: string;
+    blobServiceClient: BlobServiceClient;
+    fileNameGenerator: () => string;
+
+    constructor({ containerName, blobPrefix, connectionString, fileNameGenerator }: AzureBlobSpanExporterConfig) {
         this.containerName = containerName || process.env.MONOCLE_BLOB_CONTAINER_NAME || "default-container";
         this.blobPrefix = blobPrefix || process.env.MONOCLE_AZURE_BLOB_PREFIX || "monocle_trace__";
         const blobConnectionString = connectionString || process.env.MONOCLE_BLOB_CONNECTION_STRING || process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -20,7 +32,7 @@ class AzureBlobSpanExporter {
     }
 
     shutdown() {
-        this._sendSpans([]);
+        this._sendSpans([], ()=>{});
         return this.forceFlush();
     }
 
@@ -57,4 +69,5 @@ class AzureBlobSpanExporter {
     }
 }
 
-exports.AzureBlobSpanExporter = AzureBlobSpanExporter;
+const _AzureBlobSpanExporter = AzureBlobSpanExporter;
+export { _AzureBlobSpanExporter as AzureBlobSpanExporter };

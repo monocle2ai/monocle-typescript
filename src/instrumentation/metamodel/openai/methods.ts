@@ -1,4 +1,4 @@
-exports.config = [
+export const config = [
     {
         "package": "openai/resources/chat/completions",
         "object": "Completions",

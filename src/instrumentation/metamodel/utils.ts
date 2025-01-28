@@ -1,4 +1,4 @@
-exports.extractMessages = function extractMessages(args) {
+export function extractMessages(args) {
     /**
      * Extract system and user messages
      */
@@ -60,7 +60,7 @@ function extractQueryFromContent(content) {
     }
 }
 
-exports.extractAssistantMessage = function extractAssistantMessage(response) {
+export function extractAssistantMessage(response) {
     try {
         if (typeof response === 'string') {
             return response;
@@ -89,11 +89,11 @@ exports.extractAssistantMessage = function extractAssistantMessage(response) {
     }
 }
 
-exports.getVectorstoreDeployment = function getVectorstoreDeployment(myMap) {
+export function getVectorstoreDeployment(myMap) {
     if (typeof myMap === 'object' && !Array.isArray(myMap)) {
         if ('_client_settings' in myMap) {
             const client = myMap['_client_settings'];
-            const { host, port } = getKeysAsTuple(client, 'host', 'port');
+            const { host, port } = client;
             if (host) {
                 return port ? `${host}:${port}` : host;
             }
@@ -107,16 +107,12 @@ exports.getVectorstoreDeployment = function getVectorstoreDeployment(myMap) {
         if (myMap.client && '_endpoint' in myMap.client) {
             return myMap.client['_endpoint'];
         }
-        const { host, port } = getKeysAsTuple(myMap, 'host', 'port');
+        const { host, port } = myMap;
         if (host) {
             return port ? `${host}:${port}` : host;
         }
     }
     return null;
-}
-
-function getKeysAsTuple(obj, key1, key2) {
-    return { [key1]: obj[key1], [key2]: obj[key2] };
 }
 
 function getHostFromMap(map, keys) {

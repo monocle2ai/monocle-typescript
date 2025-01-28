@@ -3,3 +3,4 @@ launch.json
 .npmrc
 .vscode
 samples
+dist

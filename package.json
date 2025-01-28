@@ -2,15 +2,22 @@
   "name": "monocle2ai-ts",
   "version": "0.0.1-beta.2",
   "description": "",
-  "main": "src/index.js",
-  "files": [
-    "src",
-    "README.md"
-  ],
+  "main": "./index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rimraf coverage build tmp",
+    "build": "./scripts/build",
+    "build:typescript": "tsc -p tsconfig.json",
+    "build:watch": "tsc -w -p tsconfig.json",
+    "build:release": "npm run clean && tsc -p tsconfig.release.json",
+    "lint": "eslint .",
+    "test": "vitest run unit --config __tests__/vitest.config.ts",
+    "test:coverage": "vitest run unit --config __tests__/vitest.config.ts --coverage.enabled --coverage.all",
+    "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
+    "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
+    "test:watch": "vitest unit"
   },
-  "author": "",
+  "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^1.28.0",
@@ -22,6 +29,18 @@
     "date-fns": "^4.1.0"
   },
   "devDependencies": {
+    "@types/eslint__js": "~8.42",
+    "@types/node": "~20",
+    "@typescript-eslint/parser": "~8.19",
+    "@vitest/coverage-v8": "~2.1",
+    "@vitest/eslint-plugin": "~1.1",
+    "eslint-config-prettier": "~9.1",
+    "prettier": "~3.4",
+    "rimraf": "~6.0",
+    "ts-api-utils": "~2.0",
+    "typescript-eslint": "~8.19",
+    "typescript": "~5.7",
+    "vitest": "~2.1",
     "@aws-sdk/client-s3": "^3.705.0",
     "@azure/storage-blob": "^12.26.0",
     "@eslint/js": "^9.16.0",

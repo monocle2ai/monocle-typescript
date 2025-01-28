@@ -1,5 +1,5 @@
-const { FileSpanExporter } = require('./file/FileSpanExporter');
-const { MonocleConsoleSpanExporter } = require('./monocle/MonocleConsoleSpanExporter');
+import { FileSpanExporter } from './file/FileSpanExporter';
+import { MonocleConsoleSpanExporter } from './monocle/MonocleConsoleSpanExporter';
 const monocleExporters = {
     "s3": () => new (require('./aws/AWSS3SpanExporter').AWSS3SpanExporter)({}),
     "blob": () => new (require('./azure/AzureBlobSpanExporter').AzureBlobSpanExporter)({}),
@@ -21,4 +21,4 @@ function getMonocleExporter() {
     return exporter;
 }
 
-module.exports = { getMonocleExporter };
+export { getMonocleExporter };

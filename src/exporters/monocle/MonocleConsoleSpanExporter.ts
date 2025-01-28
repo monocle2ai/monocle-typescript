@@ -1,15 +1,15 @@
 
-const { ExportResultCode } = require("@opentelemetry/core");
-const { exportInfo } = require("../utils");
+import { ExportResultCode } from "@opentelemetry/core";
+import { exportInfo } from "../utils";
 
-exports.MonocleConsoleSpanExporter = class MonocleConsoleSpanExporter {
+export class MonocleConsoleSpanExporter {
 
     export(spans, resultCallback) {
         return this._sendSpans(spans, resultCallback);
     }
 
     shutdown() {
-        this._sendSpans([]);
+        this._sendSpans([], () => { });
         return this.forceFlush();
     }
 
