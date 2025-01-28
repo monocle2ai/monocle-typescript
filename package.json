@@ -4,10 +4,6 @@
   "description": "",
   "main": "./index.js",
   "type": "module",
-  "files": [
-    "src",
-    "README.md"
-  ],
   "scripts": {
     "clean": "rimraf coverage build tmp",
     "build": "./scripts/build",
