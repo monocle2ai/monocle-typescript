@@ -3,7 +3,6 @@
   "version": "0.0.1-beta.2",
   "description": "",
   "main": "./index.js",
-  "type": "module",
   "scripts": {
     "clean": "rimraf coverage build tmp",
     "build": "./scripts/build",
