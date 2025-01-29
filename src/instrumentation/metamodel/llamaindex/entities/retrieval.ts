@@ -66,7 +66,7 @@ export const config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        extractAssistantMessage(response)
+                        return extractAssistantMessage(response)
                     }
                 }
             ]

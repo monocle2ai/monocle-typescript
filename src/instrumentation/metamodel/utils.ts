@@ -40,7 +40,7 @@ function extractQueryFromContent(content) {
     try {
         const queryPrefix = "Query:";
         const answerPrefix = "Answer:";
-        
+
         const queryStart = content.indexOf(queryPrefix);
         if (queryStart === -1) {
             return null;
@@ -48,11 +48,11 @@ function extractQueryFromContent(content) {
 
         const actualQueryStart = queryStart + queryPrefix.length;
         const answerStart = content.indexOf(answerPrefix, actualQueryStart);
-        
-        const query = answerStart === -1 
+
+        const query = answerStart === -1
             ? content.slice(actualQueryStart).trim()
             : content.slice(actualQueryStart, answerStart).trim();
-            
+
         return query;
     } catch (e) {
         console.warn(`Warning: Error occurred in extractQueryFromContent: ${e.toString()}`);
@@ -65,15 +65,18 @@ export function extractAssistantMessage(response) {
         if (typeof response === 'string') {
             return response;
         }
-        
+        if (response && response[0] && response[0].pageContent) {
+            return response[0].pageContent;
+        }
+
         if ('content' in response) {
             return response.content;
         }
-        
+
         if (response.message && 'content' in response.message) {
             return response.message.content;
         }
-        
+
         if ('replies' in response) {
             if ('content' in response.replies[0]) {
                 return response.replies[0].content;
@@ -81,7 +84,7 @@ export function extractAssistantMessage(response) {
                 return response.replies[0];
             }
         }
-        
+
         return "";
     } catch (e) {
         console.warn(`Warning: Error occurred in extractAssistantMessage: ${e.toString()}`);
