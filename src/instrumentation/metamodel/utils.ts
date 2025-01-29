@@ -5,7 +5,6 @@ export function extractMessages(args) {
     try {
         let systemMessage = "";
         let userMessage = "";
-
         if (args && args.length > 0) {
             if (args[0].messages && Array.isArray(args[0].messages)) {
                 for (const msg of args[0].messages) {
@@ -62,6 +61,9 @@ function extractQueryFromContent(content) {
 
 export function extractAssistantMessage(response) {
     try {
+        if(response[0] && response[0].node && response[0].node.text){
+            return response[0].node.text
+        }
         if (typeof response === 'string') {
             return response;
         }

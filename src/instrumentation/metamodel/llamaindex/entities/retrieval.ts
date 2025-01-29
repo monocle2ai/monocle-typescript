@@ -53,7 +53,7 @@ export const config = {
                         args,
                         // instance 
                     }) {
-                        return args[0].value
+                        return args[0].query
                     }
                 }
             ]
