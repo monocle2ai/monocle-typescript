@@ -1,6 +1,6 @@
 {
-  "name": "monocle2ai-ts",
-  "version": "0.0.1-beta.2",
+  "name": "monocle2ai",
+  "version": "0.0.1-beta.1",
   "description": "",
   "main": "./index.js",
   "scripts": {
