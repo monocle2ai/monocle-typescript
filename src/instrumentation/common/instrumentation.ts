@@ -124,7 +124,7 @@ class MonocleInstrumentation extends InstrumentationBase {
 }
 
 const setupMonocle = (
-    workflowName,
+    workflowName: string,
     spanProcessors: any[] = [],
     wrapperMethods: any[] = []
 ) => {

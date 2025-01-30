@@ -1,4 +1,4 @@
-import { extractAssistantMessage } from "../../utils"   
+import { extractAssistantMessage } from "../../utils"
 
 export const config = {
     "type": "retrieval",
@@ -58,7 +58,12 @@ export const config = {
                         args,
                         // instance 
                     }) {
-                        return args[0].value
+                        if (args[0].value && typeof args[0].value === "string") {
+                            return args[0].value
+                        }
+                        if (args[0] && typeof args[0] === "string") {
+                            return args[0]
+                        }
                     }
                 }
             ]
@@ -71,7 +76,7 @@ export const config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        extractAssistantMessage(response)
+                        return extractAssistantMessage(response)
                     }
                 }
             ]
