@@ -2,6 +2,7 @@ import { S3 } from '@aws-sdk/client-s3';
 import { ExportResultCode } from '@opentelemetry/core';
 import { getUrlFriendlyTime, makeid, exportInfo } from '../utils';
 import { consoleLog } from '../../common/logging';
+import { Span } from '@opentelemetry/api';
 
 interface AWSS3SpanExporterConfig {
     bucketName?: string;
@@ -42,17 +43,18 @@ class AWSS3SpanExporter {
         return exportInfo(span);
     }
 
-    private async _sendSpans(spans, done: (result: { code: ExportResultCode, error?: Error }) => void): Promise<void> {
+    private async _sendSpans(spans: Span[], done: (result: { code: ExportResultCode, error?: Error }) => void): Promise<void> {
         const timestamp = getUrlFriendlyTime(new Date());
-        const key = `${this.keyPrefix}${timestamp}_${makeid(5)}.json`;
-        const body = JSON.stringify(spans.map(span => this._exportInfo(span)));
+        const prefix = this.keyPrefix + (process.env.MONOCLE_S3_KEY_PREFIX_CURRENT || '');
+        const key = `${prefix}${timestamp}_${makeid(5)}.ndjson`;
+        const body = spans.map(span => JSON.stringify(this._exportInfo(span))).join('\n');
         consoleLog(`sending spans to S3: ${key} with body: ${body}`);
 
         const params = {
             Bucket: this.bucketName,
             Key: key,
             Body: body,
-            ContentType: 'application/json'
+            ContentType: 'application/x-ndjson'
         };
 
         try {
