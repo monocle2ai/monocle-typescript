@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { hrTimeToTimeStamp } from "@opentelemetry/core";
-
+import { Span } from "@opentelemetry/sdk-trace-node";
 
 export function getUrlFriendlyTime(date = new Date()) {
   return format(date, "yyyyMMdd'T'HHmmss");
@@ -19,10 +19,15 @@ export function makeid(length) {
   return result;
 }
 
-export function exportInfo(span) {
+export function exportInfo(span: Span) {
   const span_object = {
     name: span.name,
-    context: span.spanContext(),
+    context: {
+      trace_id: span.spanContext().traceId,
+      span_id: span.spanContext().spanId,
+      trace_flags: span.spanContext().traceFlags,
+      trace_state: span.spanContext().traceState,
+    },
     kind: span.kind,
     parent_id: span.parentSpanId,
     start_time: hrTimeToTimeStamp(span.startTime),
@@ -35,7 +40,9 @@ export function exportInfo(span) {
       attributes: span.resource.attributes,
     },
   };
+  
   if (span_object.events && span_object.events.length > 0) {
+    //@ts-ignore
     span_object.events = span_object.events.map(event => {
       return {
         name: event?.name,
