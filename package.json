@@ -1,8 +1,13 @@
 {
   "name": "monocle2ai",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.2",
   "description": "",
   "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/monocle2ai/monocle-typescript.git"
+  },
+  "homepage": "https://github.com/monocle2ai/monocle-typescript",
   "scripts": {
     "clean": "rimraf coverage build tmp",
     "build": "./scripts/build",

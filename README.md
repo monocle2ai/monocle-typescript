@@ -30,8 +30,8 @@ Benefits:
 ## What Monocle provides
 
 - Easy to [use](#use-monocle) code instrumentation
-- OpenTelemetry compatible format for [spans](src/monocle_apptrace/metamodel/spans/span_format.json). 
-- Community-curated and extensible [metamodel](src/monocle_apptrace/metamodel/README.md) for consisent tracing of GenAI components. 
+- OpenTelemetry compatible format for spans. 
+- Community-curated and extensible metamodel for consistent tracing of GenAI components. 
 - Export to local and cloud storage 
 
 ## Use Monocle
@@ -44,7 +44,7 @@ Benefits:
 - Instrument your app code
 ```js
     const { setupMonocle } = require("monacle2ai")
-    setup_monocle_telemetry(workflow_name="your-app-name")
+    setupMonocle("your-app-name")
 ```
 ## Roadmap 
 
@@ -61,5 +61,5 @@ Current version supports:
 - Submit issues and enhancements requests via Github issues
 
 ### Contribute
-- Monocle is community based open source project. We welcome your contributions. Please refer to the CONTRIBUTING and CODE_OF_CONDUCT for guidelines. The [contributor's guide](CONTRIBUTING.md) provides technical details of the project.
+- Monocle is community based open source project. We welcome your contributions. Please refer to the CONTRIBUTING and CODE_OF_CONDUCT for guidelines. The contributor's guide provides technical details of the project.
 

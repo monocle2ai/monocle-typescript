@@ -2,6 +2,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { ExportResultCode } from '@opentelemetry/core';
 import { exportInfo } from '../utils';
 import { consoleLog } from '../../common/logging';
+import { Span } from '@opentelemetry/api';
 
 interface AzureBlobSpanExporterConfig {
     containerName?: string;
@@ -44,10 +45,10 @@ class AzureBlobSpanExporter {
         return exportInfo(span);
     }
 
-    async _sendSpans(spans, done) {
+    async _sendSpans(spans: Span[], done) {
         const timestamp = Date.now().toString();
-        const blobName = `${this.blobPrefix}/${timestamp}.json`;
-        const body = JSON.stringify(spans.map(span => this._exportInfo(span)));
+        const blobName = `${this.blobPrefix}/${timestamp}.ndjson`;
+        const body = spans.map(span => JSON.stringify(this._exportInfo(span))).join('\n');
         consoleLog('sending spans to Azure Blob Storage:', blobName, body);
 
         const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
@@ -55,7 +56,7 @@ class AzureBlobSpanExporter {
 
         try {
             consoleLog('try to upload spans to Azure Blob Storage:', blobName);
-            await blockBlobClient.upload(body, body.length, { blobHTTPHeaders: { blobContentType: 'application/json' } });
+            await blockBlobClient.upload(body, body.length, { blobHTTPHeaders: { blobContentType: 'application/x-ndjson' } });
             consoleLog('successfully uploaded spans to Azure Blob Storage:', blobName);
             if (done) {
                 return done({ code: ExportResultCode.SUCCESS });

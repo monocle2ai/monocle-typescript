@@ -1,4 +1,4 @@
-const { setupMonocle } = require("../src")
+const { setupMonocle } = require("../dist")
 
 setupMonocle(
   "llamaindex.app"
@@ -14,7 +14,7 @@ const {
 
 async function main() {
   // Load essay from abramov.txt in Node
-  const path = "node_modules/llamaindex/examples/abramov.txt";
+  const path = "./text.txt";
 
   const essay = await fs.readFile(path, "utf-8");
 
@@ -27,7 +27,7 @@ async function main() {
   // Query the index
   const queryEngine = index.asQueryEngine();
   const { response, sourceNodes } = await queryEngine.query({
-    query: "What did the author do in college?",
+    query: "What is coffee?",
   });
 
   // Output response with sources
