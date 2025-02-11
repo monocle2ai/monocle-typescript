@@ -19,10 +19,22 @@ class AWSS3SpanExporter {
 
     constructor({ bucketName, keyPrefix, region }: AWSS3SpanExporterConfig) {
         this.bucketName = bucketName || process.env.MONOCLE_S3_BUCKET_NAME || "default-bucket";
-        this.keyPrefix = keyPrefix || process.env.MONOCLE_S3_KEY_PREFIX || "monocle_trace__";
-        this.s3Client = new S3({
-            region: region || process.env.AWS_S3_REGION || process.env.AWS_REGION
-        });
+        this.keyPrefix = keyPrefix || process.env.MONOCLE_S3_KEY_PREFIX || "monocle_trace_";
+        if(process.env.MONOCLE_AWS_ACCESS_KEY_ID && process.env.MONOCLE_AWS_SECRET_ACCESS_KEY) {
+            this.s3Client = new S3({
+                region: region || process.env.AWS_S3_REGION || process.env.AWS_REGION,
+                credentials: {
+                    accessKeyId: process.env.MONOCLE_AWS_ACCESS_KEY_ID || '',
+                    secretAccessKey: process.env.MONOCLE_AWS_SECRET_ACCESS_KEY || ''
+                }
+            });
+        }
+        else {
+            this.s3Client = new S3({
+                region: region || process.env.AWS_S3_REGION || process.env.AWS_REGION
+            });
+        }
+        
         // this.fileNameGenerator = typeof fileNameGenerator === "function" ? fileNameGenerator : () => `${this.keyPrefix}${Date.now().toString()}`;
     }
 
