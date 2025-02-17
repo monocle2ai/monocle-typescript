@@ -28,6 +28,8 @@
     "@opentelemetry/instrumentation": "^0.55.0",
     "@opentelemetry/resources": "^1.28.0",
     "@opentelemetry/sdk-trace-node": "^1.28.0",
+    "aws-sdk": "^2.1692.0",
+    "dotenv": "^16.4.7",
     "import-in-the-middle": "1.11.2",
     "require-in-the-middle": "7.4.0",
     "date-fns": "^4.1.0"
