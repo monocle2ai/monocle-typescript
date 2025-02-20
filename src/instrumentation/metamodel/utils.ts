@@ -6,6 +6,9 @@ export function extractMessages(args) {
         let systemMessage = "";
         let userMessage = "";
         if (args && args.length > 0) {
+            if (args[0] && typeof args[0].prompt == "string") {
+                userMessage = args[0].prompt
+            }
             if (args[0].messages && Array.isArray(args[0].messages)) {
                 for (const msg of args[0].messages) {
                     if ('content' in msg && 'role' in msg) {
@@ -61,7 +64,10 @@ function extractQueryFromContent(content) {
 
 export function extractAssistantMessage(response) {
     try {
-        if(response[0] && response[0].node && response[0].node.text){
+        if (response && typeof response.text === "string") {
+            return response.text
+        }
+        if (response[0] && response[0].node && response[0].node.text) {
             return response[0].node.text
         }
         if (typeof response === 'string') {
@@ -128,3 +134,31 @@ function getHostFromMap(map, keys) {
     }
     return null;
 }
+
+export function getLlmMetadata({ response, instance }) {
+    const metaDict: Record<string, number | null> = {};
+
+    if (response) {
+        const tokenUsage = response.raw?.usage || response.response_metadata?.tokenUsage;
+
+        if (tokenUsage) {
+            const temperature = (instance as any)?.temperature;
+            if (temperature) {
+                metaDict['temperature'] = temperature;
+            }
+
+            if ('completion_tokens' in tokenUsage || 'completionTokens' in tokenUsage) {
+                metaDict['completion_tokens'] = tokenUsage.completion_tokens || tokenUsage.completionTokens;
+            }
+            if ('prompt_tokens' in tokenUsage || 'promptTokens' in tokenUsage) {
+                metaDict['prompt_tokens'] = tokenUsage.prompt_tokens || tokenUsage.promptTokens;
+            }
+            if ('total_tokens' in tokenUsage || 'totalTokens' in tokenUsage) {
+                metaDict['total_tokens'] = tokenUsage.total_tokens || tokenUsage.totalTokens;
+            }
+        }
+    }
+
+    return metaDict;
+}
+
