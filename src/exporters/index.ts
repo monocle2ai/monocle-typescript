@@ -1,8 +1,11 @@
 import { FileSpanExporter } from './file/FileSpanExporter';
 import { MonocleConsoleSpanExporter } from './monocle/MonocleConsoleSpanExporter';
+import { OkahuSpanExporter } from './okahu/OkahuSpanExporter';
+
 const monocleExporters = {
     "s3": () => new (require('./aws/AWSS3SpanExporter').AWSS3SpanExporter)({}),
     "blob": () => new (require('./azure/AzureBlobSpanExporter').AzureBlobSpanExporter)({}),
+    "okahu": () => new OkahuSpanExporter({}),
     "file": () => new FileSpanExporter({}),
     "console": () => new MonocleConsoleSpanExporter(),
 };
