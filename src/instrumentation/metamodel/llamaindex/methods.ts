@@ -25,4 +25,14 @@ export const config = [
         ]
 
     },
+    {
+        "package": "llamaindex",
+        "object": "BaseLLM",
+        "method": "complete",
+        "spanName": "llamaindex.llm_chat",
+        "output_processor": [
+           require("./entities/inference.js").config
+        ]
+
+    },
 ]

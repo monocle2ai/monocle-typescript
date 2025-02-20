@@ -12,7 +12,7 @@ export const config = {
                 }
             },
             {
-                "attribute": "vector store type",
+                "attribute": "type",
                 "accessor": function ({ instance }) {
                     return "vectorstore." + instance?.index?.vectorStores?.TEXT?.constructor.name
                 }
@@ -48,12 +48,15 @@ export const config = {
 
                 {
                     "_comment": "this is instruction to LLM",
-                    "attribute": "user",
+                    "attribute": "input",
                     "accessor": function ({
                         args,
                         // instance 
                     }) {
-                        return args[0].query
+                        if(typeof args[0] === "string") {
+                            return args[0]
+                        }
+                        return ""
                     }
                 }
             ]
