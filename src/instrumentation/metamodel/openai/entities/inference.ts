@@ -6,17 +6,19 @@ export const config = {
             "attributes": [
 
                 {
-                    "_comment": "this is instruction to LLM",
-                    "attribute": "system",
+                    "_comment": "this is input to LLM",
+                    "attribute": "input",
                     "accessor": function ({ args }) {
-                        return args[0].messages.filter(item => item.role == 'system')[0]?.content
-                    }
-                },
-                {
-                    "_comment": "this is user query to LLM",
-                    "attribute": "user",
-                    "accessor": function ({ args }) {
-                        return args[0].messages.filter(item => item.role == 'user')[0]?.content
+                        const inputUser = args[0].messages.filter(item => item.role == 'user')[0]?.content
+                        const inputSystem =  args[0].messages.filter(item => item.role == 'system')[0]?.content
+                        const retVal : string[] = []
+                        if(inputUser){
+                            retVal.push(inputUser)
+                        }
+                        if(inputSystem){                        
+                            retVal.push(inputSystem)
+                        }
+                        return retVal
                     }
                 }
             ]
@@ -29,7 +31,7 @@ export const config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        return response.choices[0].message.content
+                        return [response.choices[0].message.content]
                     }
                 }
             ]

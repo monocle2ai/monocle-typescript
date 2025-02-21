@@ -88,6 +88,13 @@ function setWorkflowAttributes({ wrappedPackage, span, spanIndex }) {
     return returnValue;
 }
 
+function _IsPlainObject(obj) {
+    return typeof obj === 'object' &&
+        Object.keys(obj).length > 0 &&
+        Object.keys(obj).every(key => typeof key === 'string') &&
+        Object.values(obj).every(value => typeof value === 'string' || typeof value === 'number');
+}
+
 
 
 function processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage }) {
@@ -121,7 +128,7 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, wrapp
                                 const accessor_args = { instance: instance, args: args, output: returnValue };
                                 if (typeof accessor === 'function') {
                                     const result = accessor(accessor_args);
-                                    if (result && typeof result === 'string') {
+                                    if (result) {
                                         attributeSet = true;
                                         span.setAttribute(attributeName, result);
                                     }
@@ -161,8 +168,13 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, wrapp
                             try {
                                 const accessorFunction = accessor;
                                 const accessorResponse = accessorFunction(accessorMapping);
-                                if (accessorResponse && typeof accessorResponse === 'string' && accessorResponse.length > 0) {
-                                    eventAttributes[attributeKey] = accessorResponse;
+                                if (accessorResponse) {
+                                    if (attributeKey) {
+                                        eventAttributes[attributeKey] = accessorResponse;
+                                    }
+                                    else if (_IsPlainObject(accessorResponse)) {
+                                        Object.assign(eventAttributes, accessorResponse);
+                                    }
                                 }
                                 // for (const [keyword, value] of Object.entries(accessorMapping)) {
                                 //     if (accessor.includes(keyword)) {

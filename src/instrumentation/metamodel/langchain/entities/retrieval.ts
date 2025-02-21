@@ -14,7 +14,7 @@ export const config = {
                 }
             },
             {
-                "attribute": "vector store type",
+                "attribute": "type",
                 "accessor": function ({ instance }) {
                     if (instance?.vectorStore?.constructor?.name) {
                         return "vectorstore." + instance?.vectorStore?.constructor?.name
@@ -53,7 +53,7 @@ export const config = {
 
                 {
                     "_comment": "this is instruction to LLM",
-                    "attribute": "user",
+                    "attribute": "input",
                     "accessor": function ({
                         args,
                         // instance 
