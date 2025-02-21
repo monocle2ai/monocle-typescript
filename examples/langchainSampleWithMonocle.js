@@ -7,11 +7,11 @@ const { formatDocumentsAsString } = require("langchain/util/document");
 const { PromptTemplate } = require("@langchain/core/prompts");
 const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
-const { StringOutputParser } = require("@langchain/core/output_parsers");
 const {
   RunnableSequence,
   RunnablePassthrough
 } = require("@langchain/core/runnables");
+const { StringOutputParser } = require("@langchain/core/output_parsers");
 
 const langchainInvoke = async (msg) => {
   const model = new ChatOpenAI({});

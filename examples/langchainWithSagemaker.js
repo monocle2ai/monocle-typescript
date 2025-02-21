@@ -17,7 +17,7 @@ const { StringOutputParser } = require("@langchain/core/output_parsers");
 const AWS = require("aws-sdk");
 
 const getSageMakerResponse = async (inputText) => {
-  var sagemaker = new AWS.SageMakerRuntime({
+  let sagemaker = new AWS.SageMakerRuntime({
     apiVersion: "2017-07-24",
     region: "us-east-1",
     credentials: new AWS.Credentials(
