@@ -1,0 +1,140 @@
+{
+    "name": "langchain.vectorstore_retriever",
+    "context": {
+        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
+        "spanId": "2296e8def046a958",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "334f061b7eb731dc",
+    "start_time": "2025-02-24T06:23:31.180000000Z",
+    "end_time": "2025-02-24T06:23:32.033625540Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "retrieval",
+        "entity.1.name": "MemoryVectorStore",
+        "entity.1.vector store type": "vectorstore.MemoryVectorStore",
+        "entity.2.type": "model.embedding.text-embedding-ada-002",
+        "entity.count": 2
+    },
+    "events": [
+        {
+            "name": "data.input",
+            "time": "2025-02-24T06:23:32.033499905Z",
+            "attributes": {
+                "user": "What is coffee?"
+            }
+        },
+        {
+            "name": "data.output",
+            "time": "2025-02-24T06:23:32.033581958Z",
+            "attributes": {
+                "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
+            }
+        }
+    ],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+{
+    "name": "langchain.sequence",
+    "context": {
+        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
+        "spanId": "334f061b7eb731dc",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "5006b2b6aa7e124d",
+    "start_time": "2025-02-24T06:23:31.180000000Z",
+    "end_time": "2025-02-24T06:23:32.035846441Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+{
+    "name": "langchain.prompt_template.format",
+    "context": {
+        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
+        "spanId": "eb7c3373dfa38059",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "5006b2b6aa7e124d",
+    "start_time": "2025-02-24T06:23:32.036000000Z",
+    "end_time": "2025-02-24T06:23:32.036146534Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+a beverage brewed from roasted, ground coffee beans
+{
+    "name": "langchain.sequence",
+    "context": {
+        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
+        "spanId": "5006b2b6aa7e124d",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "start_time": "2025-02-24T06:23:31.179000000Z",
+    "end_time": "2025-02-24T06:23:33.292181615Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "workflow",
+        "entity.1.name": "langchain.app",
+        "entity.1.type": "workflow.langchain",
+        "entity.count": 1
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}

@@ -1,0 +1,188 @@
+{
+    "name": "langchain.vectorstore_retriever",
+    "context": {
+        "traceId": "7fc66885d959da7cb338d02b4deb684f",
+        "spanId": "2ecef1143feedd9e",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "7ae30b08de29f5d2",
+    "start_time": "2025-02-24T06:00:24.851000000Z",
+    "end_time": "2025-02-24T06:00:26.173887071Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "retrieval",
+        "entity.1.name": "MemoryVectorStore",
+        "entity.1.vector store type": "vectorstore.MemoryVectorStore",
+        "entity.2.type": "model.embedding.text-embedding-ada-002",
+        "entity.count": 2
+    },
+    "events": [
+        {
+            "name": "data.input",
+            "time": "2025-02-24T06:00:26.173730162Z",
+            "attributes": {
+                "user": "what is coffee"
+            }
+        },
+        {
+            "name": "data.output",
+            "time": "2025-02-24T06:00:26.173845071Z",
+            "attributes": {
+                "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
+            }
+        }
+    ],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+{
+    "name": "langchain.sequence",
+    "context": {
+        "traceId": "7fc66885d959da7cb338d02b4deb684f",
+        "spanId": "7ae30b08de29f5d2",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "a5c39d8798a76f27",
+    "start_time": "2025-02-24T06:00:24.850000000Z",
+    "end_time": "2025-02-24T06:00:26.175297640Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+{
+    "name": "langchain.prompt_template.format",
+    "context": {
+        "traceId": "7fc66885d959da7cb338d02b4deb684f",
+        "spanId": "1cdff615df5e0325",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "a5c39d8798a76f27",
+    "start_time": "2025-02-24T06:00:26.176000000Z",
+    "end_time": "2025-02-24T06:00:26.176189676Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+ Based on the given context, coffee is a beverage brewed from roasted, ground coffee beans.
+{
+    "name": "langchain.chat",
+    "context": {
+        "traceId": "7fc66885d959da7cb338d02b4deb684f",
+        "spanId": "8c0f6a9fb4f6edcf",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "parent_id": "a5c39d8798a76f27",
+    "start_time": "2025-02-24T06:00:26.176000000Z",
+    "end_time": "2025-02-24T06:00:27.572513454Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "inference",
+        "entity.1.name": "anthropic.claude-v2",
+        "entity.1.type": "model.llmanthropic.claude-v2",
+        "entity.count": 1
+    },
+    "events": [
+        {
+            "name": "data.input",
+            "time": "2025-02-24T06:00:27.572478260Z",
+            "attributes": {
+                "user": "Answer the question based only on the following context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"I don't know\".\n \nQuestion: what is coffee"
+            }
+        },
+        {
+            "name": "data.output",
+            "time": "2025-02-24T06:00:27.572500055Z",
+            "attributes": {
+                "response": " Based on the given context, coffee is a beverage brewed from roasted, ground coffee beans."
+            }
+        }
+    ],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}
+{
+    "name": "langchain.sequence",
+    "context": {
+        "traceId": "7fc66885d959da7cb338d02b4deb684f",
+        "spanId": "a5c39d8798a76f27",
+        "traceFlags": 1
+    },
+    "kind": 0,
+    "start_time": "2025-02-24T06:00:24.849000000Z",
+    "end_time": "2025-02-24T06:00:27.573005111Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "workflow",
+        "entity.1.name": "langchain.app",
+        "entity.1.type": "workflow.langchain",
+        "entity.count": 1
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "unknown_service:node",
+            "telemetry.sdk.language": "nodejs",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.30.1",
+            "SERVICE_NAME": "langchain.app"
+        }
+    }
+}

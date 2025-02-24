@@ -1,5 +1,3 @@
-require("dotenv").config({ path: "../.env" });
-
 const { setupMonocle } = require("monocle2ai");
 setupMonocle("langchain.app");
 
