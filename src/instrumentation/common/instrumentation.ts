@@ -4,7 +4,7 @@ import {
 } from '@opentelemetry/instrumentation';
 import { context } from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
@@ -13,8 +13,9 @@ import { AWS_CONSTANTS } from './constants';
 import path from 'path';
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
-import { getMonocleExporter } from '../../exporters';
+import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
+import {AWSS3SpanExporter} from '../../exporters/aws/AWSS3SpanExporter'
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
@@ -125,7 +126,7 @@ class MonocleInstrumentation extends InstrumentationBase {
 
 const setupMonocle = (
     workflowName: string,
-    spanProcessors: any[] = [],
+    spanProcessors: SpanProcessor[] = [],
     wrapperMethods: any[] = []
 ) => {
     const resource = new Resource({
@@ -137,7 +138,7 @@ const setupMonocle = (
     const tracerProvider = new NodeTracerProvider({
         resource: resource
     })
-    const monocleProcessors = [];
+    const monocleProcessors: SpanProcessor[] = [];
     if (!spanProcessors.length) {
         addSpanProcessors(monocleProcessors);
     }
@@ -161,11 +162,12 @@ const setupMonocle = (
     monocleInstrumentation.setTracerProvider(tracerProvider);
 
     monocleInstrumentation.enable();
+
+    return monocleInstrumentation
 }
 
-function addSpanProcessors(okahuProcessors: any[] = []) {
+function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
     if (Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
-        const { AWSS3SpanExporter } = require('../../exporters/aws/AWSS3SpanExporter')
         okahuProcessors.push(
             new PatchedBatchSpanProcessor(
                 new AWSS3SpanExporter({}),
@@ -184,12 +186,15 @@ function addSpanProcessors(okahuProcessors: any[] = []) {
     }
     else {
         okahuProcessors.push(
-            new PatchedBatchSpanProcessor(
-                getMonocleExporter(),
-                {
-                    scheduledDelayMillis: 5
-                }
-            ))
+            ...getMonocleExporters().map((exporter) => {
+                return new PatchedBatchSpanProcessor(
+                    exporter,
+                    {
+                        scheduledDelayMillis: 5
+                    }
+                )
+            })
+        )
     }
 }
 

@@ -18,8 +18,9 @@
     "noImplicitThis": false,
     "strictNullChecks": false,
     "skipLibCheck": true,
-    "types": ["jest", "node"]
+    "declaration": true,
+    "declarationDir": "dist"
   },
-  "include": ["./dist/src", "src/**/*", "__tests__/**/*"],
+  "include": ["./src"],
   "exclude": []
 }
