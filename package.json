@@ -1,7 +1,7 @@
 {
   "name": "monocle2ai",
   "version": "0.0.1-beta.4",
-  "description": "",
+  "description": "**Monocle** helps developers and platform engineers building or managing GenAI apps monitor these in prod by making it easy to instrument their code to capture traces that are compliant with open-source cloud-native observability ecosystem.",
   "main": "./index.js",
   "repository": {
     "type": "git",
@@ -15,11 +15,11 @@
     "build:watch": "tsc -w -p tsconfig.json",
     "build:release": "npm run clean && tsc -p tsconfig.release.json",
     "lint": "eslint .",
-    "test": "vitest run unit --config __tests__/vitest.config.ts",
-    "test:coverage": "vitest run unit --config __tests__/vitest.config.ts --coverage.enabled --coverage.all",
-    "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
-    "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
-    "test:watch": "vitest unit"
+    "test": "jest --detectOpenHandles",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prettier": "prettier \"{src,__tests__}/**/*.{ts,mts}\" --config .prettierrc --write",
+    "prettier:check": "prettier \"{src,__tests__}/**/*.{ts,mts}\" --config .prettierrc --check"
   },
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
@@ -29,35 +29,43 @@
     "@opentelemetry/resources": "^1.28.0",
     "@opentelemetry/sdk-trace-node": "^1.28.0",
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "import-in-the-middle": "1.11.2",
-    "require-in-the-middle": "7.4.0",
-    "date-fns": "^4.1.0"
+    "require-in-the-middle": "7.4.0"
   },
   "devDependencies": {
-    "@types/eslint__js": "~8.42",
-    "@types/node": "~20",
-    "@typescript-eslint/parser": "~8.19",
-    "@vitest/coverage-v8": "~2.1",
-    "@vitest/eslint-plugin": "~1.1",
-    "eslint-config-prettier": "~9.1",
-    "prettier": "~3.4",
-    "rimraf": "~6.0",
-    "ts-api-utils": "~2.0",
-    "typescript-eslint": "~8.19",
-    "typescript": "~5.7",
-    "vitest": "~2.1",
     "@aws-sdk/client-s3": "^3.705.0",
     "@azure/storage-blob": "^12.26.0",
     "@eslint/js": "^9.16.0",
+    "@langchain/core": "^0.3.40",
     "@langchain/openai": "^0.4.4",
+    "@opensearch-project/opensearch": "^2.13.0",
+    "@types/eslint__js": "~8.42",
+    "@types/jest": "^29.5.14",
+    "@types/node": "~20",
+    "@typescript-eslint/parser": "~8.19",
     "eslint": "^9.16.0",
+    "eslint-config-prettier": "~9.1",
     "globals": "^15.12.0",
     "hnswlib-node": "^3.0.0",
+    "jest": "^29.7.0",
     "langchain": "^0.3.19",
     "llamaindex": "^0.9.1",
     "mongodb": "^6.7.0",
-    "@langchain/core": "^0.3.40",
-    "@opensearch-project/opensearch": "^2.13.0",
-    "openai": "^4.85.2"
+    "openai": "^4.85.2",
+    "prettier": "~3.4",
+    "rimraf": "~6.0",
+    "ts-api-utils": "~2.0",
+    "ts-jest": "^29.2.6",
+    "typescript": "~5.7",
+    "typescript-eslint": "~8.19"
+  },
+  "directories": {
+    "example": "examples"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/monocle2ai/monocle-typescript/issues"
   }
 }
