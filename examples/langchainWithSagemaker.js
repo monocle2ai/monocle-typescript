@@ -24,7 +24,7 @@ const getSageMakerResponse = async (inputData) => {
   });
 
   const params = {
-    EndpointName: "okahu-sagemaker-rag-qa-ep",
+    EndpointName: process.env.AWS_ENDPOINT_NAME,
     Body: JSON.stringify(inputData),
     ContentType: "application/json"
   };
