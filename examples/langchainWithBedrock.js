@@ -1,5 +1,6 @@
-const { setupMonocle } = require("monocle2ai");
-setupMonocle("langchain.app");
+const { setupMonocle } = require("../dist");
+
+setupMonocle("langchainBedrock.app");
 
 const { formatDocumentsAsString } = require("langchain/util/document");
 const { OpenAIEmbeddings } = require("@langchain/openai");

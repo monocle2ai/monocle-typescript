@@ -1,14 +1,14 @@
 {
     "name": "langchain.vectorstore_retriever",
     "context": {
-        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
-        "spanId": "2296e8def046a958",
-        "traceFlags": 1
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "b7500a16aee244f0",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "334f061b7eb731dc",
-    "start_time": "2025-02-24T06:23:31.180000000Z",
-    "end_time": "2025-02-24T06:23:32.033625540Z",
+    "parent_id": "dde5001d61c4cb4b",
+    "start_time": "2025-02-24T08:21:38.017000Z",
+    "end_time": "2025-02-24T08:21:38.930000Z",
     "status": {
         "code": 0
     },
@@ -16,21 +16,21 @@
         "monocle-typescript.version": "0.0.1",
         "span.type": "retrieval",
         "entity.1.name": "MemoryVectorStore",
-        "entity.1.vector store type": "vectorstore.MemoryVectorStore",
+        "entity.1.type": "vectorstore.MemoryVectorStore",
         "entity.2.type": "model.embedding.text-embedding-ada-002",
         "entity.count": 2
     },
     "events": [
         {
             "name": "data.input",
-            "time": "2025-02-24T06:23:32.033499905Z",
+            "timestamp": "2025-02-24T08:21:38.930000Z",
             "attributes": {
-                "user": "What is coffee?"
+                "input": "What is coffee?"
             }
         },
         {
             "name": "data.output",
-            "time": "2025-02-24T06:23:32.033581958Z",
+            "timestamp": "2025-02-24T08:21:38.930000Z",
             "attributes": {
                 "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
             }
@@ -39,25 +39,21 @@
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchainSagemaker.app"
         }
     }
 }
 {
     "name": "langchain.sequence",
     "context": {
-        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
-        "spanId": "334f061b7eb731dc",
-        "traceFlags": 1
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "dde5001d61c4cb4b",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "5006b2b6aa7e124d",
-    "start_time": "2025-02-24T06:23:31.180000000Z",
-    "end_time": "2025-02-24T06:23:32.035846441Z",
+    "parent_id": "8c839bd0c44d8305",
+    "start_time": "2025-02-24T08:21:38.017000Z",
+    "end_time": "2025-02-24T08:21:38.932000Z",
     "status": {
         "code": 0
     },
@@ -68,25 +64,21 @@
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchainSagemaker.app"
         }
     }
 }
 {
     "name": "langchain.prompt_template.format",
     "context": {
-        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
-        "spanId": "eb7c3373dfa38059",
-        "traceFlags": 1
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "7fd3e0e1248af28b",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "5006b2b6aa7e124d",
-    "start_time": "2025-02-24T06:23:32.036000000Z",
-    "end_time": "2025-02-24T06:23:32.036146534Z",
+    "parent_id": "8c839bd0c44d8305",
+    "start_time": "2025-02-24T08:21:38.933000Z",
+    "end_time": "2025-02-24T08:21:38.933000Z",
     "status": {
         "code": 0
     },
@@ -97,11 +89,7 @@
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchainSagemaker.app"
         }
     }
 }
@@ -109,20 +97,20 @@ a beverage brewed from roasted, ground coffee beans
 {
     "name": "langchain.sequence",
     "context": {
-        "traceId": "7c7bb90cf718c4429d4ab02ca3e08393",
-        "spanId": "5006b2b6aa7e124d",
-        "traceFlags": 1
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "8c839bd0c44d8305",
+        "trace_flags": 1
     },
     "kind": 0,
-    "start_time": "2025-02-24T06:23:31.179000000Z",
-    "end_time": "2025-02-24T06:23:33.292181615Z",
+    "start_time": "2025-02-24T08:21:38.016000Z",
+    "end_time": "2025-02-24T08:21:40.258000Z",
     "status": {
         "code": 0
     },
     "attributes": {
         "monocle-typescript.version": "0.0.1",
         "span.type": "workflow",
-        "entity.1.name": "langchain.app",
+        "entity.1.name": "langchainSagemaker.app",
         "entity.1.type": "workflow.langchain",
         "entity.count": 1
     },
@@ -130,11 +118,7 @@ a beverage brewed from roasted, ground coffee beans
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchainSagemaker.app"
         }
     }
 }

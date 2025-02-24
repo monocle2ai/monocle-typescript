@@ -1,14 +1,14 @@
 {
     "name": "langchain.vectorstore_retriever",
     "context": {
-        "traceId": "40b64e0470f0cbb757d9c4cf0eea9053",
-        "spanId": "c5d775485f25d50e",
-        "traceFlags": 1
+        "trace_id": "25cd93aea1612d5cad82f85265a0b0d2",
+        "span_id": "94d8e36d589015af",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "7c037e4a1d9deede",
-    "start_time": "2025-02-24T04:59:59.495000000Z",
-    "end_time": "2025-02-24T05:00:00.282064056Z",
+    "parent_id": "39da7fe31baf5e8f",
+    "start_time": "2025-02-24T08:13:05.494000Z",
+    "end_time": "2025-02-24T08:13:06.595000Z",
     "status": {
         "code": 0
     },
@@ -16,21 +16,21 @@
         "monocle-typescript.version": "0.0.1",
         "span.type": "retrieval",
         "entity.1.name": "MemoryVectorStore",
-        "entity.1.vector store type": "vectorstore.MemoryVectorStore",
+        "entity.1.type": "vectorstore.MemoryVectorStore",
         "entity.2.type": "model.embedding.text-embedding-ada-002",
         "entity.count": 2
     },
     "events": [
         {
             "name": "data.input",
-            "time": "2025-02-24T05:00:00.281942291Z",
+            "timestamp": "2025-02-24T08:13:06.595000Z",
             "attributes": {
-                "user": "What is coffee?"
+                "input": "What is coffee?"
             }
         },
         {
             "name": "data.output",
-            "time": "2025-02-24T05:00:00.282024978Z",
+            "timestamp": "2025-02-24T08:13:06.595000Z",
             "attributes": {
                 "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
             }
@@ -39,25 +39,21 @@
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchain.app"
         }
     }
 }
 {
     "name": "langchain.sequence",
     "context": {
-        "traceId": "40b64e0470f0cbb757d9c4cf0eea9053",
-        "spanId": "7c037e4a1d9deede",
-        "traceFlags": 1
+        "trace_id": "25cd93aea1612d5cad82f85265a0b0d2",
+        "span_id": "39da7fe31baf5e8f",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "a9551c57eb93c33a",
-    "start_time": "2025-02-24T04:59:59.495000000Z",
-    "end_time": "2025-02-24T05:00:00.283949392Z",
+    "parent_id": "d83d91f52af2142c",
+    "start_time": "2025-02-24T08:13:05.493000Z",
+    "end_time": "2025-02-24T08:13:06.596000Z",
     "status": {
         "code": 0
     },
@@ -68,25 +64,21 @@
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchain.app"
         }
     }
 }
 {
     "name": "langchain.prompt_template.format",
     "context": {
-        "traceId": "40b64e0470f0cbb757d9c4cf0eea9053",
-        "spanId": "598fec29ed362865",
-        "traceFlags": 1
+        "trace_id": "25cd93aea1612d5cad82f85265a0b0d2",
+        "span_id": "c78bb0f2425ec1f1",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "a9551c57eb93c33a",
-    "start_time": "2025-02-24T05:00:00.284000000Z",
-    "end_time": "2025-02-24T05:00:00.284156034Z",
+    "parent_id": "d83d91f52af2142c",
+    "start_time": "2025-02-24T08:13:06.597000Z",
+    "end_time": "2025-02-24T08:13:06.597000Z",
     "status": {
         "code": 0
     },
@@ -97,11 +89,7 @@
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchain.app"
         }
     }
 }
@@ -110,14 +98,14 @@ Coffee is a beverage brewed from roasted, ground coffee beans.
 {
     "name": "openai/resources/chat/completions",
     "context": {
-        "traceId": "40b64e0470f0cbb757d9c4cf0eea9053",
-        "spanId": "4a7a533935f34399",
-        "traceFlags": 1
+        "trace_id": "25cd93aea1612d5cad82f85265a0b0d2",
+        "span_id": "27cf1e0087cf21e1",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "34e6310062b38976",
-    "start_time": "2025-02-24T05:00:00.286000000Z",
-    "end_time": "2025-02-24T05:00:01.289166289Z",
+    "parent_id": "75a2d5e0866eb563",
+    "start_time": "2025-02-24T08:13:06.599000Z",
+    "end_time": "2025-02-24T08:13:07.221000Z",
     "status": {
         "code": 0
     },
@@ -128,41 +116,41 @@ Coffee is a beverage brewed from roasted, ground coffee beans.
     "events": [
         {
             "name": "data.input",
-            "time": "2025-02-24T05:00:01.289101888Z",
+            "timestamp": "2025-02-24T08:13:07.221000Z",
             "attributes": {
-                "user": "Answer the question based only on the following context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"I don't know\".\n\nQuestion: What is coffee?"
+                "input": [
+                    "Answer the question based only on the following context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"I don't know\".\n\nQuestion: What is coffee?"
+                ]
             }
         },
         {
             "name": "data.output",
-            "time": "2025-02-24T05:00:01.289158828Z",
+            "timestamp": "2025-02-24T08:13:07.221000Z",
             "attributes": {
-                "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
+                "response": [
+                    "Coffee is a beverage brewed from roasted, ground coffee beans."
+                ]
             }
         }
     ],
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchain.app"
         }
     }
 }
 {
     "name": "langchain.chat",
     "context": {
-        "traceId": "40b64e0470f0cbb757d9c4cf0eea9053",
-        "spanId": "34e6310062b38976",
-        "traceFlags": 1
+        "trace_id": "25cd93aea1612d5cad82f85265a0b0d2",
+        "span_id": "75a2d5e0866eb563",
+        "trace_flags": 1
     },
     "kind": 0,
-    "parent_id": "a9551c57eb93c33a",
-    "start_time": "2025-02-24T05:00:00.284000000Z",
-    "end_time": "2025-02-24T05:00:01.289053012Z",
+    "parent_id": "d83d91f52af2142c",
+    "start_time": "2025-02-24T08:13:06.598000Z",
+    "end_time": "2025-02-24T08:13:07.223000Z",
     "status": {
         "code": 0
     },
@@ -172,46 +160,55 @@ Coffee is a beverage brewed from roasted, ground coffee beans.
         "entity.1.type": "inference.openai",
         "entity.1.inference_endpoint": "https://api.openai.com/v1",
         "entity.2.name": "gpt-3.5-turbo",
-        "entity.2.type": "model.llmgpt-3.5-turbo",
+        "entity.2.type": "model.llm.gpt-3.5-turbo",
         "entity.count": 2
     },
     "events": [
         {
             "name": "data.input",
-            "time": "2025-02-24T05:00:01.289026926Z",
+            "timestamp": "2025-02-24T08:13:07.222000Z",
             "attributes": {
-                "user": "Answer the question based only on the following context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"I don't know\".\n\nQuestion: What is coffee?"
+                "input": [
+                    "Answer the question based only on the following context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"I don't know\".\n\nQuestion: What is coffee?"
+                ]
             }
         },
         {
             "name": "data.output",
-            "time": "2025-02-24T05:00:01.289043680Z",
+            "timestamp": "2025-02-24T08:13:07.222000Z",
             "attributes": {
-                "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
+                "response": [
+                    "Coffee is a beverage brewed from roasted, ground coffee beans."
+                ]
+            }
+        },
+        {
+            "name": "metadata",
+            "timestamp": "2025-02-24T08:13:07.223000Z",
+            "attributes": {
+                "completion_tokens": 13,
+                "prompt_tokens": 53,
+                "total_tokens": 66
             }
         }
     ],
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchain.app"
         }
     }
 }
 {
     "name": "langchain.sequence",
     "context": {
-        "traceId": "40b64e0470f0cbb757d9c4cf0eea9053",
-        "spanId": "a9551c57eb93c33a",
-        "traceFlags": 1
+        "trace_id": "25cd93aea1612d5cad82f85265a0b0d2",
+        "span_id": "d83d91f52af2142c",
+        "trace_flags": 1
     },
     "kind": 0,
-    "start_time": "2025-02-24T04:59:59.494000000Z",
-    "end_time": "2025-02-24T05:00:01.289814177Z",
+    "start_time": "2025-02-24T08:13:05.492000Z",
+    "end_time": "2025-02-24T08:13:07.222000Z",
     "status": {
         "code": 0
     },
@@ -226,11 +223,7 @@ Coffee is a beverage brewed from roasted, ground coffee beans.
     "links": [],
     "resource": {
         "attributes": {
-            "service.name": "unknown_service:node",
-            "telemetry.sdk.language": "nodejs",
-            "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.30.1",
-            "SERVICE_NAME": "langchain.app"
+            "service.name": "langchain.app"
         }
     }
 }
