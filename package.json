@@ -1,8 +1,9 @@
 {
   "name": "monocle2ai",
-  "version": "0.0.1-beta.4",
+  "version": "0.0.1-beta.5",
   "description": "",
   "main": "./index.js",
+  "types": "./index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/monocle2ai/monocle-typescript.git"
@@ -15,11 +16,11 @@
     "build:watch": "tsc -w -p tsconfig.json",
     "build:release": "npm run clean && tsc -p tsconfig.release.json",
     "lint": "eslint .",
-    "test": "vitest run unit --config __tests__/vitest.config.ts",
-    "test:coverage": "vitest run unit --config __tests__/vitest.config.ts --coverage.enabled --coverage.all",
     "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
     "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
-    "test:watch": "vitest unit"
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
   },
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
@@ -31,23 +32,22 @@
     "axios": "^1.7.9",
     "import-in-the-middle": "1.11.2",
     "require-in-the-middle": "7.4.0",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "@aws-sdk/client-s3": "^3.705.0",
+    "@azure/storage-blob": "^12.26.0"
   },
   "devDependencies": {
     "@types/eslint__js": "~8.42",
     "@types/node": "~20",
     "@typescript-eslint/parser": "~8.19",
-    "@vitest/coverage-v8": "~2.1",
-    "@vitest/eslint-plugin": "~1.1",
+    "@vitest/coverage-v8": "~3.0.6",
     "eslint-config-prettier": "~9.1",
     "prettier": "~3.4",
     "rimraf": "~6.0",
     "ts-api-utils": "~2.0",
     "typescript-eslint": "~8.19",
     "typescript": "~5.7",
-    "vitest": "~2.1",
-    "@aws-sdk/client-s3": "^3.705.0",
-    "@azure/storage-blob": "^12.26.0",
+    "vitest": "~3.0.6",
     "@eslint/js": "^9.16.0",
     "@langchain/openai": "^0.4.4",
     "eslint": "^9.16.0",

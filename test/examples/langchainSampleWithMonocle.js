@@ -1,5 +1,5 @@
 
-const { setupMonocle } = require("../dist")
+const { setupMonocle } = require("../../dist")
 
 setupMonocle(
   "langchain.app"
