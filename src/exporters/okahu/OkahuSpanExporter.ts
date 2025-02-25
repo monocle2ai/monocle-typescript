@@ -27,6 +27,8 @@ export class OkahuSpanExporter implements SpanExporter {
 
         this.endpoint = config.endpoint || process.env.OKAHU_INGESTION_ENDPOINT || OKAHU_PROD_INGEST_ENDPOINT;
         this.timeout = config.timeout || 15000;
+        
+        consoleLog(`OkahuSpanExporter| Initializing with endpoint: ${this.endpoint}, timeout: ${this.timeout}`);
 
         this.client = axios.create({
             headers: {
@@ -38,13 +40,16 @@ export class OkahuSpanExporter implements SpanExporter {
     }
 
     export(spans: ReadableSpan[], resultCallback: (result: ExportResult) => void): void {
+        consoleLog(`OkahuSpanExporter| Attempting to export ${spans.length} spans`);
+        consoleLog("OkahuSpanExporter| okahu export start");
         if (this._closed) {
-            consoleLog("Exporter already shutdown, ignoring batch");
+            consoleLog("OkahuSpanExporter| Exporter already shutdown, ignoring batch");
             resultCallback({ code: ExportResultCode.FAILED });
             return;
         }
 
         if (spans.length === 0) {
+            consoleLog("OkahuSpanExporter| no spans to export");
             resultCallback({ code: ExportResultCode.SUCCESS });
             return;
         }
@@ -55,19 +60,21 @@ export class OkahuSpanExporter implements SpanExporter {
 
         const sendSpansToOkahu = async (spanListLocal: any) => {
             try {
+                consoleLog(`OkahuSpanExporter| Sending batch to endpoint: ${this.endpoint}`);
                 const result = await this.client.post(this.endpoint, spanListLocal);
                 if (!REQUESTS_SUCCESS_STATUS_CODES.includes(result.status)) {
-                    console.error(`Traces cannot be uploaded; status code: ${result.status}, message: ${result.data}`);
+                    console.error(`OkahuSpanExporter| Export failed - Status: ${result.status}, Response: ${JSON.stringify(result.data)}`);
                     return { code: ExportResultCode.FAILED };
                 }
-                consoleLog("spans successfully exported to okahu");
+                consoleLog(`OkahuSpanExporter| Successfully exported ${spans.length} spans`);
+                consoleLog("OkahuSpanExporter| spans successfully exported to okahu");
                 return { code: ExportResultCode.SUCCESS };
             } catch (error) {
-                console.error("Trace export failed:", error);
+                console.error("OkahuSpanExporter| Export error:", error.message);
                 return { code: ExportResultCode.FAILED };
             }
         };
-
+        consoleLog("OkahuSpanExporter| Sending spans to okahu");
         sendSpansToOkahu(spanList).then(resultCallback);
     }
 
@@ -76,6 +83,7 @@ export class OkahuSpanExporter implements SpanExporter {
     }
 
     shutdown(): Promise<void> {
+        consoleLog("OkahuSpanExporter| Shutting down exporter");
         if (this._closed) {
             consoleLog("Exporter already shutdown, ignoring call");
             return Promise.resolve();
