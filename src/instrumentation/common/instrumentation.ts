@@ -197,7 +197,8 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
         MONOCLE_EXPORTER: process.env.MONOCLE_EXPORTER,
         isLambda: Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)
     });
-    const scheduledDelayMillis = parseInt(process.env.MONOCLE_EXPORTER_DELAY) || 5;
+    const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
+    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5;
 
     if (!process.env.MONOCLE_EXPORTER &&
         Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
