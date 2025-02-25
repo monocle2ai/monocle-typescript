@@ -1,5 +1,3 @@
-import { consoleLog } from "../../common/logging";
-
 const isRootSpan = function (span) {
     if (typeof span.parentSpanId === "string" && span.parentSpanId.length > 0)
         return false
@@ -64,11 +62,7 @@ function getWorkflowName(span) {
     try {
         return span.resource.attributes["SERVICE_NAME"];
     } catch (e) {
-        consoleLog(`Error getting workflow name: ${e}`, { 
-            span: span?.context?.traceId,
-            error: e.message,
-            stack: e.stack
-        });
+        console.error(`Error getting workflow name: ${e}`);
         return `workflow.${span.context.traceId}`;
     }
 }
@@ -104,11 +98,6 @@ function _IsPlainObject(obj) {
 
 
 function processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage }) {
-    consoleLog(`Processing span for package: ${wrappedPackage}`, {
-        spanId: span.spanContext?.spanId,
-        isRoot: isRootSpan(span)
-    });
-    
     let spanIndex = 1;
 
     if (isRootSpan(span)) {
@@ -139,21 +128,14 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, wrapp
                                 const accessor_args = { instance: instance, args: args, output: returnValue };
                                 if (typeof accessor === 'function') {
                                     const result = accessor(accessor_args);
-                                    if (!result) {
-                                        consoleLog(`Accessor returned null/undefined for attribute: ${attributeName}`, {
-                                            processor,
-                                            args: accessor_args
-                                        });
+                                    if (result) {
+                                        attributeSet = true;
+                                        span.setAttribute(attributeName, result);
                                     }
                                 }
 
                             } catch (e) {
-                                consoleLog(`Error processing accessor`, {
-                                    attribute,
-                                    error: e.message,
-                                    stack: e.stack,
-                                    processor
-                                });
+                                console.error(`Error processing accessor: ${e}`);
                             }
                         } else {
                             console.warn(`${['attribute', 'accessor'].filter(key => !processor[key]).join(' and ')} not found or incorrect in entity JSON`);
@@ -205,27 +187,16 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, wrapp
                         }
                     });
 
-                    try {
-                        span.addEvent(eventName, eventAttributes);
-                    } catch (e) {
-                        consoleLog(`Error processing event`, {
-                            eventName: event.name,
-                            error: e.message,
-                            stack: e.stack,
-                            event
-                        });
-                    }
+                    span.addEvent(eventName, eventAttributes);
                 });
             }
         } else {
-            consoleLog("Invalid output processor format", { outputProcessor });
+            console.warn("empty or entities json is not in correct format");
         }
     }
-    
-    consoleLog(`Completed span processing`, {
-        spanId: span.spanContext?.spanId,
-        entityCount: spanIndex - 1
-    });
+    if (spanIndex > 1) {
+        span.setAttribute("entity.count", spanIndex - 1);
+    }
 }
 
 const _getPatchedMain = getPatchedMain;
