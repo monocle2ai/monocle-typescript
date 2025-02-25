@@ -15,7 +15,7 @@ import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
-import {AWSS3SpanExporter} from '../../exporters/aws/AWSS3SpanExporter'
+import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
 
 class MonocleInstrumentation extends InstrumentationBase {
@@ -193,17 +193,21 @@ const setupMonocle = (
 
 function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
     consoleLog('Adding span processors, environment:', {
+        MONOCLE_EXPORTER_DELAY: process.env.MONOCLE_EXPORTER_DELAY,
         MONOCLE_EXPORTER: process.env.MONOCLE_EXPORTER,
         isLambda: Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)
     });
-    if (!process.env.MONOCLE_EXPORTER && 
+    const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
+    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5;
+
+    if (!process.env.MONOCLE_EXPORTER &&
         Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
         consoleLog(`addSpanProcessors| Using AWS S3 span exporter and Console span exporter`);
         okahuProcessors.push(
             new PatchedBatchSpanProcessor(
                 new AWSS3SpanExporter({}),
                 {
-                    scheduledDelayMillis: 5
+                    scheduledDelayMillis: scheduledDelayMillis
                 }
             )
 
@@ -211,7 +215,7 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
         okahuProcessors.push(new PatchedBatchSpanProcessor(
             new ConsoleSpanExporter(),
             {
-                scheduledDelayMillis: 5
+                scheduledDelayMillis: scheduledDelayMillis
             }
         ))
     }
@@ -221,11 +225,12 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
                 return new PatchedBatchSpanProcessor(
                     exporter,
                     {
-                        scheduledDelayMillis: 5
+                        scheduledDelayMillis: scheduledDelayMillis
                     }
                 )
             })
         )
+
     }
 }
 
