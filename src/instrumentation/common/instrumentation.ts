@@ -167,7 +167,8 @@ const setupMonocle = (
 }
 
 function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
-    if (Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
+    if (!process.env.MONOCLE_EXPORTER && 
+        Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
         okahuProcessors.push(
             new PatchedBatchSpanProcessor(
                 new AWSS3SpanExporter({}),
