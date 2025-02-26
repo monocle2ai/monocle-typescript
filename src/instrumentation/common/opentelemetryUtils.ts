@@ -1,5 +1,6 @@
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { consoleLog } from '../../common/logging';
+import { waitUntil } from "@vercel/functions";
 
 // @ts-ignore: private field access required
 class PatchedBatchSpanProcessor extends BatchSpanProcessor {
@@ -11,7 +12,14 @@ class PatchedBatchSpanProcessor extends BatchSpanProcessor {
             // @ts-ignore: private field access required
             this._isExporting = true;
             // @ts-ignore: private field access required
-            this._flushOneBatch()
+            const flushPromise = this._flushOneBatch()
+            if(process.env.VERCEL_URL) {
+                consoleLog('Vercel detected, waiting for spans to be exported');
+                waitUntil(flushPromise)
+            }
+
+            
+            flushPromise
                 .finally(() => {
                     // @ts-ignore: private field access required
                     this._isExporting = false;
@@ -36,6 +44,15 @@ class PatchedBatchSpanProcessor extends BatchSpanProcessor {
         // @ts-ignore: private field access required
         if (this._timer !== undefined)
             return;
+        // @ts-ignore: private field access required
+        // check if the app is deployed on vercel
+        if (process.env.VERCEL_URL) {
+            consoleLog('Vercel detected, waiting for more spans to be collected before exporting');
+            // @ts-ignore: private field access required
+            flush()
+            return
+        }
+
         // @ts-ignore: private field access required
         this._timer = setTimeout(() => flush(), this._scheduledDelayMillis);
         // (0, core_1.unrefTimer)(this._timer);

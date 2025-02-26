@@ -34,7 +34,7 @@ export const config = {
                 "_comment": "Embedding model name",
                 "attribute": "name",
                 "accessor": function ({ instance }) {
-                    return instance.instance.vectorStore.embeddings.model
+                    return instance.vectorStore.embeddings.model
                 }
             },
             {

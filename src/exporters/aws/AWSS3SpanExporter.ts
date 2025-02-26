@@ -20,7 +20,11 @@ class AWSS3SpanExporter {
     constructor({ bucketName, keyPrefix, region }: AWSS3SpanExporterConfig) {
         this.bucketName = bucketName || process.env.MONOCLE_S3_BUCKET_NAME || "default-bucket";
         this.keyPrefix = keyPrefix || process.env.MONOCLE_S3_KEY_PREFIX || "monocle_trace_";
+        
+        consoleLog(`AWSS3SpanExporter| Initializing AWSS3SpanExporter with bucket: ${this.bucketName}, prefix: ${this.keyPrefix}`);
+        
         if(process.env.MONOCLE_AWS_ACCESS_KEY_ID && process.env.MONOCLE_AWS_SECRET_ACCESS_KEY) {
+            consoleLog('AWSS3SpanExporter| Initializing S3 client with explicit credentials');
             this.s3Client = new S3({
                 region: region || process.env.AWS_S3_REGION || process.env.AWS_REGION,
                 credentials: {
@@ -28,8 +32,8 @@ class AWSS3SpanExporter {
                     secretAccessKey: process.env.MONOCLE_AWS_SECRET_ACCESS_KEY || ''
                 }
             });
-        }
-        else {
+        } else {
+            consoleLog('AWSS3SpanExporter| Initializing S3 client with default credentials');
             this.s3Client = new S3({
                 region: region || process.env.AWS_S3_REGION || process.env.AWS_REGION
             });
@@ -39,7 +43,7 @@ class AWSS3SpanExporter {
     }
 
     export(spans: any, resultCallback: (result: { code: ExportResultCode, error?: Error }) => void): void {
-        consoleLog(`exporting spans to S3: ${spans}`);
+        consoleLog(`AWSS3SpanExporter| Starting export of ${spans.length} spans`);
         this._sendSpans(spans, resultCallback);
     }
 
@@ -59,8 +63,12 @@ class AWSS3SpanExporter {
         const timestamp = getUrlFriendlyTime(new Date());
         const prefix = this.keyPrefix + (process.env.MONOCLE_S3_KEY_PREFIX_CURRENT || '');
         const key = `${prefix}${timestamp}_${makeid(5)}.ndjson`;
+        
+        consoleLog(`AWSS3SpanExporter| Preparing to send spans to S3 - Key: ${key}`);
+        consoleLog(`AWSS3SpanExporter| Current prefix: ${prefix}, Timestamp: ${timestamp}`);
+        
         const body = spans.map(span => JSON.stringify(this._exportInfo(span))).join('\n');
-        consoleLog(`sending spans to S3: ${key} with body: ${body}`);
+        consoleLog(`AWSS3SpanExporter| Generated body size: ${body.length} bytes`);
 
         const params = {
             Bucket: this.bucketName,
@@ -70,12 +78,13 @@ class AWSS3SpanExporter {
         };
 
         try {
-            consoleLog('try to upload spans to S3:');
+            consoleLog(`AWSS3SpanExporter| Uploading to S3 - Bucket: ${this.bucketName}, Key: ${key}`);
             await this.s3Client.putObject(params);
-            consoleLog('successfully uploaded spans to S3:');
+            consoleLog('AWSS3SpanExporter| Successfully uploaded spans to S3');
             done({ code: ExportResultCode.SUCCESS });
         } catch (error) {
             console.error('Error uploading spans to S3:', error);
+            consoleLog(`AWSS3SpanExporter| Failed to upload spans. Error: ${error.message}`);
             done({ code: ExportResultCode.FAILED, error });
         }
     }

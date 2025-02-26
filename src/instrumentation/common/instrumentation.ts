@@ -4,7 +4,7 @@ import {
 } from '@opentelemetry/instrumentation';
 import { context } from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
@@ -13,14 +13,16 @@ import { AWS_CONSTANTS } from './constants';
 import path from 'path';
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
-import { getMonocleExporter } from '../../exporters';
+import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
+import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
+import { consoleLog } from '../../common/logging';
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
         super('MonocleInstrumentation', "1.0", config)
+        consoleLog('MonocleInstrumentation initialized with config:', config);
     }
-    // modules = []
 
     /**
      * Init method will be called when the plugin is constructed.
@@ -30,6 +32,7 @@ class MonocleInstrumentation extends InstrumentationBase {
      *   the plugin should patch multiple modules or versions.
      */
     init() {
+        consoleLog('Initializing MonocleInstrumentation');
         const modules: any[] = []
         // @ts-ignore: custom field access
         const packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
@@ -41,11 +44,12 @@ class MonocleInstrumentation extends InstrumentationBase {
             );
             modules.push(module)
         })
-
+        consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
     }
 
     enable() {
+        consoleLog('Enabling MonocleInstrumentation');
         // @ts-ignore: private field access required
         if (this._enabled) {
             return;
@@ -108,12 +112,23 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     _getOnPatchMain(element) {
         return (moduleExports) => {
-            this._wrap(
-                moduleExports[element.object].prototype,
-                element.method,
-                this._patchMainMethodName(element)
-            );
-            return moduleExports;
+            try {
+                this._wrap(
+                    moduleExports[element.object].prototype,
+                    element.method,
+                    this._patchMainMethodName(element)
+                );
+                return moduleExports;
+            } catch (e) {
+                consoleLog('Error in _getOnPatchMain', {
+                    package: element.package,
+                    object: element.object,
+                    method: element.method,
+                    error: e.message,
+                    stack: e.stack
+                });
+                throw e;
+            }
         }
     }
 
@@ -125,52 +140,74 @@ class MonocleInstrumentation extends InstrumentationBase {
 
 const setupMonocle = (
     workflowName: string,
-    spanProcessors: any[] = [],
+    spanProcessors: SpanProcessor[] = [],
     wrapperMethods: any[] = []
 ) => {
-    const resource = new Resource({
-        SERVICE_NAME: workflowName
-    })
-    const contextManager = new AsyncHooksContextManager();
-    contextManager.enable();
-    context.setGlobalContextManager(contextManager);
-    const tracerProvider = new NodeTracerProvider({
-        resource: resource
-    })
-    const monocleProcessors = [];
-    if (!spanProcessors.length) {
-        addSpanProcessors(monocleProcessors);
-    }
-
-    [...spanProcessors, ...monocleProcessors].forEach(processor => {
-        // processor.onStart = onProcessorStart;
-        tracerProvider.addSpanProcessor(processor);
-    });
-    // for (let processor of spanProcessors)
-    //     tracerProvider.addSpanProcessor(processor)
-    const userWrapperMethods: any[] = []
-    wrapperMethods.forEach((wrapperMethod: any[]) => {
-        if (Array.isArray(wrapperMethod)) {
-            userWrapperMethods.push(...wrapperMethod)
+    try {
+        consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
+        const resource = new Resource({
+            SERVICE_NAME: workflowName
+        })
+        const contextManager = new AsyncHooksContextManager();
+        contextManager.enable();
+        context.setGlobalContextManager(contextManager);
+        const tracerProvider = new NodeTracerProvider({
+            resource: resource
+        })
+        const monocleProcessors: SpanProcessor[] = [];
+        if (!spanProcessors.length) {
+            addSpanProcessors(monocleProcessors);
         }
-    })
-    const monocleInstrumentation = new MonocleInstrumentation({
-        userWrapperMethods
-    });
 
-    monocleInstrumentation.setTracerProvider(tracerProvider);
+        [...spanProcessors, ...monocleProcessors].forEach(processor => {
+            consoleLog(`Adding span processor: ${processor.constructor.name}`);
+            tracerProvider.addSpanProcessor(processor);
+        });
+        // for (let processor of spanProcessors)
+        //     tracerProvider.addSpanProcessor(processor)
+        const userWrapperMethods: any[] = []
+        wrapperMethods.forEach((wrapperMethod: any[]) => {
+            if (Array.isArray(wrapperMethod)) {
+                userWrapperMethods.push(...wrapperMethod)
+            }
+        })
+        const monocleInstrumentation = new MonocleInstrumentation({
+            userWrapperMethods
+        });
 
-    monocleInstrumentation.enable();
+        monocleInstrumentation.setTracerProvider(tracerProvider);
+
+        monocleInstrumentation.enable();
+
+        consoleLog('Monocle setup completed');
+        return monocleInstrumentation;
+    } catch (e) {
+        consoleLog('Error in setupMonocle', {
+            workflowName,
+            error: e.message,
+            stack: e.stack
+        });
+        throw e;
+    }
 }
 
-function addSpanProcessors(okahuProcessors: any[] = []) {
-    if (Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
-        const { AWSS3SpanExporter } = require('../../exporters/aws/AWSS3SpanExporter')
+function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
+    consoleLog('Adding span processors, environment:', {
+        MONOCLE_EXPORTER_DELAY: process.env.MONOCLE_EXPORTER_DELAY,
+        MONOCLE_EXPORTER: process.env.MONOCLE_EXPORTER,
+        isLambda: Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)
+    });
+    const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
+    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5;
+
+    if (!process.env.MONOCLE_EXPORTER &&
+        Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
+        consoleLog(`addSpanProcessors| Using AWS S3 span exporter and Console span exporter`);
         okahuProcessors.push(
             new PatchedBatchSpanProcessor(
                 new AWSS3SpanExporter({}),
                 {
-                    scheduledDelayMillis: 5
+                    scheduledDelayMillis: scheduledDelayMillis
                 }
             )
 
@@ -178,18 +215,22 @@ function addSpanProcessors(okahuProcessors: any[] = []) {
         okahuProcessors.push(new PatchedBatchSpanProcessor(
             new ConsoleSpanExporter(),
             {
-                scheduledDelayMillis: 5
+                scheduledDelayMillis: scheduledDelayMillis
             }
         ))
     }
     else {
         okahuProcessors.push(
-            new PatchedBatchSpanProcessor(
-                getMonocleExporter(),
-                {
-                    scheduledDelayMillis: 5
-                }
-            ))
+            ...getMonocleExporters().map((exporter) => {
+                return new PatchedBatchSpanProcessor(
+                    exporter,
+                    {
+                        scheduledDelayMillis: scheduledDelayMillis
+                    }
+                )
+            })
+        )
+
     }
 }
 

@@ -1,10 +1,8 @@
-const { setupMonocle } = require("../dist")
+const { setupMonocle } = require("../../dist")
 
 setupMonocle(
   "llamaindex.app"
 )
-
-const fs = require("node:fs/promises")
 
 const {
   Document,
@@ -14,12 +12,11 @@ const {
 
 async function main() {
   // Load essay from abramov.txt in Node
-  const path = "./text.txt";
 
-  const essay = await fs.readFile(path, "utf-8");
+  const essay = "Coffee is a beverage brewed from roasted, ground coffee beans.";
 
   // Create Document object with essay
-  const document = new Document({ text: essay, id_: path });
+  const document = new Document({ text: essay, id_: "coffee_text" });
 
   // Split text and create embeddings. Store them in a VectorStoreIndex
   const index = await VectorStoreIndex.fromDocuments([document]);
