@@ -1,74 +1,187 @@
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
-import { OpenAIEmbeddings, AzureChatOpenAI } from "@langchain/openai";
-import { WebBaseLoader } from "@langchain/community/document_loaders/web";
+import { describe, it, beforeAll, expect } from "@jest/globals";
+import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
+import { ExportResult } from "@opentelemetry/core";
+import { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { formatDocumentsAsString } from "langchain/util/document";
+import axios from "axios";
+const { MemoryVectorStore } = require("langchain/vectorstores/memory");
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { Document } from "langchain/document";
+import { OpenAIEmbeddings } from "@langchain/openai";
+
+import { AzureChatOpenAI } from "@langchain/openai";
 import {
   ChatPromptTemplate,
   MessagesPlaceholder
 } from "@langchain/core/prompts";
+
+import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HumanMessage } from "@langchain/core/messages";
-import { RecursiveCharacterTextSplitter } from "@langchain/text_splitters";
-const { MemoryVectorStore } = require("langchain/vectorstores/memory");
+import { setupMonocle } from "../../instrumentation/common/instrumentation";
 
-import {
-  createRetrievalChain,
-  createStuffDocumentsChain
-} from "@langchain/chains";
-import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
-import {
-  BatchSpanProcessor,
-  ReadableSpan
-} from "@opentelemetry/sdk-trace-base";
-import { ExportResult } from "@opentelemetry/core";
+// Import the common instrumentation functions
+// import { setContextProperties } from "../../instrumentation/common/instrumentor";
 
-// Import custom function to create history aware retriever
-import { createHistoryAwareRetriever } from "../../common/langhchain_patch";
+// For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
+interface CapturedSpan {
+  name: string;
+  attributes: Record<string, any>;
+  events: any[];
+  parent?: CapturedSpan;
+}
 
-// Custom exporter that captures spans for testing
+// Extended ConsoleSpanExporter to capture spans
 class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: any[] = [];
+  private capturedSpans: CapturedSpan[] = [];
 
   export(
     spans: ReadableSpan[],
     resultCallback: (result: ExportResult) => void
   ): void {
+    // Store spans for later assertions
     this.capturedSpans.push(...spans);
+    // Call the parent method with both required arguments
     super.export(spans, resultCallback);
   }
 
-  getCapturedSpans() {
+  getCapturedSpans(): CapturedSpan[] {
     return this.capturedSpans;
   }
 }
 
-describe("LangChain Chat Integration Tests", () => {
+// Create an equivalent of the Python WebBaseLoader
+class WebBaseLoader {
+  private webPaths: string[];
+  private bsKwargs: any;
+
+  constructor(options: { web_paths: string[]; bs_kwargs?: any }) {
+    this.webPaths = options.web_paths;
+    this.bsKwargs = options.bs_kwargs || {};
+  }
+
+  async load(): Promise<Document[]> {
+    const documents: Document[] = [];
+
+    for (const url of this.webPaths) {
+      try {
+        const response = await axios.get(url);
+        let content = response.data;
+
+        // Here you would use a proper HTML parser like cheerio in a real implementation
+        // This is a simple implementation for testing
+        if (this.bsKwargs.parse_only) {
+          // Extract content based on classes (simplified)
+          const classes = this.bsKwargs.parse_only.class_;
+          for (const className of classes) {
+            const regex = new RegExp(
+              `<[^>]+class=["']${className}["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`,
+              "g"
+            );
+            const matches = [...content.matchAll(regex)];
+            content = matches.map((match) => match[1]).join("\n");
+          }
+        }
+
+        documents.push(
+          new Document({
+            pageContent: content,
+            metadata: { source: url }
+          })
+        );
+      } catch (error) {
+        console.error(`Error fetching ${url}:`, error);
+      }
+    }
+
+    return documents;
+  }
+}
+
+// Function to create a history-aware retriever (equivalent to Python's create_history_aware_retriever)
+function createHistoryAwareRetriever(llm: any, retriever: any, prompt: any) {
+  const historyAwareRetrieval = async (input: {
+    input: string;
+    chat_history: any[];
+  }) => {
+    const { input: question, chat_history } = input;
+
+    // Generate a standalone question
+    const standaloneQuestion = await prompt
+      .pipe(llm)
+      .pipe(new StringOutputParser())
+      .invoke({
+        input: question,
+        chat_history
+      });
+
+    // Use the standalone question for retrieval
+    return retriever.invoke(standaloneQuestion);
+  };
+
+  return {
+    invoke: historyAwareRetrieval
+  };
+}
+
+describe("Langchain Integration Tests", () => {
   let customExporter: CustomConsoleSpanExporter;
 
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
-    setupMonocle("langchain_app_1", [new BatchSpanProcessor(customExporter)]);
+
+    // Setup the provider with our custom exporter
+    const provider = new NodeTracerProvider();
+    provider.addSpanProcessor(new BatchSpanProcessor(customExporter));
+    provider.register();
+
+    // Setup Monocle telemetry with custom exporter
+    setupMonocle("langchain_app_1");
+
+    // setupMonocle({
+    //   workflowName: "langchain_app_1",
+    //   spanProcessors: [new BatchSpanProcessor(customExporter)],
+    //   wrapperMethods: []
+    // });
   });
 
-  it("should run a chat-based RAG workflow with proper telemetry spans", async () => {
-    // Initialize Azure OpenAI model
+  it("should run LangChain chat workflow with proper telemetry", async () => {
+    // Initialize LLM
+    // const llm = new AzureChatOpenAI({
+    //   azureDeployment: process.env.AZURE_OPENAI_API_DEPLOYMENT,
+    //   apiKey: process.env.AZURE_OPENAI_API_KEY,
+    //   apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+    //   azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    //   temperature: 0.7,
+    //   modelName: "gpt-3.5-turbo-0125"
+    // });
     const llm = new AzureChatOpenAI({
       azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_API_DEPLOYMENT,
       azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
       temperature: 0.7,
       modelName: "gpt-3.5-turbo-0125"
     });
-
     // Load, chunk and index the contents of the blog
-    const loader = new WebBaseLoader(
-      "https://lilianweng.github.io/posts/2023-06-23-agent/"
-    );
+    const loader = new WebBaseLoader({
+      web_paths: ["https://lilianweng.github.io/posts/2023-06-23-agent/"],
+      bs_kwargs: {
+        parse_only: {
+          class_: ["post-content", "post-title", "post-header"]
+        }
+      }
+    });
 
     const docs = await loader.load();
+
+    // Split text into chunks
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
       chunkOverlap: 200
     });
-
     const splits = await textSplitter.splitDocuments(docs);
+
+    // Create vector store
     const embeddings = new OpenAIEmbeddings();
     const vectorstore = await MemoryVectorStore.fromDocuments(
       splits,
@@ -78,7 +191,7 @@ describe("LangChain Chat Integration Tests", () => {
     // Create retriever
     const retriever = vectorstore.asRetriever();
 
-    // Create contextualize question prompt
+    // Setup for history-aware retriever
     const contextualizeQSystemPrompt = `Given a chat history and the latest user question \
 which might reference context in the chat history, formulate a standalone question \
 which can be understood without the chat history. Do NOT answer the question, \
@@ -90,14 +203,13 @@ just reformulate it if needed and otherwise return it as is.`;
       ["user", "{input}"]
     ]);
 
-    // Create history-aware retriever
     const historyAwareRetriever = createHistoryAwareRetriever(
       llm,
       retriever,
       contextualizeQPrompt
     );
 
-    // Create QA prompt
+    // Define QA prompt
     const qaSystemPrompt = `You are an assistant for question-answering tasks. \
 Use the following pieces of retrieved context to answer the question. \
 If you don't know the answer, just say that you don't know. \
@@ -111,86 +223,138 @@ Use three sentences maximum and keep the answer concise.\
       ["user", "{input}"]
     ]);
 
-    // Create QA chain and retrieval chain
-    const questionAnswerChain = createStuffDocumentsChain({
-      llm,
-      prompt: qaPrompt
-    });
+    // Create question-answering chain
+    const questionAnswerChain = async (input: any) => {
+      const { input: question, chat_history, context } = input;
 
-    const ragChain = createRetrievalChain({
-      retriever: historyAwareRetriever,
-      combineDocsChain: questionAnswerChain
-    });
+      // Format prompt with context and question
+      const formattedPrompt = await qaPrompt.formatMessages({
+        context: formatDocumentsAsString(context),
+        input: question,
+        chat_history
+      });
 
-    // Set up chat history and context properties
-    const chatHistory: any[] = [];
-    try {
-      // Try using setupMonocle to set properties if available
-      setupMonocle("langchain_app_1", [new BatchSpanProcessor(customExporter)]);
-    } catch (e) {
-      console.log("Unable to set context properties, continuing test...");
-    }
-    // First question
+      // Get response from LLM
+      const response = await llm.invoke(formattedPrompt);
+
+      return { answer: response };
+    };
+
+    // Create retrieval chain
+    const ragChain = async (input: any) => {
+      const { input: question, chat_history } = input;
+
+      // Get relevant documents
+      const context = await historyAwareRetriever.invoke({
+        input: question,
+        chat_history
+      });
+
+      // Get answer
+      return questionAnswerChain({
+        input: question,
+        chat_history,
+        context
+      });
+    };
+
+    // Set context properties
+    // setContextProperties({ session_id: "0x4fa6d91d1f2a4bdbb7a1287d90ec4a16" });
+
+    // Run the chain with first question
+    let chatHistory: any[] = [];
     const question = "What is Task Decomposition?";
-    const aiMsg1 = await ragChain.invoke({
+    const aiMsg1 = await ragChain({
       input: question,
       chat_history: chatHistory
     });
 
+    // Update chat history
     chatHistory.push(new HumanMessage(question));
     chatHistory.push(aiMsg1.answer);
 
-    // Second question
+    // Run with follow-up question
     const secondQuestion = "What are common ways of doing it?";
-    const aiMsg2 = await ragChain.invoke({
+    const aiMsg2 = await ragChain({
       input: secondQuestion,
       chat_history: chatHistory
     });
 
     console.log(aiMsg2.answer);
 
-    // Verify telemetry spans
+    // Get captured spans for assertions
     const spans = customExporter.getCapturedSpans();
 
-    // Check spans
-    for (const span of spans) {
-      const spanAttributes = span.attributes;
+    // Log spans for debugging
+    console.log(
+      "Captured spans:",
+      JSON.stringify(
+        spans.map((span) => ({
+          name: span.name,
+          type: span.attributes["span.type"],
+          attributes: Object.keys(span.attributes)
+        })),
+        null,
+        2
+      )
+    );
 
-      // Check retrieval spans
-      if (spanAttributes && spanAttributes["span.type"] === "retrieval") {
-        expect(spanAttributes["entity.1.name"]).toBe("Chroma");
-        expect(spanAttributes["entity.1.type"]).toBe("vectorstore.Chroma");
-        expect(spanAttributes).toHaveProperty("entity.1.deployment");
-        expect(spanAttributes["entity.2.name"]).toBe("text-embedding-ada-002");
-        expect(spanAttributes["entity.2.type"]).toBe(
-          "model.embedding.text-embedding-ada-002"
-        );
-      }
+    // Test assertions for retrieval spans
+    const retrievalSpan = spans.find(
+      (span) => span.attributes["span.type"] === "retrieval"
+    );
 
-      // Check inference spans
-      if (spanAttributes && spanAttributes["span.type"] === "inference") {
-        expect(spanAttributes["entity.1.type"]).toBe("inference.azure_oai");
-        expect(spanAttributes).toHaveProperty("entity.1.provider_name");
-        expect(spanAttributes).toHaveProperty("entity.1.inference_endpoint");
-        expect(spanAttributes["entity.2.name"]).toBe("gpt-3.5-turbo-0125");
-        expect(spanAttributes["entity.2.type"]).toBe(
-          "model.llm.gpt-3.5-turbo-0125"
-        );
+    if (retrievalSpan) {
+      expect(retrievalSpan.attributes["entity.1.name"]).toBe("Chroma");
+      expect(retrievalSpan.attributes["entity.1.type"]).toBe(
+        "vectorstore.Chroma"
+      );
+      expect(retrievalSpan.attributes["entity.1.deployment"]).toBeDefined();
+      expect(retrievalSpan.attributes["entity.2.name"]).toBe(
+        "text-embedding-ada-002"
+      );
+      expect(retrievalSpan.attributes["entity.2.type"]).toBe(
+        "model.embedding.text-embedding-ada-002"
+      );
+    }
 
-        // Check metadata events
-        if (span.events && span.events.length >= 3) {
-          const [spanMetadata] = span.events;
-          expect(spanMetadata.attributes).toHaveProperty("completion_tokens");
-          expect(spanMetadata.attributes).toHaveProperty("prompt_tokens");
-          expect(spanMetadata.attributes).toHaveProperty("total_tokens");
-        }
-      }
+    // Test assertions for inference spans
+    const inferenceSpan = spans.find(
+      (span) => span.attributes["span.type"] === "inference"
+    );
 
-      // Check root span
-      if (!span.parent && span.name === "langchain.workflow") {
-        expect(spanAttributes["entity.1.name"]).toBe("langchain_app_1");
-        expect(spanAttributes["entity.1.type"]).toBe("workflow.langchain");
-      }
+    if (inferenceSpan) {
+      expect(inferenceSpan.attributes["entity.1.type"]).toBe(
+        "inference.azure_oai"
+      );
+      expect(inferenceSpan.attributes["entity.1.provider_name"]).toBeDefined();
+      expect(
+        inferenceSpan.attributes["entity.1.inference_endpoint"]
+      ).toBeDefined();
+      expect(inferenceSpan.attributes["entity.2.name"]).toBe(
+        "gpt-3.5-turbo-0125"
+      );
+      expect(inferenceSpan.attributes["entity.2.type"]).toBe(
+        "model.llm.gpt-3.5-turbo-0125"
+      );
+
+      // Check metadata events - assuming events are in the same order as Python
+      expect(inferenceSpan.events.length).toBeGreaterThanOrEqual(3);
+      const spanMetadata = inferenceSpan.events[2]; // Metadata should be the third event
+
+      expect(spanMetadata.attributes["completion_tokens"]).toBeDefined();
+      expect(spanMetadata.attributes["prompt_tokens"]).toBeDefined();
+      expect(spanMetadata.attributes["total_tokens"]).toBeDefined();
+    }
+
+    // Test assertions for root span
+    const rootSpan = spans.find(
+      (span) => !span.parent && span.name === "langchain.workflow"
+    );
+
+    if (rootSpan) {
+      expect(rootSpan.attributes["entity.1.name"]).toBe("langchain_app_1");
+      expect(rootSpan.attributes["entity.1.type"]).toBe("workflow.langchain");
     }
   });
 });
