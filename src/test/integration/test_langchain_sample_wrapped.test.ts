@@ -1,13 +1,6 @@
-import { describe, it, beforeAll, expect } from "@jest/globals";
-import {
-  ConsoleSpanExporter,
-  NodeTracerProvider
-} from "@opentelemetry/sdk-trace-node";
-import {
-  ReadableSpan,
-  SimpleSpanProcessor
-} from "@opentelemetry/sdk-trace-base";
-import { ExportResult } from "@opentelemetry/core";
+import { describe, it, beforeAll, expect } from "vitest";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import * as hub from "langchain/hub";
 import { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
@@ -20,35 +13,9 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import axios from "axios";
 import { setupMonocle } from "../../instrumentation/common/instrumentation";
 import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 
 // For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
-interface CapturedSpan {
-  name: string;
-  attributes: Record<string, any>;
-  events: any[];
-  parent?: CapturedSpan;
-}
-
-// Extended ConsoleSpanExporter to capture spans
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: CapturedSpan[] = [];
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    // Store spans for later assertions
-    this.capturedSpans.push(...spans);
-    // Call the parent method with both required arguments
-    super.export(spans, resultCallback);
-  }
-
-  getCapturedSpans(): CapturedSpan[] {
-    return this.capturedSpans;
-  }
-}
-
-// Custom web loader class using CheerioWebBaseLoader
 class WebLoader {
   private webPaths: string[];
   private bsKwargs: any;
@@ -111,11 +78,6 @@ class WebLoader {
 // Chroma class to replace Python's Chroma
 class Chroma {
   private documents: Document[] = [];
-  //   private embedding: OpenAIEmbeddings;
-
-  //   constructor(embedding: OpenAIEmbeddings) {
-  //     this.embedding = embedding;
-  //   }
 
   static async from_documents(options: {
     documents: Document[];

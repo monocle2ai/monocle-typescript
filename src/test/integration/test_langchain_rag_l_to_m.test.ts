@@ -1,13 +1,6 @@
-import { describe, it, beforeAll, expect } from "@jest/globals";
-import { ExportResult } from "@opentelemetry/core";
-import {
-  ReadableSpan,
-  SimpleSpanProcessor
-} from "@opentelemetry/sdk-trace-base";
-import {
-  ConsoleSpanExporter,
-  NodeTracerProvider
-} from "@opentelemetry/sdk-trace-node";
+import { describe, it, beforeAll, expect } from "vitest";
+import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import axios from "axios";
 import { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
@@ -18,39 +11,10 @@ import {
   RunnableSequence
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import {
-  setupMonocle
-  //   setContextProperties
-} from "../../instrumentation/common/instrumentation";
+import { setupMonocle } from "../../instrumentation/common/instrumentation";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-
-// For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
-interface CapturedSpan {
-  name: string;
-  attributes: Record<string, any>;
-  events: any[];
-  parent?: CapturedSpan;
-}
-
-// Extended ConsoleSpanExporter to capture spans
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: CapturedSpan[] = [];
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    // Store spans for later assertions
-    this.capturedSpans.push(...spans);
-    // Call the parent method with both required arguments
-    super.export(spans, resultCallback);
-  }
-
-  getCapturedSpans(): CapturedSpan[] {
-    return this.capturedSpans;
-  }
-}
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 
 class SimpleWebLoader {
   private url: string;
@@ -145,7 +109,7 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
       Your goal is to decompose the given question into multiple sub-questions that can be answerd in isolation to answer the main question in the end. \n
       Provide these sub-questions separated by the newline character. \n
       Original question: {question}\n
-      Output (3 queries): 
+      Output (3 queries):
     `);
 
     // Create the query generation chain
@@ -171,7 +135,7 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
 
     \n --- \n {q_a_pairs} \n --- \n
 
-    Here is additional context relevant to the question: 
+    Here is additional context relevant to the question:
 
     \n --- \n {context} \n --- \n
 
@@ -183,24 +147,6 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
       modelName: "gpt-3.5-turbo-0125",
       temperature: 0
     });
-    // interface ChainInput {
-    //   question: string;
-    //   q_a_pairs: string;
-    // }
-    // Create the least-to-most chain
-    // const leastToMostChain = RunnableSequence.from([
-    //   {
-    //     context: async (input: { question: string }) => {
-    //       const results = await retriever.invoke(input.question);
-    //       return results;
-    //     },
-    //     q_a_pairs: (input: ChainInput) => input.q_a_pairs,
-    //     question: (input: ChainInput) => input.question
-    //   },
-    //   leastToMostPrompt,
-    //   llm,
-    //   new StringOutputParser()
-    // ]);
 
     // Process each sub-question
     const processQuestion = async (question: string, qaHistory: string) => {
