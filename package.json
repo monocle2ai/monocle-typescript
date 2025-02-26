@@ -23,12 +23,18 @@
   },
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.755.0",
+    "@langchain/aws": "^0.1.4",
+    "@langchain/community": "^0.3.32",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^1.28.0",
     "@opentelemetry/instrumentation": "^0.55.0",
     "@opentelemetry/resources": "^1.28.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.1",
     "@opentelemetry/sdk-trace-node": "^1.28.0",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
+    "chromadb": "^1.10.4",
     "date-fns": "^4.1.0",
     "import-in-the-middle": "1.11.2",
     "require-in-the-middle": "7.4.0"

@@ -17,6 +17,7 @@ const config = {
     "!src/**/*.d.ts",
     "!**/node_modules/**"
   ],
+  testTimeout: 30000,
   verbose: true
 };
 
