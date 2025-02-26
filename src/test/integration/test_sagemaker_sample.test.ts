@@ -1,7 +1,6 @@
 import {
   BaseSageMakerContentHandler,
-  SageMakerEndpoint,
-  SageMakerLLMContentHandler
+  SageMakerEndpoint
 } from "@langchain/community/llms/sagemaker_endpoint";
 import { OpenSearchVectorStore } from "@langchain/community/vectorstores/opensearch";
 
@@ -9,10 +8,10 @@ import {
   BatchSpanProcessor,
   ConsoleSpanExporter
 } from "@opentelemetry/sdk-trace-base";
-import { describe, it, beforeAll } from "@jest/globals";
+import { describe, it, beforeAll } from "vitest";
 import * as AWS from "aws-sdk";
 import { Client } from "@opensearch-project/opensearch";
-import AWS4Auth from "aws4"; // TypeScript alternative to requests_aws4auth
+import AWS4Auth from "aws4";
 import { Document } from "langchain/document";
 import { setupMonocle } from "../../instrumentation/common/instrumentation";
 
@@ -101,7 +100,7 @@ function build_context(similar_documents: string[]): string {
     const documents_concatenated = similar_documents.join(
       "-------------END OF DOCUMENT-------------"
     );
-    return `Based on embedding lookup, we've found these documents to be the most relevant from the knowledge 
+    return `Based on embedding lookup, we've found these documents to be the most relevant from the knowledge
     base: ${documents_concatenated}`;
   } else {
     return (
@@ -155,7 +154,6 @@ async function search_similar_documents_opensearch(
       ssl: {
         rejectUnauthorized: true
       },
-      // You may need to adapt these options to match your TypeScript OpenSearch client
       Connection: Client
     },
     indexName: index_name,

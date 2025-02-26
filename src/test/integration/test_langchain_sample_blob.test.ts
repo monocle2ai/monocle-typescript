@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, expect } from "@jest/globals";
+import { describe, it, beforeAll, expect } from "vitest";
 import { ExportResult } from "@opentelemetry/core";
 import {
   ReadableSpan,
@@ -13,10 +13,7 @@ import {
   RunnableSequence
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import {
-  setupMonocle
-  //   setContextProperties
-} from "../../instrumentation/common/instrumentation";
+import { setupMonocle } from "../../instrumentation/common/instrumentation";
 const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
 import {
@@ -31,14 +28,8 @@ import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 // import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import axios from "axios";
 import { Document } from "langchain/document";
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 
-// For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
-interface CapturedSpan {
-  name: string;
-  attributes: Record<string, any>;
-  events: any[];
-  parent?: CapturedSpan;
-}
 class SimpleWebLoader {
   private url: string;
 
@@ -78,24 +69,6 @@ class SimpleWebLoader {
     const title = titleMatches ? titleMatches[1] : "";
 
     return `${title}\n\n${content}`.replace(/<[^>]*>/g, "");
-  }
-}
-// Extended ConsoleSpanExporter to capture spans
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: CapturedSpan[] = [];
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    // Store spans for later assertions
-    this.capturedSpans.push(...spans);
-    // Call the parent method with both required arguments
-    super.export(spans, resultCallback);
-  }
-
-  getCapturedSpans(): CapturedSpan[] {
-    return this.capturedSpans;
   }
 }
 
@@ -244,7 +217,7 @@ describe("Langchain RAG Integration Tests", () => {
       Your goal is to decompose the given question into multiple sub-questions that can be answerd in isolation to answer the main question in the end. \n
       Provide these sub-questions separated by the newline character. \n
       Original question: {question}\n
-      Output (3 queries): 
+      Output (3 queries):
     `);
     const queryGenerationChain = RunnableSequence.from([
       {
@@ -274,7 +247,7 @@ describe("Langchain RAG Integration Tests", () => {
 
     \n --- \n {q_a_pairs} \n --- \n
 
-    Here is additional context relevant to the question: 
+    Here is additional context relevant to the question:
 
     \n --- \n {context} \n --- \n
 

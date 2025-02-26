@@ -1,15 +1,8 @@
 import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
-import { describe, it, beforeAll, expect } from "@jest/globals";
-import {
-  ConsoleSpanExporter,
-  NodeTracerProvider
-} from "@opentelemetry/sdk-trace-node";
+import { describe, it, beforeAll, expect } from "vitest";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import * as hub from "langchain/hub";
-import { ExportResult } from "@opentelemetry/core";
-import {
-  ReadableSpan,
-  SimpleSpanProcessor
-} from "@opentelemetry/sdk-trace-base";
+import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 const { formatDocumentsAsString } = require("langchain/util/document");
 
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
@@ -26,33 +19,7 @@ const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
 import { Document } from "langchain/document";
 import axios from "axios";
-
-// For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
-interface CapturedSpan {
-  name: string;
-  attributes: Record<string, any>;
-  events: any[];
-  parent?: CapturedSpan;
-}
-
-// Extended ConsoleSpanExporter to capture spans
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: CapturedSpan[] = [];
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    // Store spans for later assertions
-    this.capturedSpans.push(...spans);
-    // Call the parent method with both required arguments
-    super.export(spans, resultCallback);
-  }
-
-  getCapturedSpans(): CapturedSpan[] {
-    return this.capturedSpans;
-  }
-}
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 
 class SimpleWebLoader {
   private url: string;
@@ -83,7 +50,6 @@ class SimpleWebLoader {
 
   private extractContent(html: string): string {
     // Simple regex-based content extraction (for testing purposes)
-    // In production, consider a proper HTML parser
     const contentMatches = html.match(
       /<div class="post-content">([\s\S]*?)<\/div>/
     );
@@ -108,7 +74,6 @@ describe("Langchain Bedrock Integration Tests", () => {
 
     // Register the provider
     provider.register();
-    // Fix 1: Pass a string to setupMonocle instead of an object
     setupMonocle("bedrock_rag_workflow");
   });
 
@@ -119,7 +84,6 @@ describe("Langchain Bedrock Integration Tests", () => {
     });
 
     // Initialize LLM
-    // Fix 2: Change modelId to model
     const llm = new ChatBedrockConverse({
       client: bedrockRuntimeClient,
       model: "ai21.jamba-1-5-mini-v1:0",

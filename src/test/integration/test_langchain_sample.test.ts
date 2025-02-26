@@ -10,27 +10,10 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { Document } from "@langchain/core/documents";
 const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
-import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
-import {
-  BatchSpanProcessor,
-  ReadableSpan
-} from "@opentelemetry/sdk-trace-base";
-import { ExportResult } from "@opentelemetry/core";
-// Custom exporter that captures spans for testing
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: any[] = [];
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    this.capturedSpans.push(...spans);
-    super.export(spans, resultCallback);
-  }
+import { describe, it, beforeAll, expect } from "vitest";
 
-  getCapturedSpans() {
-    return this.capturedSpans;
-  }
-}
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 
 describe("LangChain Integration Tests", () => {
   let customExporter: CustomConsoleSpanExporter;
@@ -77,7 +60,7 @@ describe("LangChain Integration Tests", () => {
     const prompt = PromptTemplate.fromTemplate(`
       Answer the question based only on the following context:
       {context}
-      
+
       Question: {question}
     `);
 
@@ -132,4 +115,4 @@ describe("LangChain Integration Tests", () => {
       }
     }
   });
-});
+}, 10000);

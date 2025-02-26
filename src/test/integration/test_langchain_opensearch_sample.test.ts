@@ -1,8 +1,7 @@
 import path from "path";
-import {
-  ConsoleSpanExporter,
-  ReadableSpan
-} from "@opentelemetry/sdk-trace-node";
+import fs from "fs";
+
+import { describe, beforeAll, expect, test } from "vitest";
 
 import { OpenAI } from "@langchain/openai";
 import { OpenAIEmbeddings } from "@langchain/openai";
@@ -13,7 +12,7 @@ import { TextLoader } from "langchain/document_loaders/fs/text";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenSearchVectorStore } from "@langchain/community/vectorstores/opensearch";
 const { RunnablePassthrough } = require("@langchain/core/runnables");
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+
 import {
   ChatPromptTemplate,
   MessagesPlaceholder
@@ -21,39 +20,48 @@ import {
 import { createRetrievalChain } from "langchain/chains/retrieval";
 import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 import { Client } from "@opensearch-project/opensearch";
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../instrumentation/common/instrumentation";
-import { ExportResult } from "@opentelemetry/core";
-
-interface CapturedSpan {
-  name: string;
-  attributes: Record<string, any>;
-  events: any[];
-  parent?: CapturedSpan;
-}
-
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: CapturedSpan[] = [];
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    // Store spans for later assertions
-    this.capturedSpans.push(...spans);
-    // Call the parent method with both required arguments
-    super.export(spans, resultCallback);
-  }
-
-  getCapturedSpans(): CapturedSpan[] {
-    return this.capturedSpans;
-  }
-}
 
 describe("LangChain OpenSearch Integration", () => {
   let customExporter: CustomConsoleSpanExporter;
+
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
     setupMonocle("langchain_opensearch");
+
+    // Create test data directory and sample file if they don't exist
+    const myPath = path.resolve(__dirname);
+    const dataDir = path.join(myPath, "..", "data");
+    const sampleFilePath = path.join(dataDir, "sample.txt");
+
+    // Create data directory if it doesn't exist
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    // Create sample.txt with test content if it doesn't exist
+    if (!fs.existsSync(sampleFilePath)) {
+      const sampleContent = `
+Task Decomposition is the process of breaking down complex tasks into smaller, more manageable subtasks.
+This technique is particularly useful in AI and programming when solving complex problems.
+Task Decomposition helps in better organization, parallel execution, and simpler debugging of code.
+It allows teams to work on different components simultaneously and improves overall efficiency.
+
+When implementing Task Decomposition:
+1. Identify the main problem or task
+2. Break it down into logical subtasks
+3. Determine dependencies between subtasks
+4. Assign priorities to each subtask
+5. Implement solutions for each subtask
+6. Integrate the solutions back together
+
+Task Decomposition is commonly used in Agile methodologies, AI planning systems, and large software projects.
+      `;
+
+      fs.writeFileSync(sampleFilePath, sampleContent);
+      console.log(`Created sample file at ${sampleFilePath}`);
+    }
   });
 
   test("OpenSearch RAG workflow with history-aware retriever", async () => {
@@ -78,6 +86,13 @@ describe("LangChain OpenSearch Integration", () => {
     // Load documents from a local directory
     const myPath = path.resolve(__dirname);
     const dataPath = path.join(myPath, "..", "data", "sample.txt");
+
+    // Verify file exists before attempting to load
+    if (!fs.existsSync(dataPath)) {
+      throw new Error(
+        `Sample file not found at ${dataPath}. Check beforeAll setup.`
+      );
+    }
 
     const loader = new TextLoader(dataPath);
     const documents = await loader.load();
@@ -129,77 +144,32 @@ describe("LangChain OpenSearch Integration", () => {
       .pipe(llm)
       .pipe(new StringOutputParser());
     console.log(ragChain);
-    // Create history-aware retriever
-    // const contextualizeQSystemPrompt = `Given a chat history and the latest user question \
-    //   which might reference context in the chat history, formulate a standalone question \
-    //   which can be understood without the chat history. Do NOT answer the question, \
-    //   just reformulate it if needed and otherwise return it as is.`;
 
-    // const contextualizeQPrompt = ChatPromptTemplate.fromMessages([
-    //   new SystemMessage(contextualizeQSystemPrompt),
-    //   new MessagesPlaceholder("chat_history"),
-    //   new HumanMessage("{input}")
-    // ]);
+    const qaSystemPrompt = `You are an assistant for question-answering tasks. 
+Use the following pieces of retrieved context to answer the question. 
+If you don't know the answer, just say that you don't know. 
+Use three sentences maximum and keep the answer concise.
 
-    // const historyAwareRetriever = createHistoryAwareRetriever(
-    //   llm,
-    //   retriever,
-    //   contextualizeQPrompt
-    // );
+Context: {context}`;
 
-    const qaSystemPrompt = `You are an assistant for question-answering tasks. \
-      Use the following pieces of retrieved context to answer the question. \
-      If you don't know the answer, just say that you don't know. \
-      Use three sentences maximum and keep the answer concise.\n\n{context}`;
-
-    const qaPrompt = ChatPromptTemplate.fromMessages([
-      new SystemMessage(qaSystemPrompt),
-      new MessagesPlaceholder("chat_history"),
-      new HumanMessage("{input}")
+    // Option 1: Use ChatPromptTemplate.fromTemplate with history
+    const qaPromptWithHistory = ChatPromptTemplate.fromMessages([
+      ["system", qaSystemPrompt],
+      ["human", "{input}"],
+      // Add a placeholder for chat history
+      new MessagesPlaceholder("chat_history")
     ]);
 
+    // Then use it like this:
     const combineDocsChain = await createStuffDocumentsChain({
       llm,
-      prompt: qaPrompt
+      prompt: qaPromptWithHistory
     });
 
     const chain = await createRetrievalChain({
       retriever,
       combineDocsChain
     });
-
-    // const questionAnswerChain = createStuffDocumentsChain({
-    //   llm,
-    //   prompt: qaPrompt
-    // });
-
-    // const ragChainWithHistory = createRetrievalChain({
-    //   retriever: historyAwareRetriever,
-    //   combineDocsChain: questionAnswerChain
-    // });
-    // const questionAnswerChain = await createStuffDocumentsChain({
-    //   llm,
-    //   prompt: qaPrompt
-    // });
-    // const combineDocsChain = await createStuffDocumentsChain({
-    //   llm: model,
-    //   prompt: questionAnsweringPrompt
-    // });
-
-    // const chain = await createRetrievalChain({
-    //   retriever: VectorStore.asRetriever(),
-    //   combineDocsChain
-    // });
-
-    // // Fix 2: Await the promise from createRetrievalChain
-    // const ragChainWithHistory = await createRetrievalChain({
-    //   retriever: historyAwareRetriever,
-    //   combineDocsChain: questionAnswerChain
-    // });
-    // const retrievalChain = await createRetrievalChain({
-    //   retriever,
-    //   combineDocsChain
-    // });
 
     // Initialize empty chat history
     const chatHistory: any[] = [];
@@ -241,12 +211,6 @@ describe("LangChain OpenSearch Integration", () => {
           "model.llm.gpt-3.5-turbo-instruct"
         );
       }
-
-      // Check root span
-      //   if (!span.parentSpanId && span.name.includes("langchain")) {
-      //     expect(spanAttributes["entity.1.name"]).toBe("langchain_opensearch");
-      //     expect(spanAttributes["entity.1.type"]).toBe("workflow.langchain");
-      //   }
     }
   });
-});
+}, 30000);

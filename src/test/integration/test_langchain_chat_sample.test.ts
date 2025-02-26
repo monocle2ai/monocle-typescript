@@ -1,7 +1,4 @@
-import { describe, it, beforeAll, expect } from "@jest/globals";
-import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
-import { ExportResult } from "@opentelemetry/core";
-import { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import { describe, it, beforeAll, expect } from "vitest";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { formatDocumentsAsString } from "langchain/util/document";
@@ -20,36 +17,7 @@ import {
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HumanMessage } from "@langchain/core/messages";
 import { setupMonocle } from "../../instrumentation/common/instrumentation";
-
-// Import the common instrumentation functions
-// import { setContextProperties } from "../../instrumentation/common/instrumentor";
-
-// For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
-interface CapturedSpan {
-  name: string;
-  attributes: Record<string, any>;
-  events: any[];
-  parent?: CapturedSpan;
-}
-
-// Extended ConsoleSpanExporter to capture spans
-class CustomConsoleSpanExporter extends ConsoleSpanExporter {
-  private capturedSpans: CapturedSpan[] = [];
-
-  export(
-    spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
-  ): void {
-    // Store spans for later assertions
-    this.capturedSpans.push(...spans);
-    // Call the parent method with both required arguments
-    super.export(spans, resultCallback);
-  }
-
-  getCapturedSpans(): CapturedSpan[] {
-    return this.capturedSpans;
-  }
-}
+import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 
 // Create an equivalent of the Python WebBaseLoader
 class WebBaseLoader {
@@ -357,4 +325,4 @@ Use three sentences maximum and keep the answer concise.\
       expect(rootSpan.attributes["entity.1.type"]).toBe("workflow.langchain");
     }
   });
-});
+}, 10000);

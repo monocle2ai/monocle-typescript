@@ -4,7 +4,7 @@ export const config = [
     object: "BaseChatModel",
     method: "invoke",
     spanName: "langchain.chat",
-    output_processor: [require("./entities/inference.ts").config]
+    output_processor: []
   },
   {
     package: "@langchain/core/runnables",
@@ -23,7 +23,7 @@ export const config = [
     object: "VectorStoreRetriever",
     method: "_getRelevantDocuments",
     spanName: "langchain.vectorstore_retriever",
-    output_processor: [require("./entities/retrieval.ts").config]
+    output_processor: []
   },
   {
     package: "@langchain/core/prompts",

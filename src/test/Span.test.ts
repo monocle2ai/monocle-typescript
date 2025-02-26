@@ -1,66 +1,71 @@
 import { setupMonocle } from "../instrumentation/common/instrumentation";
-// import { extractAssistantMessage } from "../../utils";
+import { describe, expect, vi, beforeEach, test } from "vitest";
 
-const { Resource } = require("@opentelemetry/resources");
-const {
-  AsyncHooksContextManager
-} = require("@opentelemetry/context-async-hooks");
-const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node");
-const { context } = require("@opentelemetry/api");
+// Import the modules to mock
+const resourceModule = await import("@opentelemetry/resources");
+const asyncHooksModule = await import("@opentelemetry/context-async-hooks");
+const nodeTracerModule = await import("@opentelemetry/sdk-trace-node");
+const apiModule = await import("@opentelemetry/api");
 
-// Mock the dependencies
-jest.mock("@opentelemetry/resources");
-jest.mock("@opentelemetry/context-async-hooks");
-jest.mock("@opentelemetry/sdk-trace-node");
-jest.mock("@opentelemetry/api");
-// jest.mock("../../utils", () => ({
-//   extractAssistantMessage: jest.fn()
-// }));
+// Create the mocks properly
+vi.mock("@opentelemetry/resources", async () => {
+  const actual = await vi.importActual("@opentelemetry/resources");
+  return {
+    ...actual,
+    Resource: vi.fn().mockImplementation(() => ({
+      attributes: { SERVICE_NAME: "test-workflow" }
+    }))
+  };
+});
+vi.mock("@opentelemetry/context-async-hooks");
+vi.mock("@opentelemetry/sdk-trace-node");
+vi.mock("@opentelemetry/api");
 
 describe("setupMonocle", () => {
+  let processedSpans;
+  let dummySpanProcessor;
+
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
+    vi.clearAllMocks();
+    processedSpans = [];
 
-  test("should initialize with inference configuration", () => {
-    // Create a dummy instance to test inference config
-    const dummyInstance = {
-      constructor: { name: "AzureChatOpenAI" },
-      deployment: "test-deployment",
-      azure_endpoint: "https://test.openai.azure.com",
-      model_name: "gpt-4"
-    };
+    // Enhanced dummy span processor that tracks processed spans
+    dummySpanProcessor = {
+      onStart: (span, context) => {
+        processedSpans.push({ span, context, phase: "start" });
 
-    // Create a dummy span processor based on inference.ts config
-    const dummySpanProcessor = {
-      onStart: (span) => {
-        // Test type attribute
+        // Set attributes based on inference config
         span.setAttribute("type", "inference.azure_openai");
+        span.setAttribute("deployment", "test-deployment");
+        span.setAttribute(
+          "inference_endpoint",
+          "https://test.openai.azure.com"
+        );
+        span.setAttribute("name", "gpt-4");
 
-        // Test deployment attribute
-        span.setAttribute("deployment", dummyInstance.deployment);
-
-        // Test inference_endpoint attribute
-        span.setAttribute("inference_endpoint", dummyInstance.azure_endpoint);
-
-        // Test model name attribute
-        span.setAttribute("name", dummyInstance.model_name);
-
-        // Test data input
         span.addEvent("data.input", {
           user: "test input message"
         });
-
-        // Test data output
+      },
+      onEnd: (span) => {
+        processedSpans.push({ span, phase: "end" });
         span.addEvent("data.output", {
           response: "test output message"
         });
       },
-      onEnd: jest.fn(),
-      shutdown: jest.fn()
+      shutdown: vi.fn(),
+      forceFlush: vi.fn()
     };
+  });
 
-    // Create a dummy wrapper method
+  test("should properly process spans through the span processor", () => {
+    // const dummyInstance = {
+    //   constructor: { name: "AzureChatOpenAI" },
+    //   deployment: "test-deployment",
+    //   azure_endpoint: "https://test.openai.azure.com",
+    //   model_name: "gpt-4"
+    // };
+
     const dummyWrapperMethod = {
       package: "@langchain/core/language_models/chat_models",
       object: "BaseChatModel",
@@ -90,58 +95,88 @@ describe("setupMonocle", () => {
       ]
     };
 
-    // Call setupMonocle with test data
-    setupMonocle("test-workflow", [dummySpanProcessor], [dummyWrapperMethod]);
-
-    // Verify Resource was created with correct service name
-    expect(Resource).toHaveBeenCalledWith({
-      SERVICE_NAME: "test-workflow"
+    // Mock NodeTracerProvider to capture span processor registration
+    let registeredProcessor;
+    const addSpanProcessorMock = vi.fn((processor) => {
+      registeredProcessor = processor;
     });
+    vi.spyOn(
+      nodeTracerModule.NodeTracerProvider.prototype,
+      "addSpanProcessor"
+    ).mockImplementation(addSpanProcessorMock);
 
-    // Verify context manager was enabled
-    expect(AsyncHooksContextManager.prototype.enable).toHaveBeenCalled();
+    // Create specific mocks for methods that are verified
+    const enableMock = vi.fn();
+    vi.spyOn(
+      asyncHooksModule.AsyncHooksContextManager.prototype,
+      "enable"
+    ).mockImplementation(enableMock);
 
-    // Verify global context manager was set
-    expect(context.setGlobalContextManager).toHaveBeenCalled();
-
-    // Verify TracerProvider was created
-    expect(NodeTracerProvider).toHaveBeenCalled();
-
-    // Verify span processor was added
-    expect(NodeTracerProvider.prototype.addSpanProcessor).toHaveBeenCalledWith(
-      dummySpanProcessor
+    const setGlobalContextManagerMock = vi.fn();
+    vi.spyOn(apiModule.context, "setGlobalContextManager").mockImplementation(
+      setGlobalContextManagerMock
     );
 
-    // Create a dummy span to test processor
-    const dummySpan = {
-      setAttribute: jest.fn(),
-      addEvent: jest.fn()
+    // Setup Monocle
+    setupMonocle("test-workflow", [dummySpanProcessor], [dummyWrapperMethod]);
+
+    // Verify basic setup
+    expect(resourceModule.Resource).toHaveBeenCalledWith({
+      SERVICE_NAME: "test-workflow"
+    });
+    expect(enableMock).toHaveBeenCalled();
+    expect(setGlobalContextManagerMock).toHaveBeenCalled();
+    expect(nodeTracerModule.NodeTracerProvider).toHaveBeenCalled();
+
+    // Verify span processor registration
+    expect(addSpanProcessorMock).toHaveBeenCalledWith(dummySpanProcessor);
+    expect(registeredProcessor).toBe(dummySpanProcessor);
+
+    // Create a test span
+    const testSpan = {
+      setAttribute: vi.fn(),
+      addEvent: vi.fn(),
+      name: "test-span",
+      context: () => ({
+        traceId: "test-trace-id",
+        spanId: "test-span-id"
+      })
     };
 
-    // Test span processor behavior
-    dummySpanProcessor.onStart(dummySpan);
+    // Simulate span lifecycle
+    dummySpanProcessor.onStart(testSpan, {});
+    dummySpanProcessor.onEnd(testSpan);
 
-    // Verify span attributes were set correctly
-    expect(dummySpan.setAttribute).toHaveBeenCalledWith(
+    // Verify span processing
+    expect(processedSpans).toHaveLength(2);
+    expect(processedSpans[0].phase).toBe("start");
+    expect(processedSpans[1].phase).toBe("end");
+
+    // Verify span attributes were set during processing
+    expect(testSpan.setAttribute).toHaveBeenCalledWith(
       "type",
       "inference.azure_openai"
     );
-    expect(dummySpan.setAttribute).toHaveBeenCalledWith(
+    expect(testSpan.setAttribute).toHaveBeenCalledWith(
       "deployment",
       "test-deployment"
     );
-    expect(dummySpan.setAttribute).toHaveBeenCalledWith(
+    expect(testSpan.setAttribute).toHaveBeenCalledWith(
       "inference_endpoint",
       "https://test.openai.azure.com"
     );
-    expect(dummySpan.setAttribute).toHaveBeenCalledWith("name", "gpt-4");
+    expect(testSpan.setAttribute).toHaveBeenCalledWith("name", "gpt-4");
 
     // Verify events were added
-    expect(dummySpan.addEvent).toHaveBeenCalledWith("data.input", {
+    expect(testSpan.addEvent).toHaveBeenCalledWith("data.input", {
       user: "test input message"
     });
-    expect(dummySpan.addEvent).toHaveBeenCalledWith("data.output", {
+    expect(testSpan.addEvent).toHaveBeenCalledWith("data.output", {
       response: "test output message"
     });
+
+    // Verify processor lifecycle methods
+    expect(dummySpanProcessor.forceFlush).not.toHaveBeenCalled();
+    expect(dummySpanProcessor.shutdown).not.toHaveBeenCalled();
   });
 });

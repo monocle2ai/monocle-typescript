@@ -15,15 +15,16 @@
     "build:watch": "tsc -w -p tsconfig.json",
     "build:release": "npm run clean && tsc -p tsconfig.release.json",
     "lint": "eslint .",
-    "test": "jest --detectOpenHandles",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "prettier": "prettier \"{src,__tests__}/**/*.{ts,mts}\" --config .prettierrc --write",
-    "prettier:check": "prettier \"{src,__tests__}/**/*.{ts,mts}\" --config .prettierrc --check"
+    "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
+    "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
   },
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.755.0",
+    "@aws-sdk/client-sagemaker-runtime": "^3.750.0",
     "@langchain/aws": "^0.1.4",
     "@langchain/community": "^0.3.32",
     "@opentelemetry/api": "^1.9.0",
@@ -37,7 +38,8 @@
     "chromadb": "^1.10.4",
     "date-fns": "^4.1.0",
     "import-in-the-middle": "1.11.2",
-    "require-in-the-middle": "7.4.0"
+    "require-in-the-middle": "7.4.0",
+    "vitest": "^3.0.7"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.705.0",
