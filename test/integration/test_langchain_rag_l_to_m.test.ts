@@ -18,7 +18,6 @@ import { setupMonocle } from "../../dist";
 
 class SimpleWebLoader {
   private url: string;
-
   constructor(url: string) {
     this.url = url;
   }
@@ -44,8 +43,6 @@ class SimpleWebLoader {
   }
 
   private extractContent(html: string): string {
-    // Simple regex-based content extraction (for testing purposes)
-    // Filter for post-content, post-title, post-header classes
     const contentMatches = html.match(
       /<div class="post-content">([\s\S]*?)<\/div>/
     );
@@ -128,19 +125,12 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
 
     // Create the final prompt template
     const template = `Here is the question you need to answer:
-
     \n --- \n {question} \n --- \n
-
     Here is any available background question + answer pairs:
-
     \n --- \n {q_a_pairs} \n --- \n
-
     Here is additional context relevant to the question:
-
     \n --- \n {context} \n --- \n
-
-    Use the above context and any background question + answer pairs to answer the question: \n {question}
-    `;
+    Use the above context and any background question + answer pairs to answer the question: \n {question}    `;
 
     const leastToMostPrompt = ChatPromptTemplate.fromTemplate(template);
     const llm = new ChatOpenAI({
@@ -152,7 +142,6 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
     const processQuestion = async (question: string, qaHistory: string) => {
       // Retrieve context for the question
       const context = await retriever.invoke(question);
-
       // Run the prompt with all inputs
       const promptResult = await leastToMostPrompt.invoke({
         context,

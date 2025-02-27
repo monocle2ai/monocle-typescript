@@ -1,10 +1,5 @@
 import { describe, it, beforeAll, expect } from "vitest";
-import { ExportResult } from "@opentelemetry/core";
-import {
-  ReadableSpan,
-  BatchSpanProcessor
-} from "@opentelemetry/sdk-trace-base";
-import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { ChatOpenAI } from "@langchain/openai";
 import { OpenAIEmbeddings } from "@langchain/openai";
@@ -13,7 +8,6 @@ import {
   RunnableSequence
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
 import {
   ChatPromptTemplate,
@@ -22,13 +16,12 @@ import {
   SystemMessagePromptTemplate
 } from "@langchain/core/prompts";
 import { createRetrievalChain } from "langchain/chains/retrieval";
-import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
-
-// import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import axios from "axios";
 import { Document } from "langchain/document";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 
 class SimpleWebLoader {
   private url: string;
@@ -77,13 +70,7 @@ describe("Langchain RAG Integration Tests", () => {
 
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
-    // const exporter = new AzureBlobSpanExporter();
-
-    // Setup Monocle telemetry
-    setupMonocle("langchain_app_1", [
-      // new BatchSpanProcessor(exporter),
-      new BatchSpanProcessor(customExporter)
-    ]);
+    setupMonocle("langchain_app_1", [new BatchSpanProcessor(customExporter)]);
   });
 
   it("should run RAG workflow with proper telemetry", async () => {
@@ -107,12 +94,6 @@ describe("Langchain RAG Integration Tests", () => {
 
     // Retrieve and generate using the relevant snippets of the blog
     const retriever = vectorstore.asRetriever();
-
-    // const qaSystemPrompt = `You are an assistant for question-answering tasks. \
-    //   Use the following pieces of retrieved context to answer the question. \
-    //   If you don't know the answer, just say that you don't know. \
-    //   Use three sentences maximum and keep the answer concise.\n\n{context}`;
-
     const qaPrompt = ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(
         "You are an assistant for question-answering tasks. \
@@ -163,7 +144,6 @@ describe("Langchain RAG Integration Tests", () => {
       }
 
       if (spanAttributes["span.type"] === "inference") {
-        // Assertions for all inference attributes
         expect(spanAttributes["entity.1.type"]).toBe("inference.azure_oai");
         expect(spanAttributes["entity.1.provider_name"]).toBeDefined();
         expect(spanAttributes["entity.1.inference_endpoint"]).toBeDefined();
@@ -187,10 +167,9 @@ describe("Langchain RAG Integration Tests", () => {
         expect(spanAttributes["entity.1.type"]).toBe("workflow.langchain");
       }
     }
-  }, 30000); // Adding a 30-second timeout as per your error message
+  }, 30000);
 
   it("should run Least-to-Most RAG workflow with proper telemetry", async () => {
-    // Use our custom web loader from the reference file
     const webLoader = new SimpleWebLoader(
       "https://lilianweng.github.io/posts/2023-06-23-agent/"
     );

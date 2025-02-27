@@ -114,15 +114,8 @@ async function search_similar_documents_opensearch(
   query: string
 ): Promise<string[]> {
   const opensearch_url = process.env.OPENSEARCH_ENDPOINT_URL || "";
-  const index_name = "embeddings"; // Your index name
-
+  const index_name = "embeddings";
   const content_handler = new ContentHandler();
-
-  //   const sagemaker_endpoint_embeddings = new SageMakerEndpoint({
-  //     endpointName: "okahu-sagemaker-rag-embedding-ep",
-  //     region: "us-east-1",
-  //     content_handler
-  //   });
   const sagemaker_endpoint_embeddings = new SageMakerEndpoint({
     endpointName: "okahu-sagemaker-rag-embedding-ep",
     content_handler

@@ -3,23 +3,20 @@ import { describe, it, beforeAll, expect } from "vitest";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import * as hub from "langchain/hub";
 import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
-const { formatDocumentsAsString } = require("langchain/util/document");
-
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { ChatBedrockConverse } from "@langchain/aws";
-
-const { OpenAIEmbeddings } = require("@langchain/openai");
-const {
-  RunnablePassthrough,
-  RunnableSequence
-} = require("@langchain/core/runnables");
-const { StringOutputParser } = require("@langchain/core/output_parsers");
-const { MemoryVectorStore } = require("langchain/vectorstores/memory");
-
 import { Document } from "langchain/document";
 import axios from "axios";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import {
+  RunnablePassthrough,
+  RunnableSequence
+} from "@langchain/core/runnables";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { formatDocumentsAsString } from "langchain/util/document";
 
 class SimpleWebLoader {
   private url: string;
@@ -69,7 +66,6 @@ describe("Langchain Bedrock Integration Tests", () => {
     customExporter = new CustomConsoleSpanExporter();
     const provider = new NodeTracerProvider();
 
-    // Register your custom exporter with the provider
     provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
 
     // Register the provider

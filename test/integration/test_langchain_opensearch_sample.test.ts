@@ -1,18 +1,12 @@
 import path from "path";
 import fs from "fs";
-
 import { describe, beforeAll, expect, test } from "vitest";
-
 import { OpenAI } from "@langchain/openai";
 import { OpenAIEmbeddings } from "@langchain/openai";
-
 import { PromptTemplate } from "@langchain/core/prompts";
-const { StringOutputParser } = require("@langchain/core/output_parsers");
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenSearchVectorStore } from "@langchain/community/vectorstores/opensearch";
-const { RunnablePassthrough } = require("@langchain/core/runnables");
-
 import {
   ChatPromptTemplate,
   MessagesPlaceholder
@@ -22,55 +16,21 @@ import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 import { Client } from "@opensearch-project/opensearch";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { RunnablePassthrough } from "@langchain/core/runnables";
 
 describe("LangChain OpenSearch Integration", () => {
   let customExporter: CustomConsoleSpanExporter;
-
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
     setupMonocle("langchain_opensearch");
-
-    // Create test data directory and sample file if they don't exist
-    const myPath = path.resolve(__dirname);
-    const dataDir = path.join(myPath, "..", "data");
-    const sampleFilePath = path.join(dataDir, "sample.txt");
-
-    // Create data directory if it doesn't exist
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    // Create sample.txt with test content if it doesn't exist
-    if (!fs.existsSync(sampleFilePath)) {
-      const sampleContent = `
-Task Decomposition is the process of breaking down complex tasks into smaller, more manageable subtasks.
-This technique is particularly useful in AI and programming when solving complex problems.
-Task Decomposition helps in better organization, parallel execution, and simpler debugging of code.
-It allows teams to work on different components simultaneously and improves overall efficiency.
-
-When implementing Task Decomposition:
-1. Identify the main problem or task
-2. Break it down into logical subtasks
-3. Determine dependencies between subtasks
-4. Assign priorities to each subtask
-5. Implement solutions for each subtask
-6. Integrate the solutions back together
-
-Task Decomposition is commonly used in Agile methodologies, AI planning systems, and large software projects.
-      `;
-
-      fs.writeFileSync(sampleFilePath, sampleContent);
-      console.log(`Created sample file at ${sampleFilePath}`);
-    }
   });
-
   test("OpenSearch RAG workflow with history-aware retriever", async () => {
     // OpenSearch endpoint and credentials
-    const endpoint =
-      "https://search-sachin-opensearch-cvvd5pdeyrme2l2y26xmcpkm2a.us-east-1.es.amazonaws.com";
+    const endpoint = process.env.OPENSEARCH_ENDPOINT;
     const httpAuth = {
-      username: "sachin-opensearch",
-      password: "Sachin@123"
+      username: process.env.OPENSEARCH_USERNAME,
+      password: process.env.OPENSEARCH_PASSWORD
     };
     const indexName = "gpt-index-demo";
 
@@ -85,7 +45,7 @@ Task Decomposition is commonly used in Agile methodologies, AI planning systems,
 
     // Load documents from a local directory
     const myPath = path.resolve(__dirname);
-    const dataPath = path.join(myPath, "..", "data", "sample.txt");
+    const dataPath = path.join(myPath, "../data/sample.txt");
 
     // Verify file exists before attempting to load
     if (!fs.existsSync(dataPath)) {
@@ -116,6 +76,7 @@ Task Decomposition is commonly used in Agile methodologies, AI planning systems,
         indexName: indexName
       }
     );
+    await new Promise((resolve) => setTimeout(resolve, 6000));
 
     // Initialize the LLM
     const llm = new OpenAI({ temperature: 0 });
@@ -146,21 +107,17 @@ Task Decomposition is commonly used in Agile methodologies, AI planning systems,
     console.log(ragChain);
 
     const qaSystemPrompt = `You are an assistant for question-answering tasks. 
-Use the following pieces of retrieved context to answer the question. 
-If you don't know the answer, just say that you don't know. 
-Use three sentences maximum and keep the answer concise.
+       Use the following pieces of retrieved context to answer the question. 
+       If you don't know the answer, just say that you don't know. 
+       Use three sentences maximum and keep the answer concise.
+       Context: {context}`;
 
-Context: {context}`;
-
-    // Option 1: Use ChatPromptTemplate.fromTemplate with history
     const qaPromptWithHistory = ChatPromptTemplate.fromMessages([
       ["system", qaSystemPrompt],
       ["human", "{input}"],
-      // Add a placeholder for chat history
       new MessagesPlaceholder("chat_history")
     ]);
 
-    // Then use it like this:
     const combineDocsChain = await createStuffDocumentsChain({
       llm,
       prompt: qaPromptWithHistory
@@ -171,10 +128,8 @@ Context: {context}`;
       combineDocsChain
     });
 
-    // Initialize empty chat history
     const chatHistory: any[] = [];
 
-    // Execute query
     const question = "What is Task Decomposition?";
     const result = await chain.invoke({
       input: question,
