@@ -65,16 +65,9 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
     const provider = new NodeTracerProvider();
-
-    // Register your custom exporter with the provider
     provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
-
-    // Register the provider
     provider.register();
-
-    // Setup Monocle telemetry
     setupMonocle("raanne_rag_ltom");
-    // setContextProperties({ session_id: uuidv4() });
   });
 
   it("should run Least-to-Most RAG workflow with proper telemetry", async () => {
