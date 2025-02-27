@@ -123,8 +123,6 @@ async function search_similar_documents_opensearch(
 
   const region = "us-east-1";
   const service = "aoss";
-
-  // Get AWS credentials
   const credentials = new AWS.Credentials({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
