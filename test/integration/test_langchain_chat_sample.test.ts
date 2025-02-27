@@ -3,23 +3,20 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { formatDocumentsAsString } from "langchain/util/document";
 import axios from "axios";
-const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { Document } from "langchain/document";
 import { OpenAIEmbeddings } from "@langchain/openai";
-
 import { AzureChatOpenAI } from "@langchain/openai";
 import {
   ChatPromptTemplate,
   MessagesPlaceholder
 } from "@langchain/core/prompts";
-
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HumanMessage } from "@langchain/core/messages";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
 
-// Create an equivalent of the Python WebBaseLoader
 class WebBaseLoader {
   private webPaths: string[];
   private bsKwargs: any;
@@ -37,10 +34,7 @@ class WebBaseLoader {
         const response = await axios.get(url);
         let content = response.data;
 
-        // Here you would use a proper HTML parser like cheerio in a real implementation
-        // This is a simple implementation for testing
         if (this.bsKwargs.parse_only) {
-          // Extract content based on classes (simplified)
           const classes = this.bsKwargs.parse_only.class_;
           for (const className of classes) {
             const regex = new RegExp(
@@ -67,7 +61,6 @@ class WebBaseLoader {
   }
 }
 
-// Function to create a history-aware retriever (equivalent to Python's create_history_aware_retriever)
 function createHistoryAwareRetriever(llm: any, retriever: any, prompt: any) {
   const historyAwareRetrieval = async (input: {
     input: string;
@@ -146,9 +139,9 @@ describe("Langchain Integration Tests", () => {
 
     // Setup for history-aware retriever
     const contextualizeQSystemPrompt = `Given a chat history and the latest user question \
-which might reference context in the chat history, formulate a standalone question \
-which can be understood without the chat history. Do NOT answer the question, \
-just reformulate it if needed and otherwise return it as is.`;
+    which might reference context in the chat history, formulate a standalone question \
+    which can be understood without the chat history. Do NOT answer the question, \
+    just reformulate it if needed and otherwise return it as is.`;
 
     const contextualizeQPrompt = ChatPromptTemplate.fromMessages([
       ["system", contextualizeQSystemPrompt],
@@ -162,13 +155,10 @@ just reformulate it if needed and otherwise return it as is.`;
       contextualizeQPrompt
     );
 
-    // Define QA prompt
     const qaSystemPrompt = `You are an assistant for question-answering tasks. \
-Use the following pieces of retrieved context to answer the question. \
-If you don't know the answer, just say that you don't know. \
-Use three sentences maximum and keep the answer concise.\
-
-{context}`;
+           Use the following pieces of retrieved context to answer the question. \
+           If you don't know the answer, just say that you don't know. \
+           Use three sentences maximum and keep the answer concise.\{context}`;
 
     const qaPrompt = ChatPromptTemplate.fromMessages([
       ["system", qaSystemPrompt],
@@ -210,9 +200,6 @@ Use three sentences maximum and keep the answer concise.\
         context
       });
     };
-
-    // Set context properties
-    // setContextProperties({ session_id: "0x4fa6d91d1f2a4bdbb7a1287d90ec4a16" });
 
     // Run the chain with first question
     let chatHistory: any[] = [];
@@ -292,9 +279,8 @@ Use three sentences maximum and keep the answer concise.\
       );
 
       // Check metadata events - assuming events are in the same order as Python
-      expect(inferenceSpan.events.length).toBeGreaterThanOrEqual(3);
       const spanMetadata = inferenceSpan.events[2]; // Metadata should be the third event
-
+      expect(inferenceSpan.events.length).toBeGreaterThanOrEqual(3);
       expect(spanMetadata.attributes["completion_tokens"]).toBeDefined();
       expect(spanMetadata.attributes["prompt_tokens"]).toBeDefined();
       expect(spanMetadata.attributes["total_tokens"]).toBeDefined();
@@ -310,4 +296,4 @@ Use three sentences maximum and keep the answer concise.\
       expect(rootSpan.attributes["entity.1.type"]).toBe("workflow.langchain");
     }
   });
-}, 10000);
+}, 30000);

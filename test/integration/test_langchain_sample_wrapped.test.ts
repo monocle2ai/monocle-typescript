@@ -15,7 +15,6 @@ import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
 
-// For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
 class WebLoader {
   private webPaths: string[];
   private bsKwargs: any;
@@ -75,7 +74,6 @@ class WebLoader {
   }
 }
 
-// Chroma class to replace Python's Chroma
 class Chroma {
   private documents: Document[] = [];
 
@@ -106,7 +104,6 @@ class Chroma {
   }
 }
 
-// Format documents helper function
 const formatDocs = (docs: Document[]): string => {
   return docs.map((doc) => doc.pageContent).join("\n\n");
 };
@@ -117,17 +114,12 @@ describe("Langchain OpenAI Integration Tests", () => {
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
     const provider = new NodeTracerProvider();
-
-    // Register your custom exporter with the provider
     provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
-
-    // Register the provider
     provider.register();
     setupMonocle("openai_rag_workflow");
   });
 
   it("should run OpenAI RAG workflow with proper telemetry", async () => {
-    // Initialize LLM
     const llm = new ChatOpenAI({
       model: "gpt-3.5-turbo-0125"
     });
@@ -143,25 +135,17 @@ describe("Langchain OpenAI Integration Tests", () => {
     });
 
     const docs = await loader.load();
-
-    // Split documents
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
       chunkOverlap: 200
     });
-
     const splits = await textSplitter.splitDocuments(docs);
-
     const embeddings = new OpenAIEmbeddings();
     const vectorstore = await Chroma.from_documents({
       documents: splits,
       embedding: embeddings
     });
-
-    // Retrieve and generate using the relevant snippets of the blog
     const retriever = vectorstore.as_retriever();
-
-    // Get prompt from LangChain Hub
     const prompt = await hub.pull("rlm/rag-prompt");
 
     const ragChain = RunnableSequence.from([
@@ -203,8 +187,6 @@ describe("Langchain OpenAI Integration Tests", () => {
         "model.embedding.text-embedding-ada-002"
       );
     }
-
-    // Check for inference spans
     const inferenceSpan = spans.find(
       (span) => span.attributes["span.type"] === "inference"
     );
@@ -232,8 +214,6 @@ describe("Langchain OpenAI Integration Tests", () => {
       expect(spanMetadata.attributes["prompt_tokens"]).toBeDefined();
       expect(spanMetadata.attributes["total_tokens"]).toBeDefined();
     }
-
-    // Check root span
     const rootSpan = spans.find(
       (span) => !span.parent && span.name === "langchain.workflow"
     );

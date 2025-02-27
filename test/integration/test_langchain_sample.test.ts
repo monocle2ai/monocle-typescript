@@ -1,5 +1,4 @@
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
-const { formatDocumentsAsString } = require("langchain/util/document");
 import { PromptTemplate } from "@langchain/core/prompts";
 import {
   RunnableSequence,
@@ -7,13 +6,12 @@ import {
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { Document } from "@langchain/core/documents";
-const { MemoryVectorStore } = require("langchain/vectorstores/memory");
-
 import { describe, it, beforeAll, expect } from "vitest";
-
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { formatDocumentsAsString } from "langchain/util/document";
 
 describe("LangChain Integration Tests", () => {
   let customExporter: CustomConsoleSpanExporter;
