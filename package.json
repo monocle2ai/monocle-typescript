@@ -25,6 +25,7 @@
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.705.0",
+    "@aws-sdk/client-sagemaker-runtime": "^3.750.0",
     "@azure/storage-blob": "^12.26.0",
     "@aws-sdk/client-bedrock-runtime": "^3.755.0",
     "@aws-sdk/client-sagemaker-runtime": "^3.750.0",

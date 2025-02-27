@@ -21,7 +21,7 @@ import { createRetrievalChain } from "langchain/chains/retrieval";
 import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 import { Client } from "@opensearch-project/opensearch";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
+import { setupMonocle } from "../../dist";
 
 describe("LangChain OpenSearch Integration", () => {
   let customExporter: CustomConsoleSpanExporter;

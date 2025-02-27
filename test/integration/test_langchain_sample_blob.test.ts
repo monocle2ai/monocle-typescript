@@ -13,7 +13,6 @@ import {
   RunnableSequence
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
 const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
 import {
@@ -29,6 +28,7 @@ import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
 import axios from "axios";
 import { Document } from "langchain/document";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
+import { setupMonocle } from "../../dist";
 
 class SimpleWebLoader {
   private url: string;

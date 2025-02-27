@@ -14,12 +14,12 @@ const {
   RunnableSequence
 } = require("@langchain/core/runnables");
 const { StringOutputParser } = require("@langchain/core/output_parsers");
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
 const { MemoryVectorStore } = require("langchain/vectorstores/memory");
 
 import { Document } from "langchain/document";
 import axios from "axios";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
+import { setupMonocle } from "../../dist";
 
 class SimpleWebLoader {
   private url: string;
