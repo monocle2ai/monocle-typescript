@@ -11,10 +11,10 @@ import {
   RunnableSequence
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
+import { setupMonocle } from "../../dist";
 
 class SimpleWebLoader {
   private url: string;

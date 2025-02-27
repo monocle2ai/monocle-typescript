@@ -16,8 +16,8 @@ import {
 
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HumanMessage } from "@langchain/core/messages";
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
+import { setupMonocle } from "../../dist";
 
 // Create an equivalent of the Python WebBaseLoader
 class WebBaseLoader {
@@ -106,24 +106,9 @@ describe("Langchain Integration Tests", () => {
 
     // Setup Monocle telemetry with custom exporter
     setupMonocle("langchain_app_1");
-
-    // setupMonocle({
-    //   workflowName: "langchain_app_1",
-    //   spanProcessors: [new BatchSpanProcessor(customExporter)],
-    //   wrapperMethods: []
-    // });
   });
 
   it("should run LangChain chat workflow with proper telemetry", async () => {
-    // Initialize LLM
-    // const llm = new AzureChatOpenAI({
-    //   azureDeployment: process.env.AZURE_OPENAI_API_DEPLOYMENT,
-    //   apiKey: process.env.AZURE_OPENAI_API_KEY,
-    //   apiVersion: process.env.AZURE_OPENAI_API_VERSION,
-    //   azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-    //   temperature: 0.7,
-    //   modelName: "gpt-3.5-turbo-0125"
-    // });
     const llm = new AzureChatOpenAI({
       azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_API_DEPLOYMENT,
       azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,

@@ -1,4 +1,3 @@
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 const { formatDocumentsAsString } = require("langchain/util/document");
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -14,6 +13,7 @@ import { describe, it, beforeAll, expect } from "vitest";
 
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
+import { setupMonocle } from "../../dist";
 
 describe("LangChain Integration Tests", () => {
   let customExporter: CustomConsoleSpanExporter;

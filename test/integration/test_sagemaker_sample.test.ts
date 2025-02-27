@@ -13,7 +13,7 @@ import * as AWS from "aws-sdk";
 import { Client } from "@opensearch-project/opensearch";
 import AWS4Auth from "aws4";
 import { Document } from "langchain/document";
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
+import { setupMonocle } from "../../dist";
 
 interface LLMResponseData {
   context: string;

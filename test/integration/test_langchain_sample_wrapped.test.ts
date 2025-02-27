@@ -11,9 +11,9 @@ import {
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import axios from "axios";
-import { setupMonocle } from "../../instrumentation/common/instrumentation";
 import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
+import { setupMonocle } from "../../dist";
 
 // For storing captured spans since ConsoleSpanExporter doesn't have getCapturedSpans
 class WebLoader {
