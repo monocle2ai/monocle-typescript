@@ -1,0 +1,50 @@
+[
+    {
+        "name": "vectorDb.searchByText",
+        "context": {
+            "trace_id": "d092abd9101aaf36ec9f7858e1f9e63a",
+            "span_id": "67b3d64c5bb4b870",
+            "trace_flags": 1
+        },
+        "kind": 0,
+        "parent_id": "None",
+        "start_time": "2025-02-28T16:51:12.517000Z",
+        "end_time": "2025-02-28T16:51:13.249000Z",
+        "status": {
+            "status_code": "UNSET"
+        },
+        "attributes": {
+            "monocle-typescript.version": "0.0.1",
+            "span.type": "retrieval",
+            "entity.1.name": "gemini.app",
+            "entity.1.type": "workflow.generic",
+            "entity.2.name": "InMemoryVectorDB",
+            "entity.2.type": "vectorstore.InMemoryVectorDB",
+            "entity.3.name": "text-embedding-ada-002",
+            "entity.3.type": "model.embedding.text-embedding-ada-002",
+            "entity.count": 3
+        },
+        "events": [
+            {
+                "name": "data.input",
+                "timestamp": "2025-02-28T16:51:13.249000Z",
+                "attributes": {
+                    "input": "programming languages"
+                }
+            },
+            {
+                "name": "data.output",
+                "timestamp": "2025-02-28T16:51:13.249000Z",
+                "attributes": {
+                    "response": "JavaScript is a high-level programming language, Machine learning is a subset of artificial intelligence"
+                }
+            }
+        ],
+        "links": [],
+        "resource": {
+            "attributes": {
+                "service.name": "gemini.app"
+            }
+        }
+    }
+]
