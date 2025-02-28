@@ -94,7 +94,11 @@ class MonocleInstrumentation extends InstrumentationBase {
                 // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
-            const onRequire = (exports, name, baseDir) => {
+            const onRequire = (exports, name: string, baseDir: string) => {
+                if (module.name !== name && module.name.includes(baseDir + "/" + name)) {
+                    // @ts-ignore: private field access required
+                    return this._onRequire(module, exports, module.name, baseDir);
+                }
                 // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
@@ -113,11 +117,20 @@ class MonocleInstrumentation extends InstrumentationBase {
     _getOnPatchMain(element) {
         return (moduleExports) => {
             try {
-                this._wrap(
-                    moduleExports[element.object].prototype,
-                    element.method,
-                    this._patchMainMethodName(element)
-                );
+                if (typeof moduleExports === "function") {
+                    this._wrap(
+                        moduleExports.prototype,
+                        element.method,
+                        this._patchMainMethodName(element)
+                    );
+                }
+                else {
+                    this._wrap(
+                        moduleExports[element.object].prototype,
+                        element.method,
+                        this._patchMainMethodName(element)
+                    );
+                }
                 return moduleExports;
             } catch (e) {
                 consoleLog('Error in _getOnPatchMain', {
@@ -167,8 +180,8 @@ const setupMonocle = (
         //     tracerProvider.addSpanProcessor(processor)
         const userWrapperMethods: any[] = []
         wrapperMethods.forEach((wrapperMethod: any[]) => {
-            if (Array.isArray(wrapperMethod)) {
-                userWrapperMethods.push(...wrapperMethod)
+            if (wrapperMethod) {
+                userWrapperMethods.push({ ...wrapperMethod })
             }
         })
         const monocleInstrumentation = new MonocleInstrumentation({
