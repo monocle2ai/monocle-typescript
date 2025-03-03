@@ -1,5 +1,5 @@
-
 ## Overview
+
 Step to run the test cases.
 
 ## Installation
@@ -7,6 +7,7 @@ Step to run the test cases.
 1. Install dependencies:
    ```bash
    npm install
+   ```
 
 # Environment Variables Setup and Running the tests
 
@@ -33,7 +34,12 @@ set AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
 set AWS_ACCESS_KEY_ID_EXPORTER="your-aws-access-key-id-exporter"
 set AWS_SECRET_ACCESS_KEY_EXPORTER="your-aws-secret-access-key-exporter"
 set MISTRAL_API_KEY="your-mistral-api-key"
- ```` 
+set OPENSEARCH_ENDPOINT="your-open-search-endpoint"
+set OPENSEARCH_USERNAME="your-open-search-username"
+set OPENSEARCH_PASSWORD="your-open-search-password"
+
+```
+
 ### For Mac and Linux:
 
 To export the environment variables, run these commands in your terminal, or add them to your shell configuration file (e.g., `~/.bashrc`, `~/.zshrc`):
@@ -53,7 +59,11 @@ export AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
 export AWS_ACCESS_KEY_ID_EXPORTER="your-aws-access-key-id-exporter"
 export AWS_SECRET_ACCESS_KEY_EXPORTER="your-aws-secret-access-key-exporter"
 export MISTRAL_API_KEY="your-mistral-api-key"
+export OPENSEARCH_ENDPOINT="your-open-search-endpoint"
+export OPENSEARCH_USERNAME="your-open-search-username"
+export OPENSEARCH_PASSWORD="your-open-search-password"
 ```
+
 ## Testing the Project
 
 Once the environment variables are set, you can run the run the tests using the following commands.
@@ -64,3 +74,4 @@ Once the environment variables are set, you can run the run the tests using the 
 
    ```cmd
    npm test
+   ```
