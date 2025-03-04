@@ -20,7 +20,7 @@ export interface Span {
 export const sortSpans = (spans: Span[]): Span[] => {
     return [...spans].sort((a, b) => {
         if (a.name === b.name) {
-            return (a.parent_id || '') > (b.parent_id || '') ? 1 : -1;
+            return Object.keys(a.attributes).length  > Object.keys(b.attributes).length ? 1 : -1;
         }
         return a.name > b.name ? 1 : -1;
     });
