@@ -1,0 +1,26 @@
+{
+  "name": "custom-instrumentation-monocle",
+  "version": "1.0.0",
+  "description": "Custom instrumentation example with Monocle for Google Gemini and Vector DB interactions",
+  "main": "example.js",
+  "scripts": {
+    "start": "node example.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "monocle",
+    "gemini",
+    "google-ai",
+    "vectordb",
+    "instrumentation",
+    "telemetry"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.22.0",
+    "axios": "^1.4.0",
+    "dotenv": "^16.0.3",
+    "monocle2ai": "^0.0.1-beta.9"
+  }
+}

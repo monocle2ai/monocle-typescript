@@ -1,0 +1,60 @@
+[
+    {
+        "name": "openaiClient.chat",
+        "context": {
+            "trace_id": "a30bb318d22c6fe7047d9cea059ca5a7",
+            "span_id": "ada1cbec82ae33b4",
+            "trace_flags": 1
+        },
+        "kind": 0,
+        "parent_id": "None",
+        "start_time": "2025-02-28T16:51:33.565000Z",
+        "end_time": "2025-02-28T16:51:34.793000Z",
+        "status": {
+            "status_code": "UNSET"
+        },
+        "attributes": {
+            "monocle-typescript.version": "0.0.1",
+            "span.type": "inference",
+            "entity.1.name": "openai.app",
+            "entity.1.type": "workflow.generic",
+            "entity.2.type": "openai",
+            "entity.2.provider_name": "OpenAI",
+            "entity.2.deployment": "gpt-3.5-turbo",
+            "entity.2.inference_endpoint": "https://api.openai.com/v1",
+            "entity.3.name": "gpt-3.5-turbo",
+            "entity.3.type": "model.llm.gpt-3.5-turbo",
+            "entity.count": 3
+        },
+        "events": [
+            {
+                "name": "data.input",
+                "timestamp": "2025-02-28T16:51:34.793000Z",
+                "attributes": {
+                    "input": [
+                        "You are a helpful AI assistant.",
+                        "Tell me a short joke about programming."
+                    ]
+                }
+            },
+            {
+                "name": "data.output",
+                "timestamp": "2025-02-28T16:51:34.793000Z",
+                "attributes": {
+                    "response": "Why do programmers prefer dark mode? Because the light attracts bugs!"
+                }
+            },
+            {
+                "name": "metadata",
+                "timestamp": "2025-02-28T16:51:34.793000Z",
+                "attributes": {}
+            }
+        ],
+        "links": [],
+        "resource": {
+            "attributes": {
+                "service.name": "openai.app"
+            }
+        }
+    }
+]
