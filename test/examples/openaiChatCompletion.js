@@ -1,4 +1,4 @@
-const { setupMonocle } = require("../src")
+const { setupMonocle } = require("../../dist")
 
 setupMonocle(
     "openai.app"

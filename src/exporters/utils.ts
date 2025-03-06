@@ -29,10 +29,12 @@ export function exportInfo(span: Span) {
       trace_state: span.spanContext().traceState,
     },
     kind: span.kind,
-    parent_id: span.parentSpanId,
+    parent_id: span.parentSpanId || "None",
     start_time: convertTimestamp(hrTimeToTimeStamp(span.startTime)),
     end_time: convertTimestamp(hrTimeToTimeStamp(span.endTime)),
-    status: span.status,
+    status: {
+      "status_code": "UNSET"
+    },
     attributes: span.attributes,
     events: span.events,
     links: span.links,
@@ -43,7 +45,7 @@ export function exportInfo(span: Span) {
       }
     },
   };
-  
+
   if (span_object.events && span_object.events.length > 0) {
     //@ts-ignore
     // Have to ingore type because we need the timestamp field instead if time field to maintain consistency with python sdk
@@ -60,15 +62,15 @@ export function exportInfo(span: Span) {
 
 function convertTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
-  
+
   // Get the milliseconds part
   const ms = date.getUTCMilliseconds();
-  
+
   // Format the main part of the date
   const mainPart = date.toISOString().split('.')[0];
-  
+
   // Format microseconds (6 digits)
   const microseconds = ms.toString().padStart(3, '0') + '000';
-  
+
   return `${mainPart}.${microseconds}Z`;
 }

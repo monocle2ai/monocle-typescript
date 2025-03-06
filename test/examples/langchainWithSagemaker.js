@@ -1,4 +1,4 @@
-const { setupMonocle } = require("../dist");
+const { setupMonocle } = require("../../dist");
 setupMonocle("langchainSagemaker.app");
 
 const { OpenAIEmbeddings } = require("@langchain/openai");
