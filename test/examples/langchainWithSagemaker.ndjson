@@ -1,0 +1,124 @@
+{
+    "name": "langchain.vectorstore_retriever",
+    "context": {
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "b7500a16aee244f0",
+        "trace_flags": 1
+    },
+    "kind": 0,
+    "parent_id": "dde5001d61c4cb4b",
+    "start_time": "2025-02-24T08:21:38.017000Z",
+    "end_time": "2025-02-24T08:21:38.930000Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "retrieval",
+        "entity.1.name": "MemoryVectorStore",
+        "entity.1.type": "vectorstore.MemoryVectorStore",
+        "entity.2.type": "model.embedding.text-embedding-ada-002",
+        "entity.count": 2
+    },
+    "events": [
+        {
+            "name": "data.input",
+            "timestamp": "2025-02-24T08:21:38.930000Z",
+            "attributes": {
+                "input": "What is coffee?"
+            }
+        },
+        {
+            "name": "data.output",
+            "timestamp": "2025-02-24T08:21:38.930000Z",
+            "attributes": {
+                "response": "Coffee is a beverage brewed from roasted, ground coffee beans."
+            }
+        }
+    ],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "langchainSagemaker.app"
+        }
+    }
+}
+{
+    "name": "langchain.sequence",
+    "context": {
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "dde5001d61c4cb4b",
+        "trace_flags": 1
+    },
+    "kind": 0,
+    "parent_id": "8c839bd0c44d8305",
+    "start_time": "2025-02-24T08:21:38.017000Z",
+    "end_time": "2025-02-24T08:21:38.932000Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "langchainSagemaker.app"
+        }
+    }
+}
+{
+    "name": "langchain.prompt_template.format",
+    "context": {
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "7fd3e0e1248af28b",
+        "trace_flags": 1
+    },
+    "kind": 0,
+    "parent_id": "8c839bd0c44d8305",
+    "start_time": "2025-02-24T08:21:38.933000Z",
+    "end_time": "2025-02-24T08:21:38.933000Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "langchainSagemaker.app"
+        }
+    }
+}
+a beverage brewed from roasted, ground coffee beans
+{
+    "name": "langchain.sequence",
+    "context": {
+        "trace_id": "26a96cdc5ecb7f78caa551651992d71b",
+        "span_id": "8c839bd0c44d8305",
+        "trace_flags": 1
+    },
+    "kind": 0,
+    "start_time": "2025-02-24T08:21:38.016000Z",
+    "end_time": "2025-02-24T08:21:40.258000Z",
+    "status": {
+        "code": 0
+    },
+    "attributes": {
+        "monocle-typescript.version": "0.0.1",
+        "span.type": "workflow",
+        "entity.1.name": "langchainSagemaker.app",
+        "entity.1.type": "workflow.langchain",
+        "entity.count": 1
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "service.name": "langchainSagemaker.app"
+        }
+    }
+}
