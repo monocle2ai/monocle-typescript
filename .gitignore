@@ -4,3 +4,4 @@ launch.json
 .vscode
 samples
 dist
+.env
