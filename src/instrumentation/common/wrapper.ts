@@ -1,3 +1,6 @@
+import { context, Tracer } from "@opentelemetry/api";
+import { getScopesInternal, setScopesInternal } from "./utils";
+
 const isRootSpan = function (span) {
     if (typeof span.parentSpanId === "string" && span.parentSpanId.length > 0)
         return false
@@ -7,7 +10,10 @@ const isRootSpan = function (span) {
 const preProcessSpan = function ({ span, instance, args, outputProcessor }) {
     const sdkVersion = "0.0.1"
     span.setAttribute("monocle-typescript.version", sdkVersion)
-
+    const scopes = getScopesInternal()
+    for (const scopeKey in scopes) {
+        span.setAttribute(`scope.${scopeKey}`, scopes[scopeKey])
+    }
     if (outputProcessor) {
         outputProcessor(
             {
@@ -32,15 +38,14 @@ const postProcessSpan = function ({ span, instance, args, returnValue, outputPro
     }
 }
 
-const getPatchedMain = function ({ tracer, ...element }) {
-    return function mainMethodName(original) {
+export const getPatchedMain = function ({ tracer, ...element }: { tracer: Tracer, spanName: string, package: string, object: string, method: string, output_processor: any }) {
+    return function mainMethodName(original: Function) {
         return function patchMainMethodName() {
             return tracer.startActiveSpan(
                 element.spanName || element.package || '' + element.object || '' + element.method || '',
-                async (span) => {
+                (span) => {
                     preProcessSpan({ span: span, instance: this, args: arguments, outputProcessor: null })
-                    // processSpan({span, instance: this, args: arguments, outputProcessor})
-                    const returnValue = await original.apply(this, arguments);
+                    const returnValue = original.apply(this, arguments);
                     postProcessSpan({ span, instance: this, args: arguments, returnValue, outputProcessor: null })
                     processSpan({ span, instance: this, args: arguments, outputProcessor: element.output_processor, returnValue, wrappedPackage: element.package })
                     span.end()
@@ -48,6 +53,19 @@ const getPatchedMain = function ({ tracer, ...element }) {
                 }
             );
 
+        };
+    };
+}
+
+export const getPatchedScopeMain = function ({ tracer, ...element }: { tracer: Tracer, spanName: string, package: string, object: string, method: string, output_processor: any, scopeName: string }) {
+    return function mainMethodName(original: Function) {
+        return function patchMainMethodName() {
+            return setScopesInternal({ [element.scopeName]: null },
+                context.active(),
+                () => {
+                    return original.apply(this, arguments);
+                }
+            )
         };
     };
 }
@@ -198,6 +216,3 @@ function processSpan({ span, instance, args, returnValue, outputProcessor, wrapp
         span.setAttribute("entity.count", spanIndex - 1);
     }
 }
-
-const _getPatchedMain = getPatchedMain;
-export { _getPatchedMain as getPatchedMain };

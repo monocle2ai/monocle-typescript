@@ -28,11 +28,11 @@ async function main() {
   });
 
   // Output response with sources
-  console.log(response);
+  console.debug(response);
 
   if (sourceNodes) {
     sourceNodes.forEach((source, index) => {
-      console.log(
+      console.debug(
         `\n${index}: Score: ${source.score} - ${source.node.getContent(MetadataMode.NONE).substring(0, 50)}...\n`,
       );
      

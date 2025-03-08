@@ -1,10 +1,7 @@
-
-const { setupMonocle } = require("../../dist")
-
+const { setupMonocle, setScopes, setScopesBind } = require("../../dist")
 setupMonocle(
-  "langchain.app"
+    "langchain.app"
 )
-
 
 const { ChatOpenAI, OpenAIEmbeddings } = require("@langchain/openai")
 const { formatDocumentsAsString } = require("langchain/util/document");
@@ -17,7 +14,7 @@ const {
 } = require("@langchain/core/runnables");
 const { StringOutputParser } = require("@langchain/core/output_parsers");
 
-const langchainInvoke = async (msg) => {
+let langchainInvoke = async (msg) => {
     const model = new ChatOpenAI({});
     const text = "Coffee is a beverage brewed from roasted, ground coffee beans."
     const vectorStore = await MemoryVectorStore.fromTexts(
@@ -44,8 +41,16 @@ Question: {question}`);
         new StringOutputParser(),
     ]);
 
-   const res = await chain.invoke(msg)
-   return res;
+    // set scope for invoking the chain
+    const res = await setScopes({ "langchain.scope_test": "1" }, () => {
+        return chain.invoke(msg)
+    })
+    return res;
 }
 
-langchainInvoke("What is coffee?").then(console.log)
+// bind the whole function with a scope
+langchainInvoke = setScopesBind({
+    "langchain.scope_bind_test": "1"
+}, langchainInvoke)
+
+langchainInvoke("What is coffee?").then(console.debug)
