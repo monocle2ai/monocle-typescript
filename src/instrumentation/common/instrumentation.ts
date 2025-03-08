@@ -8,15 +8,17 @@ import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
-import { getPatchedMain } from "./wrapper";
+import { getPatchedMain, getPatchedScopeMain } from "./wrapper";
 import { AWS_CONSTANTS } from './constants';
-import path from 'path';
+import * as path from 'path';
+import * as fs from 'fs'
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
+import { setScopesInternal, getScopesInternal, setScopesBindInternal } from './utils';
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
@@ -34,8 +36,11 @@ class MonocleInstrumentation extends InstrumentationBase {
     init() {
         consoleLog('Initializing MonocleInstrumentation');
         const modules: any[] = []
+        const scopeMethodsForInstrumentation = load_scopes();
+
         // @ts-ignore: custom field access
-        const packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
+        let packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
+        packagesForInstrumentation = packagesForInstrumentation.concat(scopeMethodsForInstrumentation)
         packagesForInstrumentation.forEach(element => {
             const module = new InstrumentationNodeModuleDefinition(
                 element.package,
@@ -44,6 +49,7 @@ class MonocleInstrumentation extends InstrumentationBase {
             );
             modules.push(module)
         })
+
         consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
     }
@@ -147,6 +153,9 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     _patchMainMethodName(element) {
         const tracer = this.tracer
+        if (element.scopeName) {
+            return getPatchedScopeMain({ tracer, ...element })
+        }
         return getPatchedMain({ tracer, ...element })
     }
 }
@@ -245,6 +254,71 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
         )
 
     }
+}
+
+
+// Required imports
+
+// Constants
+const SCOPE_METHOD_FILE = process.env.SCOPE_METHOD_FILE || 'monocle_scopes.json';
+const SCOPE_CONFIG_PATH = process.env.SCOPE_CONFIG_PATH
+const http_scopes: Record<string, string> = {};
+
+export function load_scopes(): any[] {
+    let methods_data: any[] = [];
+    let scope_methods: any[] = [];
+    if (!SCOPE_CONFIG_PATH) {
+        consoleLog('SCOPE_CONFIG_PATH not set');
+        return scope_methods;
+    }
+    try {
+        const methodsJson = fs.readFileSync(
+            path.join(SCOPE_CONFIG_PATH || '', SCOPE_METHOD_FILE),
+            'utf8'
+        );
+        methods_data = JSON.parse(methodsJson);
+        for (const method of methods_data) {
+            if (method.http_header) {
+                http_scopes[method.http_header] = method.scope_name;
+            } else {
+                scope_methods.push(method);
+            }
+        }
+    } catch (e) {
+        consoleLog(`Error loading scope methods from file: ${e}`);
+    }
+    return scope_methods;
+}
+
+export function setScopes<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    scopes: Record<string, string | null>,
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+) {
+    return setScopesInternal(
+        scopes,
+        context.active(),
+        fn,
+        thisArg,
+        ...args
+    )
+}
+
+export function setScopesBind(
+    scopes: Record<string, string | null>,
+    fn: Function
+): Function {
+    const bindFn = setScopesBindInternal(
+        scopes,
+        context.active(),
+        fn
+    );
+    return bindFn;
+}
+
+export function getScopes(): Record<string, string> {
+    return getScopesInternal();
 }
 
 export { setupMonocle };
