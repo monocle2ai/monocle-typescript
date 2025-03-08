@@ -4,3 +4,5 @@ const AWS_CONSTANTS = {
 
 const _AWS_CONSTANTS = AWS_CONSTANTS
 export { _AWS_CONSTANTS as AWS_CONSTANTS }
+
+export const MONOCLE_SCOPE_NAME_PREFIX = 'monocle.scope.';
