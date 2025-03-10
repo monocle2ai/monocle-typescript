@@ -8,21 +8,25 @@ import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
-import { getPatchedMain } from "./wrapper";
+import { getPatchedMain, getPatchedScopeMain } from "./wrapper";
 import { AWS_CONSTANTS } from './constants';
-import path from 'path';
+import * as path from 'path';
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
-
+import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal } from './utils';
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
         super('MonocleInstrumentation', "1.0", config)
         consoleLog('MonocleInstrumentation initialized with config:', config);
     }
+
+    public getTracer() {
+        return this.tracer;
+    }   
 
     /**
      * Init method will be called when the plugin is constructed.
@@ -34,8 +38,11 @@ class MonocleInstrumentation extends InstrumentationBase {
     init() {
         consoleLog('Initializing MonocleInstrumentation');
         const modules: any[] = []
+        const scopeMethodsForInstrumentation = load_scopes();
+
         // @ts-ignore: custom field access
-        const packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
+        let packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
+        packagesForInstrumentation = packagesForInstrumentation.concat(scopeMethodsForInstrumentation)
         packagesForInstrumentation.forEach(element => {
             const module = new InstrumentationNodeModuleDefinition(
                 element.package,
@@ -44,6 +51,7 @@ class MonocleInstrumentation extends InstrumentationBase {
             );
             modules.push(module)
         })
+
         consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
     }
@@ -147,6 +155,9 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     _patchMainMethodName(element) {
         const tracer = this.tracer
+        if (element.scopeName) {
+            return getPatchedScopeMain({ tracer, ...element })
+        }
         return getPatchedMain({ tracer, ...element })
     }
 }
@@ -187,6 +198,8 @@ const setupMonocle = (
         const monocleInstrumentation = new MonocleInstrumentation({
             userWrapperMethods
         });
+
+        setInstrumentor(monocleInstrumentation)
 
         monocleInstrumentation.setTracerProvider(tracerProvider);
 
@@ -245,6 +258,46 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
         )
 
     }
+}
+
+
+export function setScopes<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    scopes: Record<string, string | null>,
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+) {
+    return setScopesInternal(
+        scopes,
+        context.active(),
+        fn,
+        thisArg,
+        ...args
+    )
+}
+
+export function setScopesBind(
+    scopes: Record<string, string | null>,
+    fn: Function
+): Function {
+    const bindFn = setScopesBindInternal(
+        scopes,
+        context.active(),
+        fn
+    );
+    return bindFn;
+}
+
+export function startTrace<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+) {
+    return startTraceInternal(fn, thisArg, ...args);
+}
+
+export function getScopes(): Record<string, string> {
+    return getScopesInternal();
 }
 
 export { setupMonocle };
