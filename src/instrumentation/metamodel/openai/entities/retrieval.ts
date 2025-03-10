@@ -1,3 +1,5 @@
+import { extractAssistantMessage } from "../../utils";
+
 export const config = {
   type: "retrieval",
   attributes: [
@@ -32,22 +34,16 @@ export const config = {
         {
           _comment: "this is input to LLM",
           attribute: "input",
-
-          accessor: function ({ args }) {
-            const inputUser = args[0].messages.filter(
-              (item) => item.role == "user"
-            )[0]?.content;
-            const inputSystem = args[0].messages.filter(
-              (item) => item.role == "system"
-            )[0]?.content;
-            const retVal: string[] = [];
-            if (inputUser) {
-              retVal.push(inputUser);
+          accessor: function ({
+            args
+            // instance
+          }) {
+            if (args[0].value && typeof args[0].value === "string") {
+              return args[0].value;
             }
-            if (inputSystem) {
-              retVal.push(inputSystem);
+            if (args[0] && typeof args[0] === "string") {
+              return args[0];
             }
-            return retVal;
           }
         }
       ]
@@ -59,7 +55,7 @@ export const config = {
           _comment: "this is response from LLM",
           attribute: "response",
           accessor: function ({ response }) {
-            return [response.choices[0].message.content];
+            return extractAssistantMessage(response);
           }
         }
       ]
