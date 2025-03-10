@@ -1,5 +1,5 @@
 import { WrapperArguments } from "./constants";
-import { setScopes } from "./instrumentation";
+// import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
 import { Span } from "@opentelemetry/api";
 
@@ -72,12 +72,7 @@ export class DefaultSpanHandler implements SpanHandler {
         args: IArguments;
         outputProcessor: any;
     }) {
-        const sdkVersion = "0.0.1"
-        span.setAttribute("monocle-typescript.version", sdkVersion)
-        const scopes = getScopesInternal()
-        for (const scopeKey in scopes) {
-            span.setAttribute(`scope.${scopeKey}`, scopes[scopeKey])
-        }
+        DefaultSpanHandler.setMonocleAttributes(span);
         if (outputProcessor) {
             outputProcessor(
                 {
@@ -118,7 +113,7 @@ export class DefaultSpanHandler implements SpanHandler {
         let spanIndex = 1;
 
         if (isRootSpan(span)) {
-            spanIndex += this.setWorkflowAttributes({ wrappedPackage, span, spanIndex });
+            spanIndex += DefaultSpanHandler.setWorkflowAttributes({ wrappedPackage, span, spanIndex });
             // spanIndex += setAppHostingIdentifierAttribute(span, spanIndex);
         }
 
@@ -221,8 +216,8 @@ export class DefaultSpanHandler implements SpanHandler {
     //     });
     // }
 
-    private setWorkflowAttributes({ wrappedPackage, span, spanIndex }: {
-        wrappedPackage: string;
+    public static setWorkflowAttributes({ wrappedPackage, span, spanIndex }: {
+        wrappedPackage?: string;
         span: Span;
         spanIndex: number;
     }): number {
@@ -234,7 +229,7 @@ export class DefaultSpanHandler implements SpanHandler {
         }
         let workflowTypeSet = false;
         for (let [packageName, workflowType] of Object.entries(WORKFLOW_TYPE_MAP)) {
-            if (wrappedPackage !== undefined && wrappedPackage.includes(packageName)) {
+            if (wrappedPackage && wrappedPackage.includes(packageName)) {
                 span.setAttribute(`entity.${spanIndex}.type`, workflowType);
                 workflowTypeSet = true;
             }
@@ -244,4 +239,15 @@ export class DefaultSpanHandler implements SpanHandler {
         }
         return returnValue;
     }
+
+    public static setMonocleAttributes(span: Span) {
+        const sdkVersion = "0.0.1";
+        span.setAttribute("monocle-typescript.version", sdkVersion);
+        const scopes = getScopesInternal();
+        for (const scopeKey in scopes) {
+            span.setAttribute(`scope.${scopeKey}`, scopes[scopeKey]);
+        }
+    }
 }
+
+

@@ -2,15 +2,16 @@ import { context, Tracer } from "@opentelemetry/api";
 import { setScopesInternal } from "./utils";
 import { DefaultSpanHandler, SpanHandler } from "./spanHandler";
 import { WrapperArguments } from "./constants";
+import { consoleLog } from "../../common/logging";
 
-export const getPatchedMain = function (element : WrapperArguments) {
+export const getPatchedMain = function (element: WrapperArguments) {
     const spanHandler: SpanHandler = element.spanHandler || new DefaultSpanHandler();
     const tracer = element.tracer;
     return function mainMethodName(original: Function) {
         return function patchMainMethodName() {
             if (element.skipSpan) {
                 spanHandler.preTracing(element);
-                if(spanHandler.executeFunction) {
+                if (spanHandler.executeFunction) {
                     return spanHandler.executeFunction(element, () => original.apply(this, arguments));
                 }
                 return original.apply(this, arguments);
@@ -33,6 +34,7 @@ export const getPatchedMain = function (element : WrapperArguments) {
 export const getPatchedScopeMain = function ({ tracer, ...element }: { tracer: Tracer, spanName: string, package: string, object: string, method: string, output_processor: any, scopeName: string }) {
     return function mainMethodName(original: Function) {
         return function patchMainMethodName() {
+            consoleLog(`calling scope wrapper ${element.scopeName}`);
             return setScopesInternal({ [element.scopeName]: null },
                 context.active(),
                 () => {

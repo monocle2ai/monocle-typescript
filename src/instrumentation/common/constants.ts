@@ -22,5 +22,6 @@ export interface WrapperArguments {
     method: string, 
     output_processor: any,
     spanHandler?: SpanHandler,
-    skipSpan?: boolean
+    skipSpan?: boolean,
+    scopeName?: string,
 }

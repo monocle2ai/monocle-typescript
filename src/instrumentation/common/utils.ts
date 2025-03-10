@@ -1,9 +1,15 @@
 import * as path from 'path';
 import * as fs from 'fs'
 import { context as context_api, propagation, Context } from "@opentelemetry/api";
-import { RandomIdGenerator } from "@opentelemetry/sdk-trace-node";
+import { RandomIdGenerator, Tracer } from "@opentelemetry/sdk-trace-node";
 import { MONOCLE_SCOPE_NAME_PREFIX, SCOPE_CONFIG_PATH, SCOPE_METHOD_FILE } from "./constants";
 import { consoleLog } from "../../common/logging";
+import { DefaultSpanHandler } from './spanHandler';
+
+let _instrumentor = null
+export function setInstrumentor(instrumentor: any) {
+    _instrumentor = instrumentor;
+}
 
 const scope_id_generator = new RandomIdGenerator();
 
@@ -118,6 +124,54 @@ export function load_scopes(): any[] {
     }
     return scope_methods;
 }
+// from python
+// def start_trace():
+//     try:
+//         tracer = get_tracer(instrumenting_module_name= MONOCLE_INSTRUMENTOR, tracer_provider= get_tracer_provider())
+//         span = tracer.start_span(name = "workflow")
+//         updated_span_context = set_span_in_context(span=span)
+//         SpanHandler.set_default_monocle_attributes(span)
+//         SpanHandler.set_workflow_properties(span)
+//         token = SpanHandler.attach_workflow_type(context=updated_span_context)
+//         return token
+//     except:
+//         logger.warning("Failed to start trace")
+//         return None
+
+export function startTraceInternal<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+) {
+    let isFnCalled = false;
+    try {
+        const tracer: Tracer = _instrumentor.getTracer();
+        return tracer.startActiveSpan("workflow", (span) => {
+            DefaultSpanHandler.setMonocleAttributes(span);
+            DefaultSpanHandler.setWorkflowAttributes({ span, spanIndex: 1, wrappedPackage: null });
+            // Mark that we're about to call the function
+            isFnCalled = true;
+            // If fn throws, this error will propagate out of startActiveSpan
+            const returnValue = fn.apply(thisArg, args);
+            span.end();
+            return returnValue
+        });
+    }
+    catch (e) {
+        // This catches errors from both tracer setup and from fn itself
+        consoleLog(`Failed to start trace: ${e}`);
+        // No return here - will fall through to finally block
+    }
+    finally {
+        // Only call fn if it hasn't been called already (tracer setup failed)
+        if (!isFnCalled) {
+            consoleLog("Failed to start trace");
+            return fn.apply(thisArg, args);
+        }
+        // If fn was already called (but threw an error), we don't call it again
+    }
+}
+
 
 // export function set_scopes_from_baggage(baggage_context: Context): void {
 //     const baggageEntries = propagation.getBaggage(baggage_context).getAllEntries();
