@@ -17,13 +17,16 @@ import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
-import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes } from './utils';
-
+import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal } from './utils';
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
         super('MonocleInstrumentation', "1.0", config)
         consoleLog('MonocleInstrumentation initialized with config:', config);
     }
+
+    public getTracer() {
+        return this.tracer;
+    }   
 
     /**
      * Init method will be called when the plugin is constructed.
@@ -196,6 +199,8 @@ const setupMonocle = (
             userWrapperMethods
         });
 
+        setInstrumentor(monocleInstrumentation)
+
         monocleInstrumentation.setTracerProvider(tracerProvider);
 
         monocleInstrumentation.enable();
@@ -281,6 +286,14 @@ export function setScopesBind(
         fn
     );
     return bindFn;
+}
+
+export function startTrace<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+) {
+    return startTraceInternal(fn, thisArg, ...args);
 }
 
 export function getScopes(): Record<string, string> {
