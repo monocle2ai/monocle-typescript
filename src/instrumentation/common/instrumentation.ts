@@ -11,14 +11,13 @@ import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { getPatchedMain, getPatchedScopeMain } from "./wrapper";
 import { AWS_CONSTANTS } from './constants';
 import * as path from 'path';
-import * as fs from 'fs'
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
-import { setScopesInternal, getScopesInternal, setScopesBindInternal } from './utils';
+import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes } from './utils';
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
@@ -256,39 +255,6 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
     }
 }
 
-
-// Required imports
-
-// Constants
-const SCOPE_METHOD_FILE = process.env.SCOPE_METHOD_FILE || 'monocle_scopes.json';
-const SCOPE_CONFIG_PATH = process.env.SCOPE_CONFIG_PATH
-const http_scopes: Record<string, string> = {};
-
-export function load_scopes(): any[] {
-    let methods_data: any[] = [];
-    let scope_methods: any[] = [];
-    if (!SCOPE_CONFIG_PATH) {
-        consoleLog('SCOPE_CONFIG_PATH not set');
-        return scope_methods;
-    }
-    try {
-        const methodsJson = fs.readFileSync(
-            path.join(SCOPE_CONFIG_PATH || '', SCOPE_METHOD_FILE),
-            'utf8'
-        );
-        methods_data = JSON.parse(methodsJson);
-        for (const method of methods_data) {
-            if (method.http_header) {
-                http_scopes[method.http_header] = method.scope_name;
-            } else {
-                scope_methods.push(method);
-            }
-        }
-    } catch (e) {
-        consoleLog(`Error loading scope methods from file: ${e}`);
-    }
-    return scope_methods;
-}
 
 export function setScopes<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
     scopes: Record<string, string | null>,
