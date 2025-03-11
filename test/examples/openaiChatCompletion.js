@@ -11,7 +11,13 @@ const client = new OpenAI({
 async function main() {
   // Chat completion
   const chatCompletion = await client.chat.completions.create({
-    messages: [{ role: "user", content: "Say this is a test" }],
+    messages: [
+      { role: "user", content: "What is an americano?" },
+      {
+        role: "system",
+        content: "You are a helpful assistant to answer questions about coffee."
+      }
+    ],
     model: "gpt-4o"
   });
   console.log("Chat Completion Result:");
@@ -20,7 +26,7 @@ async function main() {
   // Embedding
   const embeddingResponse = await client.embeddings.create({
     model: "text-embedding-3-small",
-    input: "The quick brown fox jumps over the lazy dog",
+    input: "What is an americano?",
     encoding_format: "float"
   });
 
@@ -29,7 +35,7 @@ async function main() {
 
   console.log("\nEmbedding Result:");
   console.log(`Generated a vector with ${embedding.length} dimensions`);
-  console.log("First 5 dimensions:", embedding.slice(0, 5));
+  //   console.log("First 5 dimensions:", embedding.slice(0, 5));
 }
 
 main().catch((error) => {
