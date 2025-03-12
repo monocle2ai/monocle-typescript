@@ -1,32 +1,14 @@
 import { context, Tracer } from "@opentelemetry/api";
 import { setScopesInternal } from "./utils";
-import { DefaultSpanHandler, SpanHandler } from "./spanHandler";
+import { attachWorkflowType, DefaultSpanHandler, isNonWorkflowRootSpan, SpanHandler } from "./spanHandler";
 import { WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
 
 export const getPatchedMain = function (element: WrapperArguments) {
     const spanHandler: SpanHandler = element.spanHandler || new DefaultSpanHandler();
-    const tracer = element.tracer;
     return function mainMethodName(original: Function) {
         return function patchMainMethodName() {
-            if (element.skipSpan) {
-                spanHandler.preTracing(element);
-                if (spanHandler.executeFunction) {
-                    return spanHandler.executeFunction(element, () => original.apply(this, arguments));
-                }
-                return original.apply(this, arguments);
-            }
-            return tracer.startActiveSpan(
-                element.spanName || element.package || '' + element.object || '' + element.method || '',
-                (span) => {
-                    spanHandler.preProcessSpan({ span: span, instance: this, args: arguments, outputProcessor: null });
-                    const returnValue = original.apply(this, arguments);
-                    spanHandler.postProcessSpan({ span, instance: this, args: arguments, returnValue, outputProcessor: null });
-                    spanHandler.processSpan({ span, instance: this, args: arguments, outputProcessor: element.output_processor, returnValue, wrappedPackage: element.package });
-                    span.end();
-                    return returnValue;
-                }
-            );
+            return processSpanWithTracing(this, element, spanHandler, original, arguments)
         };
     };
 }
@@ -43,4 +25,58 @@ export const getPatchedScopeMain = function ({ tracer, ...element }: { tracer: T
             )
         };
     };
+}
+
+function processSpanWithTracing(
+    thisArg: () => any,
+    element: WrapperArguments,
+    spanHandler: SpanHandler,
+    original: Function,
+    args: any,
+    recursive = false
+) {
+    const tracer = element.tracer;
+    const skipSpan = element.skipSpan || spanHandler.skipSpan({ instance: thisArg, args: args, element });
+    let currentContext = context.active();
+    if (!element.skipSpan) {
+        currentContext = attachWorkflowType(element)
+    }
+    if (skipSpan) {
+        spanHandler.preTracing(element);
+        return original.apply(thisArg, args);
+    }
+    let returnValue: any;
+
+    return context.with(currentContext, () => {
+        return tracer.startActiveSpan(
+            element.spanName || (element.package || '' + element.object || '' + element.method || ''),
+            (span) => {
+                spanHandler.preProcessSpan({ span: span, instance: this, args: args, element: element });
+                if (isNonWorkflowRootSpan(span, element) && !recursive) {
+                    processSpanWithTracing(thisArg, element, spanHandler, original, args, true);
+                    returnValue = original.apply(thisArg, args);
+                    span.end();
+                }
+                else {
+                    returnValue = original.apply(thisArg, args);
+                    if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                        returnValue.then((result: any) => {
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args });
+                        });
+                    }
+                    else {
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args });
+                    }
+                }
+
+                return returnValue;
+            }
+        );
+    });
+}
+
+function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args }) {
+    spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null });
+    spanHandler.processSpan({ span, instance: instance, args: args, outputProcessor: element.output_processor, returnValue, wrappedPackage: element.package });
+    span.end();
 }

@@ -3,7 +3,7 @@ import { join } from 'path';
 import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { sortSpans, cleanSpan } from './utils/span-comparison';
 
-describe('Langchain Sample', () => {
+describe('OpenAI Sample', () => {
     const consoleSpy = vi.spyOn(console, 'log');
     const capturedLogs: any[] = [];
 
@@ -26,7 +26,7 @@ describe('Langchain Sample', () => {
 
     it('should generate all expected spans', async () => {
         // Load expected NDJSON data
-        const ndjsonPath = join(__dirname, '../examples/langchainSampleWithMonocle.ndjson');
+        const ndjsonPath = join(__dirname, '../examples/openaiChatCompletion.ndjson');
         const ndjsonContent = readFileSync(ndjsonPath, 'utf-8');
         const expectedSpans = ndjsonContent
             .split('\n')
@@ -34,7 +34,7 @@ describe('Langchain Sample', () => {
             .map(line => JSON.parse(line));
 
         // Run the sample code
-        await (await import('../examples/langchainSampleWithMonocle')).langchainInvoke("What is coffee?");
+        await (await import('../examples/openaiChatCompletion')).main()
 
         // Wait for async operations to complete
         await new Promise(resolve => setTimeout(resolve, 1000));

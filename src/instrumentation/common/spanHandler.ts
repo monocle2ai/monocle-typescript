@@ -1,17 +1,21 @@
-import { WrapperArguments } from "./constants";
+import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
 // import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
-import { Span } from "@opentelemetry/api";
+import { context, Span } from "@opentelemetry/api";
 
 export interface SpanHandler {
-    preProcessSpan({ span, instance, args, outputProcessor }: {
+    preProcessSpan({ span, instance, args, element }: {
         span: Span;
         instance: any;
         args: IArguments;
-        outputProcessor: any;
+        element: WrapperArguments;
     }): void;
 
-    executeFunction?<T>(element: WrapperArguments, fn: () => T): T;
+    skipSpan({ instance, args, element }: {
+        instance: any;
+        args: IArguments;
+        element: WrapperArguments;
+    }): boolean;
 
     postProcessSpan({ span, instance, args, returnValue, outputProcessor }: {
         span: Span;
@@ -62,47 +66,49 @@ function _IsPlainObject(obj: any) {
 }
 
 export class DefaultSpanHandler implements SpanHandler {
+    skipSpan({ element }: {
+        instance: any;
+        args: IArguments;
+        element: WrapperArguments;
+    }): boolean {
+        if (element.spanType === "workflow" && isWorkflowSpanActive()) {
+            return true;
+        }
+        return false;
+    }
+
     preTracing(_: WrapperArguments): void {
 
     }
 
-    preProcessSpan({ span, instance, args, outputProcessor }: {
+    preProcessSpan({
+        span,
+        element
+    }: {
         span: Span;
         instance: any;
         args: IArguments;
-        outputProcessor: any;
+        element: WrapperArguments;
     }) {
         DefaultSpanHandler.setMonocleAttributes(span);
-        if (outputProcessor) {
-            outputProcessor(
-                {
-                    returnValue: undefined,
-                    arguments: args,
-                    classInstance: instance,
-                    span
-                })
+        if (isRootSpan(span)) {
+            DefaultSpanHandler.setWorkflowAttributes({ wrappedPackage: element.package, span });
         }
+        // spanIndex += setAppHostingIdentifierAttribute(span, spanIndex);
+
     }
 
-    postProcessSpan({ span, instance, args, returnValue, outputProcessor }: {
+    postProcessSpan({ }: {
         span: Span;
         instance: any;
         args: IArguments;
         returnValue: any;
         outputProcessor: any;
     }) {
-        if (typeof outputProcessor === "function") {
-            outputProcessor(
-                {
-                    returnValue,
-                    args,
-                    classInstance: instance,
-                    span
-                })
-        }
+
     }
 
-    processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage }: {
+    processSpan({ span, instance, args, returnValue, outputProcessor }: {
         span: Span;
         instance: any;
         args: IArguments;
@@ -113,8 +119,7 @@ export class DefaultSpanHandler implements SpanHandler {
         let spanIndex = 1;
 
         if (isRootSpan(span)) {
-            spanIndex += DefaultSpanHandler.setWorkflowAttributes({ wrappedPackage, span, spanIndex });
-            // spanIndex += setAppHostingIdentifierAttribute(span, spanIndex);
+            spanIndex = 2
         }
 
         if (outputProcessor && outputProcessor[0]) {
@@ -216,28 +221,19 @@ export class DefaultSpanHandler implements SpanHandler {
     //     });
     // }
 
-    public static setWorkflowAttributes({ wrappedPackage, span, spanIndex }: {
+    public static setWorkflowAttributes({ wrappedPackage, span }: {
         wrappedPackage?: string;
         span: Span;
-        spanIndex: number;
-    }): number {
-        let returnValue = 1;
-        let workflowName = getWorkflowName(span);
+    }) {
+        let spanAttributeIndex = 1;
+        let workflowName: string = getWorkflowName(span)
         if (workflowName) {
             span.setAttribute("span.type", "workflow");
-            span.setAttribute(`entity.${spanIndex}.name`, workflowName);
+            span.setAttribute(`entity.${spanAttributeIndex}.name`, workflowName);
         }
-        let workflowTypeSet = false;
-        for (let [packageName, workflowType] of Object.entries(WORKFLOW_TYPE_MAP)) {
-            if (wrappedPackage && wrappedPackage.includes(packageName)) {
-                span.setAttribute(`entity.${spanIndex}.type`, workflowType);
-                workflowTypeSet = true;
-            }
-        }
-        if (!workflowTypeSet) {
-            span.setAttribute(`entity.${spanIndex}.type`, "workflow.generic");
-        }
-        return returnValue;
+        let currentWorkflowType = getWorkflowType(wrappedPackage);
+
+        span.setAttribute(`entity.${spanAttributeIndex}.type`, currentWorkflowType);
     }
 
     public static setMonocleAttributes(span: Span) {
@@ -248,6 +244,53 @@ export class DefaultSpanHandler implements SpanHandler {
             span.setAttribute(`scope.${scopeKey}`, scopes[scopeKey]);
         }
     }
+}
+
+export class NonFrameworkSpanHandler extends DefaultSpanHandler {
+
+    skipSpan({ }: {
+        instance: any;
+        args: IArguments;
+        element: WrapperArguments;
+    }): boolean {
+        const currentActiveWorkflowType = context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) || WORKFLOW_TYPE_GENERIC;
+        return Object.values(WORKFLOW_TYPE_MAP).includes(currentActiveWorkflowType as string);
+    }
+
+}
+
+function getWorkflowType(wrappedPackage: string) {
+    let currentWorkflowType = WORKFLOW_TYPE_GENERIC;
+    for (let [packageName, workflowType] of Object.entries(WORKFLOW_TYPE_MAP)) {
+        if (wrappedPackage && wrappedPackage.includes(packageName)) {
+            currentWorkflowType = workflowType;
+        }
+    }
+    return currentWorkflowType;
+}
+
+export function attachWorkflowType(element?: WrapperArguments) {
+    let activeContext = context.active();
+    let currentWorkflowType = activeContext.getValue(WORKFLOW_TYPE_KEY_SYMBOL);
+    if (!element) {
+        activeContext = activeContext.setValue(WORKFLOW_TYPE_KEY_SYMBOL, WORKFLOW_TYPE_GENERIC);
+        return activeContext;
+    }
+    if (!currentWorkflowType || currentWorkflowType === WORKFLOW_TYPE_GENERIC) {
+        if (element.spanType === "workflow") {
+            activeContext = context.active().setValue(WORKFLOW_TYPE_KEY_SYMBOL, getWorkflowType(element?.package));
+        }
+    }
+
+    return activeContext;
+}
+
+function isWorkflowSpanActive() {
+    return typeof context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) === "string";
+}
+
+export function isNonWorkflowRootSpan(curr_span: Span, element: WrapperArguments) {
+    return isRootSpan(curr_span) && element.spanType !== "workflow";
 }
 
 

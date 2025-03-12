@@ -53,4 +53,11 @@ langchainInvoke = setScopesBind({
     "langchain.scope_bind_test": "1"
 }, langchainInvoke)
 
-langchainInvoke("What is coffee?").then(console.debug)
+// Only run if this file is being executed directly (not imported)
+if (require.main === module) {
+    langchainInvoke("What is coffee?").then(console.debug)
+}
+
+module.exports = {
+    langchainInvoke
+}
