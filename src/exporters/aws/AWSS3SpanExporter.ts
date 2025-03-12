@@ -3,11 +3,13 @@ import { ExportResultCode } from '@opentelemetry/core';
 import { getUrlFriendlyTime, makeid, exportInfo } from '../utils';
 import { consoleLog } from '../../common/logging';
 import { Span } from '@opentelemetry/api';
+import { ExportTaskProcessor } from '../taskProcessor/LambdaExportTaskProcessor';
 
 interface AWSS3SpanExporterConfig {
     bucketName?: string;
     keyPrefix?: string;
     region?: string;
+    taskProcessor?: ExportTaskProcessor;
     // fileNameGenerator?: () => string;
 }
 
@@ -15,11 +17,13 @@ class AWSS3SpanExporter {
     private bucketName: string;
     private keyPrefix: string;
     private s3Client: S3;
+    private taskProcessor?: ExportTaskProcessor;
     // private fileNameGenerator: () => string;
 
-    constructor({ bucketName, keyPrefix, region }: AWSS3SpanExporterConfig) {
+    constructor({ bucketName, keyPrefix, region, taskProcessor }: AWSS3SpanExporterConfig) {
         this.bucketName = bucketName || process.env.MONOCLE_S3_BUCKET_NAME || "default-bucket";
         this.keyPrefix = keyPrefix || process.env.MONOCLE_S3_KEY_PREFIX || "monocle_trace_";
+        this.taskProcessor = taskProcessor;
         
         consoleLog(`AWSS3SpanExporter| Initializing AWSS3SpanExporter with bucket: ${this.bucketName}, prefix: ${this.keyPrefix}`);
         
@@ -44,6 +48,14 @@ class AWSS3SpanExporter {
 
     export(spans: any, resultCallback: (result: { code: ExportResultCode, error?: Error }) => void): void {
         consoleLog(`AWSS3SpanExporter| Starting export of ${spans.length} spans`);
+        
+        if (this.taskProcessor) {
+            consoleLog('AWSS3SpanExporter| Using task processor for S3 export');
+            this.taskProcessor.queueTask(this._sendSpans.bind(this), spans);
+            resultCallback({ code: ExportResultCode.SUCCESS });
+            return;
+        }
+        
         this._sendSpans(spans, resultCallback);
     }
 
