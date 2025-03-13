@@ -49,12 +49,13 @@ function processSpanWithTracing(
 
     return context.with(currentContext, () => {
         return tracer.startActiveSpan(
-            element.spanName || (element.package || '' + element.object || '' + element.method || ''),
+            getSpanName(element),
             (span) => {
                 spanHandler.preProcessSpan({ span: span, instance: this, args: args, element: element });
                 if (isNonWorkflowRootSpan(span, element) && !recursive) {
                     processSpanWithTracing(thisArg, element, spanHandler, original, args, true);
                     returnValue = original.apply(thisArg, args);
+                    span.updateName("workflow." + getSpanName(element));
                     span.end();
                 }
                 else {
@@ -73,6 +74,10 @@ function processSpanWithTracing(
             }
         );
     });
+}
+
+function getSpanName(element: WrapperArguments): string {
+    return element.spanName || (element.package || '' + element.object || '' + element.method || '');
 }
 
 function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args }) {
