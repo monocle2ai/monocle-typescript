@@ -3,19 +3,38 @@ import { join } from 'path';
 import { ExportResultCode } from '@opentelemetry/core';
 import { exportInfo } from '../utils';
 import { consoleLog } from '../../common/logging';
+import { ExportTaskProcessor } from '../taskProcessor/LambdaExportTaskProcessor';
+
+interface FileSpanExporterConfig {
+    outPath?: string;
+    file_prefix?: string;
+    taskProcessor?: ExportTaskProcessor;
+}
 
 class FileSpanExporter {
     outPath: string;
     file_prefix: string;
+    private taskProcessor?: ExportTaskProcessor;
 
-    constructor({ outPath = "", file_prefix = "" }) {
+    constructor({ outPath = "", file_prefix = "", taskProcessor }: FileSpanExporterConfig) {
         this.outPath = outPath || process.env.MONOCLE_FILE_OUT_PATH || "./";
         this.file_prefix = file_prefix || process.env.MONOCLE_FILE_PREFIX || "monocle_trace__";
+        this.taskProcessor = taskProcessor;
+        if(this.taskProcessor) {
+            this.taskProcessor.start();
+        }
         // this.time_format = time_format || process.env.MONOCLE_TIME_FORMAT || "YYYYMMDD_HHmmss";
     }
 
     export(spans, resultCallback) {
         consoleLog('exporting spans to file.');
+        
+        if (this.taskProcessor) {
+            consoleLog('using task processor for file export');
+            this.taskProcessor.queueTask(this._sendSpans.bind(this), spans);
+            return resultCallback({ code: ExportResultCode.SUCCESS });
+        }
+        
         return this._sendSpans(spans, resultCallback);
     }
 

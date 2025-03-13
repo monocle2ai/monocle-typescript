@@ -3,12 +3,14 @@ import { ExportResultCode } from '@opentelemetry/core';
 import { exportInfo } from '../utils';
 import { consoleLog } from '../../common/logging';
 import { Span } from '@opentelemetry/api';
+import { ExportTaskProcessor } from '../taskProcessor/LambdaExportTaskProcessor';
 
 interface AzureBlobSpanExporterConfig {
     containerName?: string;
     blobPrefix?: string;
     connectionString?: string;
     fileNameGenerator?: () => string;
+    taskProcessor?: ExportTaskProcessor;
 }
 
 class AzureBlobSpanExporter {
@@ -16,8 +18,9 @@ class AzureBlobSpanExporter {
     blobPrefix: string;
     blobServiceClient: BlobServiceClient;
     fileNameGenerator: () => string;
+    private taskProcessor?: ExportTaskProcessor;
 
-    constructor({ containerName, blobPrefix, connectionString, fileNameGenerator }: AzureBlobSpanExporterConfig) {
+    constructor({ containerName, blobPrefix, connectionString, fileNameGenerator, taskProcessor }: AzureBlobSpanExporterConfig) {
         this.containerName = containerName || process.env.MONOCLE_BLOB_CONTAINER_NAME || "default-container";
         this.blobPrefix = blobPrefix || process.env.MONOCLE_AZURE_BLOB_PREFIX || "monocle_trace__";
         const blobConnectionString = connectionString || process.env.MONOCLE_BLOB_CONNECTION_STRING || process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -25,10 +28,21 @@ class AzureBlobSpanExporter {
             throw new Error('Azure Blob Storage connection string is required in  MONOCLE_BLOB_CONNECTION_STRING or AZURE_STORAGE_CONNECTION_STRING');
         this.blobServiceClient = BlobServiceClient.fromConnectionString(blobConnectionString);
         this.fileNameGenerator = typeof fileNameGenerator == "function" ? fileNameGenerator : () => `${this.blobPrefix}${Date.now().toString()}`;
+        this.taskProcessor = taskProcessor;
+        if(this.taskProcessor) {
+            this.taskProcessor.start();
+        }
     }
 
     export(spans, resultCallback) {
         consoleLog('exporting spans to Azure Blob Storage:', spans);
+        
+        if (this.taskProcessor) {
+            consoleLog('using task processor for Azure Blob export');
+            this.taskProcessor.queueTask(this._sendSpans.bind(this), spans);
+            return resultCallback({ code: ExportResultCode.SUCCESS });
+        }
+        
         return this._sendSpans(spans, resultCallback);
     }
 
