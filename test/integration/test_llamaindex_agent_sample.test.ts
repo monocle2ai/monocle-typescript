@@ -7,13 +7,7 @@ import { setupMonocle } from "../../dist";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { trace } from "@opentelemetry/api";
-
-const azureOpenAiBackup = {
-  AZURE_OPENAI_API_DEPLOYMENT: process.env.AZURE_OPENAI_API_DEPLOYMENT,
-  AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY,
-  AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION,
-  AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT
-};
+import { backupEnvVars, clearEnvVars, restoreEnvVars, AZURE_OPENAI_ENV_VARS } from "../common/env_utils";
 
 const COFFEE_MENU = {
   espresso: 2.5,
@@ -27,6 +21,7 @@ describe("LlamaIndex Agent Test", () => {
   const capturedLogs: any[] = [];
   const customExporter = new CustomConsoleSpanExporter();
   let provider: NodeTracerProvider;
+  let azureOpenAiBackup: Record<string, string | undefined>;
 
   beforeEach(() => {
     // Setup custom tracer provider with our exporter
@@ -34,13 +29,11 @@ describe("LlamaIndex Agent Test", () => {
     provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
     provider.register();
 
-    // Setup Monocle telemetry
-    if (process.env.OPENAI_API_KEY) {
-      delete process.env.AZURE_OPENAI_API_DEPLOYMENT;
-      delete process.env.AZURE_OPENAI_API_KEY;
-      delete process.env.AZURE_OPENAI_API_VERSION;
-      delete process.env.AZURE_OPENAI_ENDPOINT;
-    }
+    // Backup Azure OpenAI environment variables
+    azureOpenAiBackup = backupEnvVars(AZURE_OPENAI_ENV_VARS);
+
+    // Clear Azure OpenAI environment variables if OpenAI API key is present
+    clearEnvVars(AZURE_OPENAI_ENV_VARS, !!process.env.OPENAI_API_KEY);
 
     // Now setup Monocle
     setupMonocle("llama_index_1");
@@ -63,21 +56,8 @@ describe("LlamaIndex Agent Test", () => {
     consoleSpy.mockReset();
     capturedLogs.length = 0;
 
-    if (azureOpenAiBackup.AZURE_OPENAI_API_DEPLOYMENT) {
-      process.env.AZURE_OPENAI_API_DEPLOYMENT =
-        azureOpenAiBackup.AZURE_OPENAI_API_DEPLOYMENT;
-    }
-    if (azureOpenAiBackup.AZURE_OPENAI_API_KEY) {
-      process.env.AZURE_OPENAI_API_KEY = azureOpenAiBackup.AZURE_OPENAI_API_KEY;
-    }
-    if (azureOpenAiBackup.AZURE_OPENAI_API_VERSION) {
-      process.env.AZURE_OPENAI_API_VERSION =
-        azureOpenAiBackup.AZURE_OPENAI_API_VERSION;
-    }
-    if (azureOpenAiBackup.AZURE_OPENAI_ENDPOINT) {
-      process.env.AZURE_OPENAI_ENDPOINT =
-        azureOpenAiBackup.AZURE_OPENAI_ENDPOINT;
-    }
+    // Restore Azure OpenAI environment variables
+    restoreEnvVars(azureOpenAiBackup);
   });
 
   it("should properly process coffee order and generate expected spans", async () => {
