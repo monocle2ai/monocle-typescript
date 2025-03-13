@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, expect } from "vitest";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { formatDocumentsAsString } from "langchain/util/document";
@@ -16,6 +16,8 @@ import { HumanMessage } from "@langchain/core/messages";
 import { CustomConsoleSpanExporter } from "../common/custom_exporter";
 import { setupMonocle } from "../../dist";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { backupEnvVars, clearEnvVars, restoreEnvVars, OPENAI_ENV_VARS } from "../common/env_utils";
+
 
 class WebBaseLoader {
   private webPaths: string[];
@@ -88,6 +90,7 @@ function createHistoryAwareRetriever(llm: any, retriever: any, prompt: any) {
 
 describe("Langchain Integration Tests", () => {
   let customExporter: CustomConsoleSpanExporter;
+  let openaiEnvBackup: Record<string, string | undefined>;
 
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
@@ -97,8 +100,19 @@ describe("Langchain Integration Tests", () => {
     provider.addSpanProcessor(new BatchSpanProcessor(customExporter));
     provider.register();
 
+    // Backup OpenAI environment variables
+    openaiEnvBackup = backupEnvVars(OPENAI_ENV_VARS);
+
+    // Clear OpenAI environment variables if Azure OpenAI API key is present
+    clearEnvVars(OPENAI_ENV_VARS, !!process.env.AZURE_OPENAI_API_KEY);
+
     // Setup Monocle telemetry with custom exporter
     setupMonocle("langchain_app_1");
+  });
+
+  afterAll(() => {
+    // Restore OpenAI environment variables
+    restoreEnvVars(openaiEnvBackup);
   });
 
   it("should run LangChain chat workflow with proper telemetry", async () => {
@@ -106,7 +120,7 @@ describe("Langchain Integration Tests", () => {
       azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_API_DEPLOYMENT,
       azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
       temperature: 0.7,
-      modelName: "gpt-3.5-turbo-0125"
+      model: "gpt-3.5-turbo-0125"
     });
     // Load, chunk and index the contents of the blog
     const loader = new WebBaseLoader({

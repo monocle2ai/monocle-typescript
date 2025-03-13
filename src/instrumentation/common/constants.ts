@@ -24,4 +24,9 @@ export interface WrapperArguments {
     spanHandler?: SpanHandler,
     skipSpan?: boolean,
     scopeName?: string,
+    spanType?: string,
 }
+const WORKFLOW_TYPE_KEY = "monocle.workflow_type"
+export const WORKFLOW_TYPE_KEY_SYMBOL = Symbol(WORKFLOW_TYPE_KEY)
+export const WORKFLOW_TYPE_GENERIC = "workflow.generic"
+export const MONOCLE_SDK_VERSION = "monocle_apptrace.version"
