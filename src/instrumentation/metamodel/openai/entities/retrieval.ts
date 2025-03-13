@@ -39,9 +39,12 @@ export const config = {
                 {
                     _comment: "this is response from LLM",
                     attribute: "response",
-                    accessor: function ({ }) {
-                        // cannot return a text output as open ai embedding returns a list of embeddings(array of array of floats)
-                        return null
+                    accessor: function ({ response }) {
+                        if (response && response.data && response.data[0] && response.data[0].embedding) {
+                            const embedding: any[] = response.data[0].embedding;
+                            return embedding.slice(0, 10).toString() + "..."
+                        }
+                        return ""
                     }
                 }
             ]
