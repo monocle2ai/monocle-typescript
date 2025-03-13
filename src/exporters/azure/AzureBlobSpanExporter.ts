@@ -29,6 +29,9 @@ class AzureBlobSpanExporter {
         this.blobServiceClient = BlobServiceClient.fromConnectionString(blobConnectionString);
         this.fileNameGenerator = typeof fileNameGenerator == "function" ? fileNameGenerator : () => `${this.blobPrefix}${Date.now().toString()}`;
         this.taskProcessor = taskProcessor;
+        if(this.taskProcessor) {
+            this.taskProcessor.start();
+        }
     }
 
     export(spans, resultCallback) {

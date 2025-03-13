@@ -20,6 +20,9 @@ class FileSpanExporter {
         this.outPath = outPath || process.env.MONOCLE_FILE_OUT_PATH || "./";
         this.file_prefix = file_prefix || process.env.MONOCLE_FILE_PREFIX || "monocle_trace__";
         this.taskProcessor = taskProcessor;
+        if(this.taskProcessor) {
+            this.taskProcessor.start();
+        }
         // this.time_format = time_format || process.env.MONOCLE_TIME_FORMAT || "YYYYMMDD_HHmmss";
     }
 

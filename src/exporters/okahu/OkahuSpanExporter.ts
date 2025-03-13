@@ -31,6 +31,9 @@ export class OkahuSpanExporter implements SpanExporter {
         this.endpoint = config.endpoint || process.env.OKAHU_INGESTION_ENDPOINT || OKAHU_PROD_INGEST_ENDPOINT;
         this.timeout = config.timeout || 15000;
         this.taskProcessor = config.taskProcessor;
+        if(this.taskProcessor) {
+            this.taskProcessor.start();
+        }
         
         consoleLog(`OkahuSpanExporter| Initializing with endpoint: ${this.endpoint}, timeout: ${this.timeout}`);
 

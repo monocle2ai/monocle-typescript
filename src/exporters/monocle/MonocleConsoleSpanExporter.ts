@@ -11,6 +11,9 @@ export class MonocleConsoleSpanExporter {
 
     constructor(config: MonocleConsoleSpanExporterConfig = {}) {
         this.taskProcessor = config.taskProcessor;
+        if(this.taskProcessor) {
+            this.taskProcessor.start();
+        }
     }
 
     export(spans, resultCallback) {

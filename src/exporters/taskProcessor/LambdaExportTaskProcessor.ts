@@ -13,7 +13,7 @@ type QueueItem = [AsyncTask | null, any];
 // }
 
 export abstract class ExportTaskProcessor {
-    abstract start(): void;
+    abstract start(): Promise<void>;
     abstract stop(): void;
     abstract queueTask(asyncTask?: (args: any) => any, args?: any): void;
 }
@@ -24,7 +24,7 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
     private maxTimeAllowed: number;
 
     constructor(
-        spanCheckIntervalSeconds: number = 2,
+        spanCheckIntervalSeconds: number = 1,
         maxTimeAllowedSeconds: number = 30
     ) {
         super();
@@ -33,9 +33,10 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
         this.maxTimeAllowed = maxTimeAllowedSeconds;
     }
 
-    public start(): void {
+    public async start(): Promise<void> {
         try {
-            this.startAsyncProcessor();
+            consoleLog(`LambdaExportTaskProcessor| Starting...`);
+            await this.startAsyncProcessor();
         } catch (e) {
             consoleLog(`LambdaExportTaskProcessor| Failed to start. ${e}`);
         }
@@ -113,10 +114,10 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
     //     }
     // }
 
-    private startAsyncProcessor(): void {
+    private async startAsyncProcessor(): Promise<void> {
         consoleLog(`[${LAMBDA_EXTENSION_NAME}] Registering with Lambda service...`);
-        
-        axios.post(
+        consoleLog(`[${LAMBDA_EXTENSION_NAME}] AWS_LAMBDA_RUNTIME_API: ${process.env.AWS_LAMBDA_RUNTIME_API}`);
+        await axios.post(
             `http://${process.env.AWS_LAMBDA_RUNTIME_API}/2020-01-01/extension/register`,
             { events: ['INVOKE'] },
             { headers: { 'Lambda-Extension-Name': LAMBDA_EXTENSION_NAME } }
@@ -144,9 +145,10 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
                             const [asyncTask, args] = this.asyncTasksQueue.shift() as QueueItem;
                             
                             // Check if root span task is present in queue
-                            if ('batch' in args) {
-                                for (const span of args.batch) {
-                                    if (span.parent_id === "None") {
+                            if (args instanceof Array) {
+                                for (const span of args) {
+                                    if (span.parentSpanId === "None" || !span.parentSpanId) {
+                                        consoleLog(`[${LAMBDA_EXTENSION_NAME}] Found root span in task queue: name: ${span.name}.`);
                                         rootSpanFound = true;
                                     }
                                 }
@@ -178,6 +180,10 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
             });
         }).catch(error => {
             consoleLog(`[${LAMBDA_EXTENSION_NAME}] Failed to register extension: ${error}`);
+            if (error.response) {
+                consoleLog(`[${LAMBDA_EXTENSION_NAME}] Response data: ${JSON.stringify(error.response.data)}`);
+                consoleLog(`[${LAMBDA_EXTENSION_NAME}] Response status: ${error.response.status}`);
+            }
         });
     }
 }
