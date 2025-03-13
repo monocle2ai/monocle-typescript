@@ -8,7 +8,7 @@ const client = new OpenAI({
   apiKey: process.env["OPENAI_API_KEY"] // This is the default and can be omitted
 });
 
-export async function main() {
+async function main() {
   // Chat completion
   const chatCompletion = await client.chat.completions.create({
     messages: [
@@ -37,6 +37,8 @@ export async function main() {
   console.log(`Generated a vector with ${embedding.length} dimensions`);
   //   console.log("First 5 dimensions:", embedding.slice(0, 5));
 }
+
+exports.main = main;
 
 // Only run if this file is being executed directly (not imported)
 if (require.main === module) {
