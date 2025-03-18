@@ -14,6 +14,10 @@ export interface Span {
         };
         [key: string]: any;
     }>;
+    attributes?: {
+        "monocle-typescript.version"?: string;
+        [key: string]: any;
+    }
     [key: string]: any;
 }
 
@@ -45,6 +49,8 @@ export const cleanSpan = (span: Span): Partial<Span> => {
             return cleanedEvent;
         });
     }
-
+    if (cleaned.attributes) {
+        if (cleaned.attributes["monocle-typescript.version"]) delete cleaned.attributes["monocle-typescript.version"];
+    }
     return cleaned;
 };

@@ -1,7 +1,8 @@
 import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
 // import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
-import { context, Span } from "@opentelemetry/api";
+import { context, Span, SpanStatusCode } from "@opentelemetry/api";
+import { MONOCLE_VERSION } from './monocle_version';
 
 export interface SpanHandler {
     preProcessSpan({ span, instance, args, element }: {
@@ -43,6 +44,14 @@ const isRootSpan = function (span) {
     return true;
 };
 
+const setSpanStatus = function (span) {
+    if (span.status.code == SpanStatusCode.UNSET) {
+        span.setStatus({
+            code: SpanStatusCode.OK,
+            message: "OK"
+        })
+    }
+};
 const WORKFLOW_TYPE_MAP = {
     "llamaindex": "workflow.llamaindex",
     "langchain": "workflow.langchain",
@@ -98,14 +107,14 @@ export class DefaultSpanHandler implements SpanHandler {
 
     }
 
-    postProcessSpan({ }: {
+    postProcessSpan({span }: {
         span: Span;
         instance: any;
         args: IArguments;
         returnValue: any;
         outputProcessor: any;
     }) {
-
+        setSpanStatus(span);
     }
 
     processSpan({ span, instance, args, returnValue, outputProcessor }: {
@@ -237,8 +246,7 @@ export class DefaultSpanHandler implements SpanHandler {
     }
 
     public static setMonocleAttributes(span: Span) {
-        const sdkVersion = "0.0.1";
-        span.setAttribute("monocle-typescript.version", sdkVersion);
+        span.setAttribute("monocle-typescript.version", MONOCLE_VERSION);
         const scopes = getScopesInternal();
         for (const scopeKey in scopes) {
             span.setAttribute(`scope.${scopeKey}`, scopes[scopeKey]);
