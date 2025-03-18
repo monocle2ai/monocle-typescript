@@ -3,7 +3,6 @@ import {
   SageMakerEndpoint
 } from "@langchain/community/llms/sagemaker_endpoint";
 import { OpenSearchVectorStore } from "@langchain/community/vectorstores/opensearch";
-
 import {
   BatchSpanProcessor,
   ConsoleSpanExporter
@@ -14,6 +13,10 @@ import { Client } from "@opensearch-project/opensearch";
 import AWS4Auth from "aws4";
 import { Document } from "langchain/document";
 import { setupMonocle } from "../../dist";
+import { EmbeddingsInterface } from "@langchain/core/embeddings";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { promises as fs } from "fs";
+import { join } from "path";
 
 interface LLMResponseData {
   context: string;
@@ -24,21 +27,43 @@ interface LLMResponseResult {
   answer: string;
 }
 
-class ContentHandler extends BaseSageMakerContentHandler<string, string> {
-  contentType = "application/json";
-  accepts = "application/json";
+class SageMakerEmbeddings implements EmbeddingsInterface {
+  private client: SageMakerEndpoint;
 
-  // Implement transformInput as required by BaseSageMakerContentHandler
-  transformInput(inputs: string[], model_kwargs: Record<string, any>): string {
-    return JSON.stringify({ text_inputs: inputs, ...model_kwargs });
+  constructor(client: SageMakerEndpoint) {
+    this.client = client;
   }
 
-  // Implement transformOutput as required by BaseSageMakerContentHandler
-  transformOutput(output: string): string {
-    const response_json = JSON.parse(output);
-    return response_json["embedding"];
+  async embedDocuments(documents: string[]): Promise<number[][]> {
+    const embeddings = [] as number[][];
+    for (const doc of documents) {
+      const embedding = await this.embedQuery(doc);
+      embeddings.push(embedding);
+    }
+    return embeddings;
+  }
+
+  async embedQuery(text: string): Promise<number[]> {
+    const response = await this.client.invoke(text);
+    return JSON.parse(response);
   }
 }
+
+// class ContentHandler extends BaseSageMakerContentHandler<string, string> {
+//   contentType = "application/json";
+//   accepts = "application/json";
+
+//   // Implement transformInput as required by BaseSageMakerContentHandler
+//   transformInput(inputs: string[], model_kwargs: Record<string, any>): string {
+//     return JSON.stringify({ text_inputs: inputs, ...model_kwargs });
+//   }
+
+//   // Implement transformOutput as required by BaseSageMakerContentHandler
+//   transformOutput(output: string): string {
+//     const response_json = JSON.parse(output);
+//     return response_json["embedding"];
+//   }
+// }
 describe("Sagemaker Integration Tests", () => {
   beforeAll(() => {
     setupMonocle(
@@ -80,6 +105,8 @@ Use three sentences maximum and keep the answer concise.\
   try {
     const response = await client.invokeEndpoint(params).promise();
 
+    const context = await search_similar_documents_opensearch(query);
+
     // TypeScript specific handling of the response
     const content = response.Body as AWS.SageMakerRuntime.BodyBlob;
 
@@ -113,45 +140,55 @@ function build_context(similar_documents: string[]): string {
 async function search_similar_documents_opensearch(
   query: string
 ): Promise<string[]> {
-  const opensearch_url = process.env.OPENSEARCH_ENDPOINT_URL || "";
   const index_name = "embeddings";
-  const content_handler = new ContentHandler();
-  const sagemaker_endpoint_embeddings = new SageMakerEndpoint({
-    endpointName: "okahu-sagemaker-rag-embedding-ep",
-    content_handler
-  });
+  // const content_handler = new ContentHandler();
+  const sagemaker_endpoint_embeddings = new OpenAIEmbeddings({apiKey: process.env["OPENAI_API_KEY"] as string});
 
   const region = "us-east-1";
   const service = "aoss";
   const credentials = new AWS.Credentials({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-    sessionToken: process.env.AWS_SESSION_TOKEN
+    // sessionToken: process.env.AWS_SESSION_TOKEN
   });
+  const endpoint = process.env.OPENSEARCH_ENDPOINT;
 
-  // Create AWS4Auth - note: this implementation may need adjustment based on your AWS4Auth library
-  const aws_auth = AWS4Auth({
-    accessKey: credentials.accessKeyId,
-    secretKey: credentials.secretAccessKey,
-    sessionToken: credentials.sessionToken,
-    region: region,
-    service: service
-  });
-
-  const doc_search = new OpenSearchVectorStore({
-    client: {
-      node: opensearch_url,
-      auth: aws_auth,
-      ssl: {
-        rejectUnauthorized: true
-      },
-      Connection: Client
+  const opensearchClient = new Client({
+    node: endpoint,
+    ssl: {
+      rejectUnauthorized: true
     },
-    indexName: index_name,
-    embeddingFunction: sagemaker_endpoint_embeddings
+    
+    auth: {
+      credentials : {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        sessionToken: credentials.sessionToken,
+      },
+      region: region,
+      service: service,
+    }
   });
+
+  const doc_search = new OpenSearchVectorStore(
+    sagemaker_endpoint_embeddings,
+    {
+      client: opensearchClient,
+      indexName: index_name
+    });
 
   try {
+    // // check if index exists
+    // const indexExists = await doc_search.doesIndexExist();
+    // if (!indexExists) {
+    //   const ndjsonPath = join(__dirname, '../data/sample.txt');
+    //   const sampleText = await fs.readFile(ndjsonPath, 'utf-8')
+    //   await doc_search.addDocuments([{
+    //     pageContent: sampleText,
+    //     metadata: { creator: "test_sagemaker_sample.test.ts" },
+    //     id: "sample"
+    //   }]);
+    // }
     const docs = await doc_search.similaritySearch(query);
     console.log(`Retrieved docs: ${JSON.stringify(docs)}`);
     return docs.map((doc: Document) => doc.pageContent);
