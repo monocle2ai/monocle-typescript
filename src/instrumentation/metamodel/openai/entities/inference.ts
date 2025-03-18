@@ -9,16 +9,33 @@ export const config = {
                     "_comment": "this is input to LLM",
                     "attribute": "input",
                     "accessor": function ({ args }) {
-                        const inputUser = args[0].messages.filter(item => item.role == 'user')[0]?.content
-                        const inputSystem =  args[0].messages.filter(item => item.role == 'system')[0]?.content
-                        const retVal : string[] = []
-                        if(inputUser){
-                            retVal.push(inputUser)
+                        try {
+                            const messages: string[] = [];
+                            if (args[0].messages && args[0].messages.length > 0) {
+                                for (const msg of args[0].messages) {
+                                    if (msg.content && msg.role) {
+                                        messages.push(`{ '${[msg.role]}': '${msg.content} }'`);
+                                    }
+                                }
+                            }
+                            
+                            return messages
+                        } catch (e) {
+                            console.warn(`Warning: Error occurred in extractMessages: ${e}`);
+                            return [];
                         }
-                        if(inputSystem){                        
-                            retVal.push(inputSystem)
-                        }
-                        return retVal
+
+                        
+                        // const inputUser = args[0].messages.filter(item => item.role == 'user')[0]?.content
+                        // const inputSystem =  args[0].messages.filter(item => item.role == 'system')[0]?.content
+                        // const retVal : string[] = []
+                        // if(inputUser){
+                        //     retVal.push(inputUser)
+                        // }
+                        // if(inputSystem){                        
+                        //     retVal.push(inputSystem)
+                        // }
+                        // return retVal
                     }
                 }
             ]
