@@ -1,9 +1,6 @@
 name: Publish NPM Package
-
 on:
-  push:
-    branches:
-      - 'release/**'
+  workflow_dispatch:
 
 jobs:
   validate-and-publish:
