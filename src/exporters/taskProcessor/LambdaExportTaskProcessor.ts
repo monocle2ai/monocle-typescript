@@ -15,10 +15,12 @@ type QueueItem = [AsyncTask | null, any];
 export abstract class ExportTaskProcessor {
     abstract start(): Promise<void>;
     abstract stop(): void;
+    abstract enabled: boolean;
     abstract queueTask(asyncTask?: (args: any) => any, args?: any): void;
 }
 
 export class LambdaExportTaskProcessor extends ExportTaskProcessor {
+    enabled: boolean;
     private asyncTasksQueue: QueueItem[];
     private spanCheckInterval: number;
     private maxTimeAllowed: number;
@@ -31,13 +33,16 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
         this.asyncTasksQueue = [];
         this.spanCheckInterval = spanCheckIntervalSeconds;
         this.maxTimeAllowed = maxTimeAllowedSeconds;
+        this.enabled = false;
     }
 
     public async start(): Promise<void> {
         try {
             consoleLog(`LambdaExportTaskProcessor| Starting...`);
             await this.startAsyncProcessor();
+            this.enabled = true;
         } catch (e) {
+            this.enabled = false;
             consoleLog(`LambdaExportTaskProcessor| Failed to start. ${e}`);
         }
     }
@@ -47,6 +52,11 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
     }
 
     public queueTask(asyncTask: AsyncTask | null = null, args: any = null): void {
+        if (!this.enabled) {
+            consoleLog(`LambdaExportTaskProcessor| Task processor is not enabled. Ignoring task.`);
+            asyncTask(args);
+            return;
+        }
         this.asyncTasksQueue.push([asyncTask, args]);
     }
 
@@ -179,6 +189,7 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
                 consoleLog(`[${LAMBDA_EXTENSION_NAME}] Error in async task processor: ${err}`);
             });
         }).catch(error => {
+            this.enabled = false;
             consoleLog(`[${LAMBDA_EXTENSION_NAME}] Failed to register extension: ${error}`);
             if (error.response) {
                 consoleLog(`[${LAMBDA_EXTENSION_NAME}] Response data: ${JSON.stringify(error.response.data)}`);
