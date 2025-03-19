@@ -1,0 +1,112 @@
+name: Publish NPM Package
+on:
+  workflow_dispatch:
+
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check branch name
+        id: check-branch
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          if [[ $BRANCH_NAME != release/* ]]; then
+            echo "Error: Branch name must start with 'release/'"
+            exit 1
+          fi
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      # - name: Run tests
+      #   run: npm test
+
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # - name: Check if UNRELEASED section exists in CHANGELOG.md
+      #   id: check-changelog
+      #   run: |
+      #     if ! grep -q "## \[UNRELEASED\]" CHANGELOG.md; then
+      #       echo "Error: CHANGELOG.md must contain an UNRELEASED section"
+      #       exit 1
+      #     fi
+
+      # - name: Update CHANGELOG.md
+      #   run: |
+      #     VERSION=${{ steps.package-version.outputs.version }}
+      #     DATE=$(date +"%Y-%m-%d")
+      #     sed -i "s/## \[UNRELEASED\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "info@lfaidata.foundation"
+          git config --local user.name "Monocle pr bot"
+
+      # - name: Commit CHANGELOG changes
+      #   run: |
+      #     git add CHANGELOG.md
+      #     git commit -m "Update CHANGELOG.md for release ${{ steps.package-version.outputs.version }}"
+      #     git push
+
+      # - name: Check if branch can merge into main
+      #   run: |
+      #     git fetch origin main
+      #     if ! git merge-base --is-ancestor origin/main HEAD; then
+      #       echo "Error: This branch is not up-to-date with main and cannot be merged"
+      #       exit 1
+      #     fi
+      #     # Check if there would be any merge conflicts
+      #     git checkout --detach
+      #     if ! git merge origin/main -m "Test merge"; then
+      #       echo "Error: There would be merge conflicts when merging into main"
+      #       exit 1
+      #     fi
+      #     git checkout ${{ steps.check-branch.outputs.branch_name }}
+
+      - name: Publish to NPM
+        run: |
+          cd dist
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create Pull Request to main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          message="Release version ${{ steps.package-version.outputs.version }}"
+          body="This PR merges the release ${{ steps.package-version.outputs.version }} into main.
+
+          Changes:
+          - Published version ${{ steps.package-version.outputs.version }} to npm
+          - Updated CHANGELOG.md"
+          
+          git config --global user.email "info@lfaidata.foundation"
+          git config --global user.name "Monocle pr bot"
+          timestamp=$(date +%s)
+          branch="${{ steps.check-branch.outputs.branch_name }}"
+
+          git push origin HEAD:$branch
+          gh pr create --title "$message" \
+                       --body "$body" \
+                       --head $branch \
+                       --base main
