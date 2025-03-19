@@ -83,7 +83,9 @@ jobs:
           git checkout ${{ steps.check-branch.outputs.branch_name }}
 
       - name: Publish to NPM
-        run: npm publish --access public
+        run: |
+          cd dist
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
