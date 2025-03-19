@@ -13,7 +13,7 @@ type QueueItem = [AsyncTask | null, any];
 // }
 
 export abstract class ExportTaskProcessor {
-    abstract start(): Promise<void>;
+    abstract start(): void;
     abstract stop(): void;
     abstract enabled: boolean;
     abstract queueTask(asyncTask?: (args: any) => any, args?: any): void;
@@ -36,10 +36,10 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
         this.enabled = false;
     }
 
-    public async start(): Promise<void> {
+    public start(): void {
         try {
             consoleLog(`LambdaExportTaskProcessor| Starting...`);
-            await this.startAsyncProcessor();
+            this.startAsyncProcessor();
         } catch (e) {
             this.enabled = false;
             consoleLog(`LambdaExportTaskProcessor| Failed to start. ${e}`);
@@ -123,10 +123,10 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
     //     }
     // }
 
-    private async startAsyncProcessor(): Promise<void> {
+    private startAsyncProcessor(): void {
         consoleLog(`[${LAMBDA_EXTENSION_NAME}] Registering with Lambda service...`);
         consoleLog(`[${LAMBDA_EXTENSION_NAME}] AWS_LAMBDA_RUNTIME_API: ${process.env.AWS_LAMBDA_RUNTIME_API}`);
-        await axios.post(
+        axios.post(
             `http://${process.env.AWS_LAMBDA_RUNTIME_API}/2020-01-01/extension/register`,
             { events: ['INVOKE'] },
             { headers: { 'Lambda-Extension-Name': LAMBDA_EXTENSION_NAME } }
