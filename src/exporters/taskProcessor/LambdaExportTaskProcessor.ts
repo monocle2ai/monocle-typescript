@@ -40,7 +40,6 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
         try {
             consoleLog(`LambdaExportTaskProcessor| Starting...`);
             await this.startAsyncProcessor();
-            this.enabled = true;
         } catch (e) {
             this.enabled = false;
             consoleLog(`LambdaExportTaskProcessor| Failed to start. ${e}`);
@@ -134,7 +133,8 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
         ).then(response => {
             const extId = response.headers['lambda-extension-identifier'];
             consoleLog(`[${LAMBDA_EXTENSION_NAME}] Registered with ID: ${extId}`);
-            
+            this.enabled = true;
+            consoleLog(`[${LAMBDA_EXTENSION_NAME}] Starting async task processor...`);
             const processTasksAsync = async () => {
                 while (true) {
                     consoleLog(`[${LAMBDA_EXTENSION_NAME}] Waiting for invocation...`);
