@@ -1,4 +1,4 @@
-import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
+import { service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
 // import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
 import { context, Span, SpanStatusCode } from "@opentelemetry/api";
@@ -102,6 +102,7 @@ export class DefaultSpanHandler implements SpanHandler {
         DefaultSpanHandler.setMonocleAttributes(span);
         if (isRootSpan(span)) {
             DefaultSpanHandler.setWorkflowAttributes({ wrappedPackage: element.package, span });
+            DefaultSpanHandler.setAppHostingIdentifierAttribute(span);
         }
         // spanIndex += setAppHostingIdentifierAttribute(span, spanIndex);
 
@@ -128,7 +129,7 @@ export class DefaultSpanHandler implements SpanHandler {
         let spanIndex = 1;
 
         if (isRootSpan(span)) {
-            spanIndex = 2
+            spanIndex = 3
         }
 
         if (outputProcessor && outputProcessor[0]) {
@@ -244,6 +245,22 @@ export class DefaultSpanHandler implements SpanHandler {
 
         span.setAttribute(`entity.${spanAttributeIndex}.type`, currentWorkflowType);
     }
+
+    public static setAppHostingIdentifierAttribute(span: Span): void {
+        const spanIndex = 2;
+        
+        // Search env to identify the infra service type, if found check env for service name if possible
+        span.setAttribute(`entity.${spanIndex}.type`, `app_hosting.generic`);
+        span.setAttribute(`entity.${spanIndex}.name`, "generic");
+        
+        for (const [typeEnv, typeName] of Object.entries(service_type_map)) {
+          if (process.env[typeEnv]) {
+            span.setAttribute(`entity.${spanIndex}.type`, `app_hosting.${typeName}`);
+            const entityNameEnv = service_name_map[typeName] || "unknown";
+            span.setAttribute(`entity.${spanIndex}.name`, process.env[entityNameEnv] || "generic");
+          }
+        }
+      }
 
     public static setMonocleAttributes(span: Span) {
         span.setAttribute("monocle-typescript.version", MONOCLE_VERSION);

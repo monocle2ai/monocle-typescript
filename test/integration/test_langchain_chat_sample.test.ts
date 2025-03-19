@@ -18,7 +18,6 @@ import { setupMonocle } from "../../dist";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { backupEnvVars, clearEnvVars, restoreEnvVars, OPENAI_ENV_VARS } from "../common/env_utils";
 
-
 class WebBaseLoader {
   private webPaths: string[];
   private bsKwargs: any;
@@ -104,7 +103,7 @@ describe("Langchain Integration Tests", () => {
     openaiEnvBackup = backupEnvVars(OPENAI_ENV_VARS);
 
     // Clear OpenAI environment variables if Azure OpenAI API key is present
-    clearEnvVars(OPENAI_ENV_VARS, !!process.env.AZURE_OPENAI_API_KEY);
+    // clearEnvVars(OPENAI_ENV_VARS, !!process.env.AZURE_OPENAI_API_KEY);
 
     // Setup Monocle telemetry with custom exporter
     setupMonocle("langchain_app_1");
@@ -142,7 +141,7 @@ describe("Langchain Integration Tests", () => {
     const splits = await textSplitter.splitDocuments(docs);
 
     // Create vector store
-    const embeddings = new OpenAIEmbeddings();
+    const embeddings = new OpenAIEmbeddings({apiKey: process.env.OPENAI_API_KEY});
     const vectorstore = await MemoryVectorStore.fromDocuments(
       splits,
       embeddings

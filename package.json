@@ -1,6 +1,6 @@
 {
   "name": "monocle2ai",
-  "version": "0.0.1-beta.10",
+  "version": "0.1.0",
   "description": "",
   "main": "./index.js",
   "types": "./index.d.ts",
@@ -19,6 +19,7 @@
     "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
     "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
     "test": "vitest run",
+    "test:run": "npx vitest run path/to/your/testfile.test.ts",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage"
   },

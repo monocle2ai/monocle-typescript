@@ -1,5 +1,48 @@
 export const config = {
     "type": "inference",
+    "attributes": [
+        [
+            {
+                "_comment": "provider type ,name , deployment , inference_endpoint",
+                "attribute": "type",
+                "accessor": function ({ instance }) {
+                    if (instance._client && instance._client.baseURL && instance._client.baseURL.includes(".openai.com")) {
+                        return "inference.openai"
+                    }
+                    else {
+                        return "inference.azure_openai"
+                    }
+                }
+            },
+            {
+                "attribute": "deployment",
+                "accessor": function ({ instance, args }) {
+                    return args[0].model_name || args[0].model || instance.deployment_name
+                }
+            },
+            {
+                "attribute": "inference_endpoint",
+                "accessor": function ({ instance }) {
+                    return instance?._client?.baseURL
+                }
+            }
+        ],
+        [
+            {
+                "_comment": "LLM Model",
+                "attribute": "name",
+                "accessor": function ({ args }) {
+                    return args[0].model_name || args[0].model
+                }
+            },
+            {
+                "attribute": "type",
+                "accessor": function ({ args }) {
+                    return "model.llm." + (args[0].model_name || args[0].model)
+                }
+            }
+        ]
+    ],
     "events": [
         {
             "name": "data.input",
@@ -9,16 +52,21 @@ export const config = {
                     "_comment": "this is input to LLM",
                     "attribute": "input",
                     "accessor": function ({ args }) {
-                        const inputUser = args[0].messages.filter(item => item.role == 'user')[0]?.content
-                        const inputSystem =  args[0].messages.filter(item => item.role == 'system')[0]?.content
-                        const retVal : string[] = []
-                        if(inputUser){
-                            retVal.push(inputUser)
+                        try {
+                            const messages: string[] = [];
+                            if (args[0].messages && args[0].messages.length > 0) {
+                                for (const msg of args[0].messages) {
+                                    if (msg.content && msg.role) {
+                                        messages.push(`{ '${[msg.role]}': '${msg.content} }'`);
+                                    }
+                                }
+                            }
+
+                            return messages
+                        } catch (e) {
+                            console.warn(`Warning: Error occurred in extractMessages: ${e}`);
+                            return [];
                         }
-                        if(inputSystem){                        
-                            retVal.push(inputSystem)
-                        }
-                        return retVal
                     }
                 }
             ]

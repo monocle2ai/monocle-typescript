@@ -5,15 +5,24 @@ export const config = {
             {
                 _comment: "LLM Model",
                 attribute: "name",
-                accessor: function ({ args }) {
+                accessor: function ({ args, instance }) {
+                    // pick last part from the url instance._client.baseURL
+                    if(instance._client.baseURL && !instance._client.baseURL.includes("openai.com"))
+                    {
+                        return instance._client.baseURL.split("/").pop()
+                    }
                     return args[0].model
                 }
             },
             {
                 attribute: "type",
-                accessor: function ({ args }) {
-                    return args[0].model && "model.embedding." + args[0].model;
-
+                accessor: function ({ args, instance }) {
+                    // pick last part from the url instance._client.baseURL
+                    if(instance._client.baseURL && !instance._client.baseURL.includes("openai.com"))
+                        {
+                            return "model.embedding." + instance._client.baseURL.split("/").pop()
+                        }
+                        return "model.embedding." + args[0].model
                 }
             }
         ]

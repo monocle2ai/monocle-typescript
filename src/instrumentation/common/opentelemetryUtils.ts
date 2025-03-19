@@ -4,7 +4,8 @@ import { waitUntil } from "@vercel/functions";
 
 // @ts-ignore: private field access required
 class PatchedBatchSpanProcessor extends BatchSpanProcessor {
-    _maybeStartTimer() {
+    // @ts-ignore: private field access required
+    private _maybeStartTimer1() {
         // @ts-ignore: private field access required
         if (this._isExporting)
             return;
@@ -27,7 +28,7 @@ class PatchedBatchSpanProcessor extends BatchSpanProcessor {
                     if (this._finishedSpans.length > 0) {
                         // @ts-ignore: private field access required
                         this._clearTimer();
-                        this._maybeStartTimer();
+                        this._maybeStartTimer1();
                     }
                 })
                 .catch(e => {

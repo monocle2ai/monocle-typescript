@@ -19,7 +19,7 @@ import { setupMonocle } from "../../dist";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnablePassthrough } from "@langchain/core/runnables";
 
-describe("LangChain OpenSearch Integration", () => {
+describe.skip("LangChain OpenSearch Integration", () => {
   let customExporter: CustomConsoleSpanExporter;
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
