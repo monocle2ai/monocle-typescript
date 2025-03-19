@@ -4,6 +4,7 @@ on:
 
 jobs:
   validate-and-publish:
+    environment: ArtifactPublish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
