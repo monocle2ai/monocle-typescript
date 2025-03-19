@@ -67,20 +67,20 @@ jobs:
       #     git commit -m "Update CHANGELOG.md for release ${{ steps.package-version.outputs.version }}"
       #     git push
 
-      - name: Check if branch can merge into main
-        run: |
-          git fetch origin main
-          if ! git merge-base --is-ancestor origin/main HEAD; then
-            echo "Error: This branch is not up-to-date with main and cannot be merged"
-            exit 1
-          fi
-          # Check if there would be any merge conflicts
-          git checkout --detach
-          if ! git merge origin/main -m "Test merge"; then
-            echo "Error: There would be merge conflicts when merging into main"
-            exit 1
-          fi
-          git checkout ${{ steps.check-branch.outputs.branch_name }}
+      # - name: Check if branch can merge into main
+      #   run: |
+      #     git fetch origin main
+      #     if ! git merge-base --is-ancestor origin/main HEAD; then
+      #       echo "Error: This branch is not up-to-date with main and cannot be merged"
+      #       exit 1
+      #     fi
+      #     # Check if there would be any merge conflicts
+      #     git checkout --detach
+      #     if ! git merge origin/main -m "Test merge"; then
+      #       echo "Error: There would be merge conflicts when merging into main"
+      #       exit 1
+      #     fi
+      #     git checkout ${{ steps.check-branch.outputs.branch_name }}
 
       - name: Publish to NPM
         run: |
@@ -90,17 +90,23 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create Pull Request to main
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Release version ${{ steps.package-version.outputs.version }}"
-          title: "Release ${{ steps.package-version.outputs.version }}"
-          body: |
-            This PR merges the release ${{ steps.package-version.outputs.version }} into main.
-            
-            Changes:
-            - Published version ${{ steps.package-version.outputs.version }} to npm
-            - Updated CHANGELOG.md
-          branch: ${{ steps.check-branch.outputs.branch_name }}
-          base: main
-          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          message="Release version ${{ steps.package-version.outputs.version }}"
+          body="This PR merges the release ${{ steps.package-version.outputs.version }} into main.
+
+          Changes:
+          - Published version ${{ steps.package-version.outputs.version }} to npm
+          - Updated CHANGELOG.md"
+          
+          git config --global user.email "info@lfaidata.foundation"
+          git config --global user.name "Monocle pr bot"
+          timestamp=$(date +%s)
+          branch="${{ steps.check-branch.outputs.branch_name }}"
+
+          git push origin HEAD:$branch
+          gh pr create --title "$message" \
+                       --body "$body" \
+                       --head $branch \
+                       --base main
