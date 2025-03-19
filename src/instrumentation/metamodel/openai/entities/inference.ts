@@ -67,18 +67,6 @@ export const config = {
                             console.warn(`Warning: Error occurred in extractMessages: ${e}`);
                             return [];
                         }
-
-
-                        // const inputUser = args[0].messages.filter(item => item.role == 'user')[0]?.content
-                        // const inputSystem =  args[0].messages.filter(item => item.role == 'system')[0]?.content
-                        // const retVal : string[] = []
-                        // if(inputUser){
-                        //     retVal.push(inputUser)
-                        // }
-                        // if(inputSystem){                        
-                        //     retVal.push(inputSystem)
-                        // }
-                        // return retVal
                     }
                 }
             ]
