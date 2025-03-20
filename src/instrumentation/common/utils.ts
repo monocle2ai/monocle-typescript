@@ -172,3 +172,11 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
 //         }
 //     }
 // }
+
+export function isVercelEnvironment(): boolean {
+    return !!process.env.VERCEL_URL
+}
+
+export function isAwsLambdaEnvironment(): boolean {
+    return !!process.env.AWS_LAMBDA_RUNTIME_API && !isVercelEnvironment()
+}

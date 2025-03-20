@@ -13,12 +13,14 @@ type QueueItem = [AsyncTask | null, any];
 // }
 
 export abstract class ExportTaskProcessor {
-    abstract start(): Promise<void>;
+    abstract start(): void;
     abstract stop(): void;
+    abstract enabled: boolean;
     abstract queueTask(asyncTask?: (args: any) => any, args?: any): void;
 }
 
 export class LambdaExportTaskProcessor extends ExportTaskProcessor {
+    enabled: boolean;
     private asyncTasksQueue: QueueItem[];
     private spanCheckInterval: number;
     private maxTimeAllowed: number;
@@ -31,13 +33,15 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
         this.asyncTasksQueue = [];
         this.spanCheckInterval = spanCheckIntervalSeconds;
         this.maxTimeAllowed = maxTimeAllowedSeconds;
+        this.enabled = false;
     }
 
-    public async start(): Promise<void> {
+    public start(): void {
         try {
             consoleLog(`LambdaExportTaskProcessor| Starting...`);
-            await this.startAsyncProcessor();
+            this.startAsyncProcessor();
         } catch (e) {
+            this.enabled = false;
             consoleLog(`LambdaExportTaskProcessor| Failed to start. ${e}`);
         }
     }
@@ -47,6 +51,11 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
     }
 
     public queueTask(asyncTask: AsyncTask | null = null, args: any = null): void {
+        if (!this.enabled) {
+            consoleLog(`LambdaExportTaskProcessor| Task processor is not enabled. Ignoring task.`);
+            asyncTask(args);
+            return;
+        }
         this.asyncTasksQueue.push([asyncTask, args]);
     }
 
@@ -114,17 +123,18 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
     //     }
     // }
 
-    private async startAsyncProcessor(): Promise<void> {
+    private startAsyncProcessor(): void {
         consoleLog(`[${LAMBDA_EXTENSION_NAME}] Registering with Lambda service...`);
         consoleLog(`[${LAMBDA_EXTENSION_NAME}] AWS_LAMBDA_RUNTIME_API: ${process.env.AWS_LAMBDA_RUNTIME_API}`);
-        await axios.post(
+        axios.post(
             `http://${process.env.AWS_LAMBDA_RUNTIME_API}/2020-01-01/extension/register`,
             { events: ['INVOKE'] },
             { headers: { 'Lambda-Extension-Name': LAMBDA_EXTENSION_NAME } }
         ).then(response => {
             const extId = response.headers['lambda-extension-identifier'];
             consoleLog(`[${LAMBDA_EXTENSION_NAME}] Registered with ID: ${extId}`);
-            
+            this.enabled = true;
+            consoleLog(`[${LAMBDA_EXTENSION_NAME}] Starting async task processor...`);
             const processTasksAsync = async () => {
                 while (true) {
                     consoleLog(`[${LAMBDA_EXTENSION_NAME}] Waiting for invocation...`);
@@ -179,6 +189,7 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
                 consoleLog(`[${LAMBDA_EXTENSION_NAME}] Error in async task processor: ${err}`);
             });
         }).catch(error => {
+            this.enabled = false;
             consoleLog(`[${LAMBDA_EXTENSION_NAME}] Failed to register extension: ${error}`);
             if (error.response) {
                 consoleLog(`[${LAMBDA_EXTENSION_NAME}] Response data: ${JSON.stringify(error.response.data)}`);

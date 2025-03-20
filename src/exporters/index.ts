@@ -4,7 +4,8 @@ import { OkahuSpanExporter } from './okahu/OkahuSpanExporter';
 import { AWSS3SpanExporter } from './aws/AWSS3SpanExporter';
 import { AzureBlobSpanExporter } from './azure/AzureBlobSpanExporter'
 import { consoleLog } from '../common/logging';
-import { ExportTaskProcessor, isAwsLambdaEnvironment, LambdaExportTaskProcessor } from './taskProcessor';
+import { ExportTaskProcessor, LambdaExportTaskProcessor } from './taskProcessor';
+import { isAwsLambdaEnvironment } from '../instrumentation/common/utils';
 
 interface GetMonocleExportersOptions {
     taskProcessor?: ExportTaskProcessor;
