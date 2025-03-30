@@ -8,7 +8,17 @@ export const getPatchedMain = function (element: WrapperArguments) {
     const spanHandler: SpanHandler = element.spanHandler || new DefaultSpanHandler();
     return function mainMethodName(original: Function) {
         return function patchMainMethodName() {
-            return processSpanWithTracing(this, element, spanHandler, original, arguments)
+            return processSpanWithTracing(this, element, spanHandler, original, arguments);
+        };
+    };
+}
+
+export const getPatchedMainList = function (elements: WrapperArguments[]) {
+    const spanHandler = new DefaultSpanHandler();
+    return function mainMethodName(original: Function) {
+        return function patchMainMethodName() {
+            // If element is an array, we need to process multiple elements
+            return processMultipleElementsWithTracing(this, elements, spanHandler, original, arguments);
         };
     };
 }
@@ -25,6 +35,46 @@ export const getPatchedScopeMain = function ({ tracer, ...element }: { tracer: T
             )
         };
     };
+}
+
+function processMultipleElementsWithTracing(
+    thisArg: () => any,
+    elements: WrapperArguments[],
+    spanHandler: SpanHandler,
+    original: Function,
+    args: any
+) {
+    // Process elements recursively, creating nested spans
+    return processElementsRecursively(thisArg, elements, 0, spanHandler, original, args);
+}
+
+function processElementsRecursively(
+    thisArg: () => any,
+    elements: WrapperArguments[],
+    index: number,
+    spanHandler: SpanHandler,
+    original: Function,
+    args: any
+) {
+    // Base case: if we've processed all elements, call the original function
+    if (index >= elements.length) {
+        return original.apply(thisArg, args);
+    }
+
+    // Process the current element and then recurse for the next element
+    const currentElement = elements[index];
+    const currentSpanHandler = currentElement.spanHandler || spanHandler;
+
+    return processSpanWithTracing(
+        thisArg,
+        currentElement,
+        currentSpanHandler,
+        // Instead of calling original directly, we'll call a function that processes the next element
+        function () {
+            return processElementsRecursively(thisArg, elements, index + 1, spanHandler, original, args);
+        },
+        args
+    );
 }
 
 function processSpanWithTracing(
@@ -51,18 +101,29 @@ function processSpanWithTracing(
         return tracer.startActiveSpan(
             getSpanName(element),
             (span) => {
-                spanHandler.preProcessSpan({ span: span, instance: this, args: args, element: element });
+                spanHandler.preProcessSpan({ span: span, instance: thisArg, args: args, element: element });
                 if (isNonWorkflowRootSpan(span, element) && !recursive) {
-                    processSpanWithTracing(thisArg, element, spanHandler, original, args, true);
-                    returnValue = original.apply(thisArg, args);
+                    returnValue = processSpanWithTracing(thisArg, element, spanHandler, original, args, true);
                     span.updateName("workflow." + getSpanName(element));
-                    span.end();
+                    if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                        returnValue.then(() => {
+                            span.end();
+                        }).catch(() => {
+                            span.end();
+                        });
+                    }
+                    else {
+                        span.end();
+                    }
                 }
                 else {
                     returnValue = original.apply(thisArg, args);
                     if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
                         returnValue.then((result: any) => {
                             postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args });
+                        }).catch((error: any) => {
+                            span.setStatus({ code: 2, message: error?.message || "Error occurred" });
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args });
                         });
                     }
                     else {
