@@ -6,7 +6,7 @@ import { isVercelEnvironment } from "./utils";
 // @ts-ignore: private field access required
 class PatchedBatchSpanProcessor extends BatchSpanProcessor {
     // @ts-ignore: private field access required
-    private _maybeStartTimer1() {
+    protected _maybeStartTimer1() {
         // @ts-ignore: private field access required
         if (this._isExporting)
             return;
@@ -60,5 +60,7 @@ class PatchedBatchSpanProcessor extends BatchSpanProcessor {
         // (0, core_1.unrefTimer)(this._timer);
     }
 }
+// @ts-ignore: private field access required
+PatchedBatchSpanProcessor.prototype._maybeStartTimer = PatchedBatchSpanProcessor.prototype._maybeStartTimer1;
 
 export { PatchedBatchSpanProcessor }

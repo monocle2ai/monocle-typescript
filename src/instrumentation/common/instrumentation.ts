@@ -8,7 +8,7 @@ import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
-import { getPatchedMain, getPatchedScopeMain } from "./wrapper";
+import { getPatchedMain, getPatchedScopeMain, getPatchedMainList } from "./wrapper";
 import { AWS_CONSTANTS } from './constants';
 import * as path from 'path';
 import { Hook as ImportHook } from "import-in-the-middle";
@@ -43,14 +43,19 @@ class MonocleInstrumentation extends InstrumentationBase {
         // @ts-ignore: custom field access
         let packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
         packagesForInstrumentation = packagesForInstrumentation.concat(scopeMethodsForInstrumentation)
-        packagesForInstrumentation.forEach(element => {
+        
+        // Group packages by package name
+        const groupedPackages = this._groupPackagesByName(packagesForInstrumentation);
+        
+        // Create module definitions for each group
+        for (const [packageName, elements] of Object.entries(groupedPackages)) {
             const module = new InstrumentationNodeModuleDefinition(
-                element.package,
+                packageName,
                 ['*'],
-                this._getOnPatchMain({ ...element }).bind(this),
+                this._getOnPatchMain(elements).bind(this),
             );
-            modules.push(module)
-        })
+            modules.push(module);
+        }
 
         consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
@@ -91,6 +96,7 @@ class MonocleInstrumentation extends InstrumentationBase {
         }
         // @ts-ignore: private field access required
         this._warnOnPreloadedModules();
+        
         // @ts-ignore: private field access required
         for (const module of this._modules) {
             const hookFn = (exports, name, baseDir) => {
@@ -99,9 +105,11 @@ class MonocleInstrumentation extends InstrumentationBase {
                     name = parsedPath.name;
                     baseDir = parsedPath.dir;
                 }
+                
                 // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
+
             const onRequire = (exports, name: string, baseDir: string) => {
                 if (module.name !== name && module.name.includes(baseDir + "/" + name)) {
                     // @ts-ignore: private field access required
@@ -110,9 +118,7 @@ class MonocleInstrumentation extends InstrumentationBase {
                 // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
-            // `RequireInTheMiddleSingleton` does not support absolute paths.
-            // For an absolute paths, we must create a separate instance of the
-            // require-in-the-middle `Hook`.
+            
             const hook = new RequireHook([module.name], { internals: true }, onRequire);
             // @ts-ignore: private field access required
             this._hooks.push(hook);
@@ -121,30 +127,71 @@ class MonocleInstrumentation extends InstrumentationBase {
             this._hooks.push(esmHook);
         }
     }
+    
+    // Helper method to group packages by name
+    _groupPackagesByName(packages) {
+        const groups = {};
+        
+        for (const pkg of packages) {
+            const key = pkg.package;
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(pkg);
+        }
+        
+        return groups;
+    }
 
-    _getOnPatchMain(element) {
+    _getOnPatchMain(elements) {
         return (moduleExports) => {
             try {
-                if (typeof moduleExports === "function") {
-                    this._wrap(
-                        moduleExports.prototype,
-                        element.method,
-                        this._patchMainMethodName(element)
-                    );
-                }
-                else {
-                    this._wrap(
-                        moduleExports[element.object].prototype,
-                        element.method,
-                        this._patchMainMethodName(element)
-                    );
+                // Handle single or multiple elements
+                // const packageName = elements[0].package;
+                
+                if (elements.length === 1) {
+                    const element = elements[0];
+                    if (typeof moduleExports === "function") {
+                        this._wrap(
+                            moduleExports.prototype,
+                            element.method,
+                            this._patchMainMethodName(element)
+                        );
+                    }
+                    else {
+                        this._wrap(
+                            moduleExports[element.object].prototype,
+                            element.method,
+                            this._patchMainMethodName(element)
+                        );
+                    }
+                } else {
+                    // Add tracer to each element
+                    const elementsWithTracer = elements.map(element => ({
+                        ...element,
+                        tracer: this.tracer
+                    }));
+                    
+                    if (typeof moduleExports === "function") {
+                        this._wrap(
+                            moduleExports.prototype,
+                            elements[0].method,
+                            getPatchedMainList(elementsWithTracer)
+                        );
+                    }
+                    else {
+                        this._wrap(
+                            moduleExports[elements[0].object].prototype,
+                            elements[0].method,
+                            getPatchedMainList(elementsWithTracer)
+                        );
+                    }
                 }
                 return moduleExports;
             } catch (e) {
                 consoleLog('Error in _getOnPatchMain', {
-                    package: element.package,
-                    object: element.object,
-                    method: element.method,
+                    package: elements[0].package,
+                    elements: elements.length,
                     error: e.message,
                     stack: e.stack
                 });
