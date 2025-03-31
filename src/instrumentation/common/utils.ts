@@ -142,7 +142,15 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
                 isFnCalled = true;
                 // If fn throws, this error will propagate out of startActiveSpan
                 const returnValue = fn.apply(thisArg, args);
-                span.end();
+                if(typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                    returnValue.finally(() => {
+                        span.end();
+                    })
+                }
+                else{
+                    span.end();
+                }
+                
                 return returnValue
             });
         })
