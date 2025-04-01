@@ -1,9 +1,9 @@
-const { setupMonocle } = require("../../dist");
+const { setupMonocle, startTrace } = require("../../dist");
 setupMonocle("bedrock-opensearch.app");
 
-const { 
-  BedrockRuntimeClient, 
-  InvokeModelCommand 
+const {
+  BedrockRuntimeClient,
+  InvokeModelCommand
 } = require("@aws-sdk/client-bedrock-runtime");
 const { Client } = require('@opensearch-project/opensearch');
 const { AwsSigv4Signer } = require('@opensearch-project/opensearch/aws');
@@ -52,7 +52,7 @@ async function generateEmbedding(text) {
   const requestPayload = {
     inputText: text
   };
-  
+
   const command = new InvokeModelCommand({
     modelId: EMBEDDING_MODEL,
     body: JSON.stringify(requestPayload),
@@ -68,7 +68,7 @@ async function generateEmbedding(text) {
     if (response.body) {
       const responseBody = JSON.parse(Buffer.from(response.body).toString());
       embedding = responseBody.embedding;
-      
+
       console.log("Embedding generated:", {
         statusCode: response.$metadata.httpStatusCode,
         embeddingDimensions: embedding.length
@@ -91,10 +91,10 @@ async function createKnnIndexIfNotExists() {
     const indexExists = await openSearchClient.indices.exists({
       index: INDEX_NAME
     });
-    
+
     if (!indexExists.body) {
       console.log(`Creating KNN index ${INDEX_NAME}...`);
-      
+
       // Define index with KNN settings
       const indexSettings = {
         settings: {
@@ -128,7 +128,7 @@ async function createKnnIndexIfNotExists() {
     } else {
       console.log(`Index ${INDEX_NAME} already exists`);
     }
-    
+
     return true;
   } catch (error) {
     console.error("Error creating KNN index:", error);
@@ -186,7 +186,7 @@ async function queryKnn(embedding, k = 5) {
 
     const hits = response.body.hits.hits;
     console.log(`Found ${hits.length} similar documents`);
-    
+
     return hits.map(hit => ({
       id: hit._source.id,
       text: hit._source.text,
@@ -226,10 +226,10 @@ async function runWorkflow() {
     // Query example - find similar documents to a query
     const queryText = "What beverages have caffeine?";
     console.log(`\nQuerying for: "${queryText}"`);
-    
+
     const queryEmbedding = await generateEmbedding(queryText);
     const similarDocuments = await queryKnn(queryEmbedding, 2);
-    
+
     console.log("\nSimilar documents:");
     similarDocuments.forEach(doc => {
       console.log(`- ${doc.id} (Score: ${doc.score}): ${doc.text}`);
@@ -248,12 +248,29 @@ async function runWorkflow() {
 
 if (require.main === module) {
   console.log("Running the workflow...");
-  runWorkflow()
-  .then(result => console.log("Workflow completed successfully"))
-  .catch(error => console.error("Workflow failed:", error));
+  startTrace(() => {
+    const val = runWorkflow()
+
+      val.then(result => console.log("Workflow completed successfully"))
+      .catch(error => console.error("Workflow failed:", error));
+      
+    return val
+  })
+
 }
 
+const wrappedRunWorkflow = () => {
+  return startTrace(() => {
+    const val = runWorkflow()
+
+      val.then(result => console.log("Workflow completed successfully"))
+      .catch(error => console.error("Workflow failed:", error));
+      
+    return val
+  })
+};
+
 module.exports = {
-  main: runWorkflow,
+  main: wrappedRunWorkflow,
 };
 
