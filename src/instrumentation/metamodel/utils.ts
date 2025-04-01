@@ -109,6 +109,32 @@ export function getVectorstoreDeployment(myMap) {
                 return port ? `${host}:${port}` : host;
             }
         }
+        
+        // Check for OpenSearch specific client configuration
+        if ('transport' in myMap && 'options' in myMap.transport) {
+            const options = myMap.transport.options;
+            if (options.node && typeof options.node === 'string') {
+                try {
+                    const url = new URL(options.node);
+                    return url.host;
+                } catch (e) {
+                    return options.node;
+                }
+            }
+            
+            if (options.nodes && Array.isArray(options.nodes) && options.nodes.length > 0) {
+                const firstNode = options.nodes[0];
+                if (typeof firstNode === 'string') {
+                    try {
+                        const url = new URL(firstNode);
+                        return url.host;
+                    } catch (e) {
+                        return firstNode;
+                    }
+                }
+            }
+        }
+        
         const keysToCheck = ['client', '_client'];
         const host = getHostFromMap(myMap, keysToCheck);
         if (host) {
