@@ -1,14 +1,22 @@
 {
   "name": "monocle2ai",
   "version": "0.1.2",
-  "description": "",
+  "description": "TypeScript library for AI observability and monitoring",
   "main": "./index.js",
+  "license": "Apache-2.0",
   "types": "./index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/monocle2ai/monocle-typescript.git"
   },
   "homepage": "https://github.com/monocle2ai/monocle-typescript",
+  "keywords": [
+    "ai",
+    "monitoring",
+    "observability",
+    "typescript",
+    "opentelemetry"
+  ],
   "scripts": {
     "clean": "rimraf coverage build tmp",
     "build": "./scripts/build",
