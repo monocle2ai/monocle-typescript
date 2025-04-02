@@ -13,7 +13,7 @@ const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 
 // Configuration
 const BEDROCK_REGION = "us-east-1";
-const OPENSEARCH_DOMAIN = "search-monocle-integration-test-yjsjdrg22aiy3rbkf7zoccp4fe.us-east-1.es.amazonaws.com";
+const OPENSEARCH_DOMAIN = process.env.OPENSEARCH_DOMAIN
 const INDEX_NAME = "document-embeddings";
 const EMBEDDING_DIMENSION = 1536; // For Titan Text Embeddings
 const EMBEDDING_MODEL = "amazon.titan-embed-text-v1";
