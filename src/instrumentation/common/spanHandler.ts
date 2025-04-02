@@ -271,6 +271,8 @@ export class DefaultSpanHandler implements SpanHandler {
     }
 }
 
+
+
 export class NonFrameworkSpanHandler extends DefaultSpanHandler {
 
     skipSpan({ }: {
@@ -278,10 +280,13 @@ export class NonFrameworkSpanHandler extends DefaultSpanHandler {
         args: IArguments;
         element: WrapperArguments;
     }): boolean {
+        return this.checkActiveWorkflowType();
+    }
+
+    protected checkActiveWorkflowType() {
         const currentActiveWorkflowType = context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) || WORKFLOW_TYPE_GENERIC;
         return Object.values(WORKFLOW_TYPE_MAP).includes(currentActiveWorkflowType as string);
     }
-
 }
 
 function getWorkflowType(wrappedPackage: string) {
