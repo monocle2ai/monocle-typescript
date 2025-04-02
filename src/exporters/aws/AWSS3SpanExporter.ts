@@ -10,7 +10,6 @@ interface AWSS3SpanExporterConfig {
     keyPrefix?: string;
     region?: string;
     taskProcessor?: ExportTaskProcessor;
-    // fileNameGenerator?: () => string;
 }
 
 class AWSS3SpanExporter {
@@ -18,7 +17,6 @@ class AWSS3SpanExporter {
     private keyPrefix: string;
     private s3Client: S3;
     private taskProcessor?: ExportTaskProcessor;
-    // private fileNameGenerator: () => string;
 
     constructor({ bucketName, keyPrefix, region, taskProcessor }: AWSS3SpanExporterConfig) {
         this.bucketName = bucketName || process.env.MONOCLE_S3_BUCKET_NAME || "default-bucket";
@@ -46,7 +44,6 @@ class AWSS3SpanExporter {
             });
         }
 
-        // this.fileNameGenerator = typeof fileNameGenerator === "function" ? fileNameGenerator : () => `${this.keyPrefix}${Date.now().toString()}`;
     }
 
     export(spans: any, resultCallback: (result: { code: ExportResultCode, error?: Error }) => void): void {
