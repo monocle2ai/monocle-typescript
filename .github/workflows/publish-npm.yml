@@ -43,45 +43,34 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # - name: Check if UNRELEASED section exists in CHANGELOG.md
-      #   id: check-changelog
-      #   run: |
-      #     if ! grep -q "## \[UNRELEASED\]" CHANGELOG.md; then
-      #       echo "Error: CHANGELOG.md must contain an UNRELEASED section"
-      #       exit 1
-      #     fi
+      - name: Check CHANGELOG.md for version entry
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          if ! grep -q "## $VERSION" CHANGELOG.md; then
+            echo "Error: Version $VERSION not found in CHANGELOG.md"
+            echo "Please add an entry for this version in the CHANGELOG.md file"
+            exit 1
+          fi
+          echo "CHANGELOG.md contains entry for version $VERSION"
 
-      # - name: Update CHANGELOG.md
-      #   run: |
-      #     VERSION=${{ steps.package-version.outputs.version }}
-      #     DATE=$(date +"%Y-%m-%d")
-      #     sed -i "s/## \[UNRELEASED\]/## [${VERSION}] - ${DATE}/" CHANGELOG.md
+      - name: Extract release notes
+        id: extract-release-notes
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          # Extract the content between current version and the next version marker or end of file
+          RELEASE_NOTES=$(awk -v ver="## $VERSION" '
+            $0 ~ ver {flag=1; next}
+            /^## [0-9]+\.[0-9]+\.[0-9]+/ {if (flag) exit}
+            flag {print}
+          ' CHANGELOG.md)
+          # Store release notes in a file
+          echo "$RELEASE_NOTES" > release_notes.md
+          echo "Extracted release notes for version $VERSION"
 
       - name: Configure Git
         run: |
           git config --local user.email "info@lfaidata.foundation"
           git config --local user.name "Monocle pr bot"
-
-      # - name: Commit CHANGELOG changes
-      #   run: |
-      #     git add CHANGELOG.md
-      #     git commit -m "Update CHANGELOG.md for release ${{ steps.package-version.outputs.version }}"
-      #     git push
-
-      # - name: Check if branch can merge into main
-      #   run: |
-      #     git fetch origin main
-      #     if ! git merge-base --is-ancestor origin/main HEAD; then
-      #       echo "Error: This branch is not up-to-date with main and cannot be merged"
-      #       exit 1
-      #     fi
-      #     # Check if there would be any merge conflicts
-      #     git checkout --detach
-      #     if ! git merge origin/main -m "Test merge"; then
-      #       echo "Error: There would be merge conflicts when merging into main"
-      #       exit 1
-      #     fi
-      #     git checkout ${{ steps.check-branch.outputs.branch_name }}
 
       - name: Publish to NPM
         run: |
@@ -89,6 +78,15 @@ jobs:
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          gh release create "v$VERSION" \
+            --title "Release v$VERSION" \
+            --notes-file release_notes.md
 
       - name: Create Pull Request to main
         env:
@@ -104,6 +102,8 @@ jobs:
           git config --global user.email "info@lfaidata.foundation"
           git config --global user.name "Monocle pr bot"
           timestamp=$(date +%s)
+          b
+ 
           branch="${{ steps.check-branch.outputs.branch_name }}"
 
           git push origin HEAD:$branch
