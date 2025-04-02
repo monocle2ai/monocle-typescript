@@ -33,7 +33,6 @@
     "@opentelemetry/resources": "^1.28.0",
     "@opentelemetry/sdk-trace-node": "^1.28.0",
     "@vercel/functions": "^2.0.0",
-    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "import-in-the-middle": "1.11.2",
