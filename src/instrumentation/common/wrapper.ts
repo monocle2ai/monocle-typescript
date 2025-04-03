@@ -88,8 +88,8 @@ function processSpanWithTracing(
     const tracer = element.tracer;
     const skipSpan = element.skipSpan || spanHandler.skipSpan({ instance: thisArg, args: args, element });
     let currentContext = context.active();
-    if (!element.skipSpan) {
-        currentContext = attachWorkflowType(element)
+    if (!element.skipSpan || recursive) {
+        currentContext = attachWorkflowType(element, recursive)
     }
     if (skipSpan) {
         spanHandler.preTracing(element);
