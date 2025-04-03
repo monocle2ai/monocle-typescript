@@ -18,15 +18,6 @@ export const config = {
         accessor: ({ args }) => {
           return args[2]?.config?.completion?.max_repair_attempts ?? 3;
         }
-      }
-    ],
-    [
-      {
-        _comment: "model configuration",
-        attribute: "model",
-        accessor: ({ args }) => {
-          return args[2]?.config?.completion?.model || "unknown";
-        }
       },
       {
         attribute: "tokenizer",

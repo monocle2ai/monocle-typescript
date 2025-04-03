@@ -7,22 +7,31 @@ export const config = {
       {
         _comment: "provider type, name, deployment",
         attribute: "type",
-        accessor: () => "teams.openai"
+        accessor: ({ instance }) => {
+          if (instance._client.constructor.name === "AzureOpenAI") {
+            return "inference.azure_openai";
+          }
+          return "inference.openai";
+        }
       },
       {
         attribute: "provider_name",
         accessor: () => "Microsoft Teams AI"
       },
       {
+        attribute: "inference_endpoint",
+        accessor: ({ instance }) => {
+          if (instance._client.constructor.name === "AzureOpenAI") {
+            return instance._client.baseURL;
+          }
+          return "https://api.openai.com/";
+        }
+      },
+      {
         attribute: "deployment",
-        accessor: ({ args }) => {
+        accessor: ({ instance }) => {
           // Access PromptManager options (index 2)
-          return (
-            extractTeamsAiInfo(args[2], "_options.promptsFolder", "unknown")
-              .split("/")
-              .filter(Boolean)
-              .pop() || "unknown"
-          );
+          return instance.options.azureDefaultDeployment
         }
       }
     ],
@@ -30,23 +39,17 @@ export const config = {
       {
         _comment: "LLM Model",
         attribute: "name",
-        accessor: ({ args }) => {
+        accessor: ({ instance }) => {
           // Attempt to extract model name from various possible locations
-          return extractTeamsAiInfo(
-            args[2],
-            "_options.default_model",
-            extractTeamsAiInfo(args[2], "_options.promptsFolder", "unknown")
-              .split("/")
-              .filter(Boolean)
-              .pop()
-          );
+          return instance.options.azureDefaultDeployment
         }
       },
       {
-        attribute: "is_streaming",
-        accessor: ({ args }) => {
-          // Access PromptManager options (index 2)
-          return extractTeamsAiInfo(args[2], "_options.stream", false);
+        _comment: "LLM Model",
+        attribute: "type",
+        accessor: ({ instance }) => {
+          // Attempt to extract model name from various possible locations
+          return "model.llm." + instance.options.azureDefaultDeployment
         }
       }
     ]
