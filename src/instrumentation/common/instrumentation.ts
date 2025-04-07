@@ -27,7 +27,7 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     public getTracer() {
         return this.tracer;
-    }   
+    }
 
     /**
      * Init method will be called when the plugin is constructed.
@@ -44,10 +44,10 @@ class MonocleInstrumentation extends InstrumentationBase {
         // @ts-ignore: custom field access
         let packagesForInstrumentation = combinedPackages.concat(this._config.userWrapperMethods || [])
         packagesForInstrumentation = packagesForInstrumentation.concat(scopeMethodsForInstrumentation)
-        
+
         // Group packages by package name
         const groupedPackages = this._groupPackagesByName(packagesForInstrumentation);
-        
+
         // Create module definitions for each group
         for (const [packageName, elements] of Object.entries(groupedPackages)) {
             const module = new InstrumentationNodeModuleDefinition(
@@ -97,7 +97,7 @@ class MonocleInstrumentation extends InstrumentationBase {
         }
         // @ts-ignore: private field access required
         this._warnOnPreloadedModules();
-        
+
         // @ts-ignore: private field access required
         for (const module of this._modules) {
             const hookFn = (exports, name, baseDir) => {
@@ -106,20 +106,32 @@ class MonocleInstrumentation extends InstrumentationBase {
                     name = parsedPath.name;
                     baseDir = parsedPath.dir;
                 }
-                
+
                 // @ts-ignore: private field access required
                 return this._onRequire(module, exports, name, baseDir);
             };
 
             const onRequire = (exports, name: string, baseDir: string) => {
-                if (module.name !== name && module.name.includes(baseDir + "/" + name)) {
+                try {
+                    if (module.name !== name && module.name.includes(path.join(baseDir, name))) {
+                        // @ts-ignore: private field access required
+                        return this._onRequire(module, exports, module.name, baseDir);
+                    }
                     // @ts-ignore: private field access required
                     return this._onRequire(module, exports, module.name, baseDir);
                 }
-                // @ts-ignore: private field access required
-                return this._onRequire(module, exports, name, baseDir);
+                catch (err) {
+                    consoleLog("Error in onRequire", {
+                        module: module.name,
+                        name,
+                        baseDir,
+                        error: err.message,
+                        stack: err.stack
+                    });
+                    return exports
+                }
             };
-            
+
             const hook = new RequireHook([module.name], { internals: true }, onRequire);
             // @ts-ignore: private field access required
             this._hooks.push(hook);
@@ -128,11 +140,11 @@ class MonocleInstrumentation extends InstrumentationBase {
             this._hooks.push(esmHook);
         }
     }
-    
+
     // Helper method to group packages by name
     _groupPackagesByName(packages) {
         const groups = {};
-        
+
         for (const pkg of packages) {
             const key = pkg.package;
             if (!groups[key]) {
@@ -140,7 +152,7 @@ class MonocleInstrumentation extends InstrumentationBase {
             }
             groups[key].push(pkg);
         }
-        
+
         return groups;
     }
 
@@ -149,7 +161,7 @@ class MonocleInstrumentation extends InstrumentationBase {
             try {
                 // Handle single or multiple elements
                 // const packageName = elements[0].package;
-                
+
                 if (elements.length === 1) {
                     const element = elements[0];
                     if (typeof moduleExports === "function") {
@@ -175,7 +187,7 @@ class MonocleInstrumentation extends InstrumentationBase {
                         ...element,
                         tracer: this.tracer
                     }));
-                    
+
                     if (typeof moduleExports === "function") {
                         this._wrap(
                             moduleExports.prototype,
