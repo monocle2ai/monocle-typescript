@@ -55,7 +55,8 @@ const setSpanStatus = function (span) {
 const WORKFLOW_TYPE_MAP = {
     "llamaindex": "workflow.llamaindex",
     "langchain": "workflow.langchain",
-    "haystack": "workflow.haystack"
+    "haystack": "workflow.haystack",
+    "@microsoft/teams-ai": "workflow.microsoft_teams_ai"
 }
 
 function getWorkflowName(span) {
@@ -299,7 +300,7 @@ function getWorkflowType(wrappedPackage: string) {
     return currentWorkflowType;
 }
 
-export function attachWorkflowType(element?: WrapperArguments) {
+export function attachWorkflowType(element?: WrapperArguments, isRootSpan = false) {
     let activeContext = context.active();
     let currentWorkflowType = activeContext.getValue(WORKFLOW_TYPE_KEY_SYMBOL);
     if (!element) {
@@ -307,7 +308,7 @@ export function attachWorkflowType(element?: WrapperArguments) {
         return activeContext;
     }
     if (!currentWorkflowType || currentWorkflowType === WORKFLOW_TYPE_GENERIC) {
-        if (element.spanType === "workflow") {
+        if (element.spanType === "workflow" || isRootSpan) {
             activeContext = context.active().setValue(WORKFLOW_TYPE_KEY_SYMBOL, getWorkflowType(element?.package));
         }
     }
