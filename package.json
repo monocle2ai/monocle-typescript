@@ -1,6 +1,6 @@
 {
   "name": "monocle2ai",
-  "version": "0.1.2",
+  "version": "0.1.2-beta.1",
   "description": "TypeScript library for AI observability and monitoring",
   "main": "./index.js",
   "license": "Apache-2.0",
