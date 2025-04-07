@@ -18,6 +18,7 @@ import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
 import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal } from './utils';
+
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
         super('MonocleInstrumentation', "1.0", config)
@@ -169,6 +170,9 @@ class MonocleInstrumentation extends InstrumentationBase {
                             element.method,
                             this._patchMainMethodName(element)
                         );
+                    }
+                    if(!element.object){
+                        this._wrap(moduleExports, element.method, this._patchMainMethodName(element));
                     }
                     else {
                         this._wrap(
