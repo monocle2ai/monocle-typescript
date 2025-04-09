@@ -1,16 +1,17 @@
+import { config as inferenceConfig } from "./entities/inference.js";
+import { config as retrievalConfig } from "./entities/retrieval.js";
+
 export const config = [
     {
-
         "package": "@langchain/core/language_models/chat_models",
         "object": "BaseChatModel",
         "method": "invoke",
         "spanName": "langchain.chat",
         "output_processor": [
-            require("./entities/inference.js").config
+            inferenceConfig
         ]
     },
     {
-
         "package": "@langchain/core/runnables",
         "object": "RunnableParallel",
         "method": "invoke",
@@ -18,7 +19,6 @@ export const config = [
         "spanType": "workflow"
     },
     {
-
         "package": "@langchain/core/runnables",
         "object": "RunnableSequence",
         "method": "invoke",
@@ -31,7 +31,7 @@ export const config = [
         "method": "_getRelevantDocuments",
         "spanName": "langchain.vectorstore_retriever",
         "output_processor": [
-            require("./entities/retrieval.js").config
+            retrievalConfig
         ]
     },
     {

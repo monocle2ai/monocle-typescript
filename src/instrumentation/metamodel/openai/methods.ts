@@ -1,4 +1,6 @@
 import { NonFrameworkSpanHandler } from "../../common/spanHandler";
+import { config as inferenceConfig } from "./entities/inference.js";
+import { config as retrievalConfig } from "./entities/retrieval.js";
 
 export const config = [
     {
@@ -6,7 +8,7 @@ export const config = [
         object: "Completions",
         method: "create",
         spanName: "openai_chat",
-        output_processor: [require("./entities/inference.js").config],
+        output_processor: [inferenceConfig],
         spanHandler: new NonFrameworkSpanHandler()
     },
     {
@@ -14,7 +16,7 @@ export const config = [
         object: "Embeddings",
         method: "create",
         spanName: "openai_embeddings",
-        output_processor: [require("./entities/retrieval.js").config],
+        output_processor: [retrievalConfig],
         spanHandler: new NonFrameworkSpanHandler()
     }
 ];

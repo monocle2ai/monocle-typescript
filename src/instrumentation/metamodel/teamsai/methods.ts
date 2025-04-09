@@ -1,4 +1,6 @@
 // import { NonFrameworkSpanHandler } from "../../common/spanHandler";
+import { config as teamsOutputConfig } from "./entities/teamsOutputProcessor.js";
+import { config as actionPlannerConfig } from "./entities/actionPlannerOutputProcessor.js";
 
 export const config = [
   {
@@ -6,7 +8,7 @@ export const config = [
     object: "OpenAIModel",
     method: "completePrompt",
     spanName: "teamsai.openai.completePrompt",
-    output_processor: [require("./entities/teamsOutputProcessor.js").config]
+    output_processor: [teamsOutputConfig]
   },
   {
     package: "@microsoft/teams-ai",
@@ -15,7 +17,7 @@ export const config = [
     spanName: "teamsai.actionPlanner.completePrompt",
     spanType: "workflow",
     output_processor: [
-      require("./entities/actionPlannerOutputProcessor.js").config
+      actionPlannerConfig
     ]
   }
 ];

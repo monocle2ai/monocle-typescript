@@ -1,3 +1,9 @@
+export interface ACCESSOR_ARGS {
+  instance: any,
+  args: any,
+  response: any 
+}
+
 export function extractMessages(args) {
   /**
    * Extract system and user messages
