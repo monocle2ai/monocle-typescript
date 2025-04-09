@@ -1,3 +1,7 @@
+// @esm-only
+import { registerModule } from "./esmModule"
+// @end-esm-only
+
 import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
@@ -171,7 +175,7 @@ class MonocleInstrumentation extends InstrumentationBase {
                             this._patchMainMethodName(element)
                         );
                     }
-                    if(!element.object){
+                    if (!element.object) {
                         this._wrap(moduleExports, element.method, this._patchMainMethodName(element));
                     }
                     else {
@@ -230,8 +234,14 @@ const setupMonocle = (
     spanProcessors: SpanProcessor[] = [],
     wrapperMethods: any[] = []
 ) => {
+
     try {
         consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
+
+        // @esm-only
+        registerModule();
+        // @end-esm-only
+
         const resource = new Resource({
             SERVICE_NAME: workflowName
         })
