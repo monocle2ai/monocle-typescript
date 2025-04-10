@@ -35,7 +35,16 @@ async function main() {
 
   console.log("\nEmbedding Result:");
   console.log(`Generated a vector with ${embedding.length} dimensions`);
-  //   console.log("First 5 dimensions:", embedding.slice(0, 5));
+
+  const response = await client.responses.create({
+    model: "gpt-4o",
+    input: "what is an americano?",
+  });
+
+  console.log(response.output_text);
+
+
+
 }
 
 exports.main = main;
