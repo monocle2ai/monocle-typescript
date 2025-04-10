@@ -1,8 +1,4 @@
-interface ACCESSOR_ARGS {
-  instance: any,
-  args: any,
-  response: any 
-}
+import { ACCESSOR_ARGS } from "../../utils";
 
 export const config = {
   type: "inference",
