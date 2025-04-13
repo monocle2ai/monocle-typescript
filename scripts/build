@@ -31,16 +31,13 @@ node scripts/utils/make-package-json-dist.cjs > dist/package.json
 echo "Script executed from: ${PWD}"
 npm run build:typescript
 
-# search and remove any file called esmModule.cjs from dist
-find dist -name esmModule.cjs -type f -delete
-
 # find instrumentation.cjs files and remove any section that is inside specific comment blocks
 
 # // @esm-only
 # require("./esmModule.cjs"); // remove this line
 # // @end-esm-only
 
-find dist -name instrumentation.cjs -type f | while read -r file; do
+find dist -name esmModule.cjs -type f | while read -r file; do
   echo "Processing $file"
   # Create a temporary file
   temp_file=$(mktemp)
