@@ -24,16 +24,16 @@ export const config = [
         object: "Responses",
         method: "create",
         spanName: "openai_responses",
+        output_processor: [inferenceConfig],
         spanHandler: new NonFrameworkSpanHandler(),
-        output_processor: [require("./entities/inference.js").config],
     },
     {
-        package:"openai/resources/responses/responses",
+        package: "openai/resources/responses/responses",
         object: "AsyncResponses",
         method: "create",
         spanName: "openai_async_responses",
+        output_processor: [retrievalConfig],
         spanHandler: new NonFrameworkSpanHandler(),
-        output_processor: [require("./entities/inference.js").config],
     },
-  
+
 ];
