@@ -157,7 +157,7 @@ export class LambdaExportTaskProcessor extends ExportTaskProcessor {
                             // Check if root span task is present in queue
                             if (args instanceof Array) {
                                 for (const span of args) {
-                                    if (span.parentSpanId === "None" || !span.parentSpanId) {
+                                    if (span?.parentSpanContext?.spanId === "None" || !span?.parentSpanContext?.spanId) {
                                         consoleLog(`[${LAMBDA_EXTENSION_NAME}] Found root span in task queue: name: ${span.name}.`);
                                         rootSpanFound = true;
                                     }

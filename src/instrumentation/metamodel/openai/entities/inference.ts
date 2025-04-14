@@ -53,6 +53,17 @@ export const config = {
                     "attribute": "input",
                     "accessor": function ({ args }) {
                         try {
+                            // Handle responses.create() format
+                            if (args[0].input !== undefined) {
+                                const inputs = [];
+                                if (args[0].instructions) {
+                                    inputs.push(`{'instructions': '${args[0].instructions}'}`);
+                                }
+                                inputs.push(`{'input': '${args[0].input}'}`);
+                                return inputs;
+                            }
+
+                            // Handle original chat.completions.create() format
                             const messages: string[] = [];
                             if (args[0].messages && args[0].messages.length > 0) {
                                 for (const msg of args[0].messages) {
@@ -79,7 +90,12 @@ export const config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        return [response.choices[0].message.content]
+                        if (response?.output_text !== undefined) {
+                            return [response.output_text];
+                        }
+
+                        // Handle original chat.completions.create() format
+                        return response?.choices?.[0]?.message?.content ? [response.choices?.[0].message.content] : []
                     }
                 }
             ]

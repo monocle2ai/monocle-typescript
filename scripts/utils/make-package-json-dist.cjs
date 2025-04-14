@@ -15,6 +15,7 @@ const pkgJson = require(process.env['PKG_JSON_PATH'] || '../../package.json');
 
 delete pkgJson.devDependencies;
 delete pkgJson.scripts
+pkgJson.main = './index.cjs';
 // delete pkgJson.scripts.prepack;
 // delete pkgJson.scripts.prepublishOnly;
 // delete pkgJson.scripts.prepare;

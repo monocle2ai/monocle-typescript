@@ -5,7 +5,7 @@ setupMonocle("openai.app");
 const { OpenAI } = require("openai");
 
 const client = new OpenAI({
-  apiKey: process.env["OPENAI_API_KEY"] // This is the default and can be omitted
+  apiKey: process.env["OPENAI_API_KEY"], // This is the default and can be omitted
 });
 
 async function main() {
@@ -15,10 +15,11 @@ async function main() {
       { role: "user", content: "What is an americano?" },
       {
         role: "system",
-        content: "You are a helpful assistant to answer questions about coffee."
-      }
+        content:
+          "You are a helpful assistant to answer questions about coffee.",
+      },
     ],
-    model: "gpt-4o"
+    model: "gpt-4o",
   });
   console.log("Chat Completion Result:");
   console.log(chatCompletion.choices[0].message.content);
@@ -27,7 +28,7 @@ async function main() {
   const embeddingResponse = await client.embeddings.create({
     model: "text-embedding-3-small",
     input: "What is an americano?",
-    encoding_format: "float"
+    encoding_format: "float",
   });
 
   // Get the embedding vector
@@ -35,7 +36,18 @@ async function main() {
 
   console.log("\nEmbedding Result:");
   console.log(`Generated a vector with ${embedding.length} dimensions`);
-  //   console.log("First 5 dimensions:", embedding.slice(0, 5));
+
+  const response = await client.responses.create({
+    model: "gpt-4o",
+    input: "what is an americano?",
+  });
+  const response2 = await client.responses.create({
+    model: "gpt-4o",
+    instructions: "You are a coding assistant that talks like a pirate",
+    input: "Are semicolons optional in JavaScript?",
+  });
+  console.log(response.output_text);
+  console.log(response2.output_text);
 }
 
 exports.main = main;

@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs'
-import { context as context_api, propagation, Context } from "@opentelemetry/api";
-import { RandomIdGenerator, Tracer } from "@opentelemetry/sdk-trace-node";
+import { context as context_api, propagation, Context, Tracer } from "@opentelemetry/api";
+import { RandomIdGenerator } from "@opentelemetry/sdk-trace-node";
 import { MONOCLE_SCOPE_NAME_PREFIX, SCOPE_CONFIG_PATH, SCOPE_METHOD_FILE } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
