@@ -55,7 +55,12 @@ export const config = {
                         try {
                             // Handle responses.create() format
                             if (args[0].input !== undefined) {
-                                return [args[0].input];
+                                const inputs = [];
+                                if (args[0].instructions) {
+                                    inputs.push(`{'instructions': '${args[0].instructions}'}`);
+                                }
+                                inputs.push(`{'input': '${args[0].input}'}`);
+                                return inputs;
                             }
 
                             // Handle original chat.completions.create() format
