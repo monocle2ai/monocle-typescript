@@ -1,3 +1,9 @@
+export interface ACCESSOR_ARGS {
+  instance: any,
+  args: any,
+  response: any 
+}
+
 export function extractMessages(args) {
   /**
    * Extract system and user messages
@@ -164,7 +170,25 @@ function getHostFromMap(map, keys) {
 export function getLlmMetadata({ response, instance }) {
   const metaDict: Record<string, number | null> = {};
 
-  if (response) {
+    if (response) {
+        if (response.usage) {
+            metaDict['input_tokens'] = response.usage.input_tokens;
+            metaDict['output_tokens'] = response.usage.output_tokens;
+            metaDict['total_tokens'] =
+                (response.usage.input_tokens || 0) +
+                (response.usage.output_tokens || 0);
+
+            if (response.model) {
+                metaDict['model'] = response.model;
+            }
+
+            if (response.stop_reason) {
+                metaDict['finish_reason'] = response.stop_reason;
+            }
+
+            return metaDict;
+        }
+
         const tokenUsage = response.raw?.usage || response.response_metadata?.tokenUsage;
 
     if (tokenUsage) {

@@ -25,8 +25,10 @@ describe("LlamaIndex Agent Test", () => {
 
   beforeEach(() => {
     // Setup custom tracer provider with our exporter
-    provider = new NodeTracerProvider();
-    provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
+    provider = new NodeTracerProvider({
+      spanProcessors: [
+        new SimpleSpanProcessor(customExporter)      ],
+    });
     provider.register();
 
     // Backup Azure OpenAI environment variables

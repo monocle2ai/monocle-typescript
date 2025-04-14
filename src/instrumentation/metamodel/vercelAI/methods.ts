@@ -1,4 +1,5 @@
 import { NonFrameworkSpanHandler } from "../../common/spanHandler";
+import { config as inferenceConfig } from "./entities/inference.js";
 
 export const config = [
   {
@@ -6,7 +7,7 @@ export const config = [
     object: "",
     method: "generateText",
     spanName: "vercelAI.generateText",
-    output_processor: [require("./entities/inference.js").config],
+    output_processor: [inferenceConfig],
     spanHandler: new NonFrameworkSpanHandler()
   }
 ];

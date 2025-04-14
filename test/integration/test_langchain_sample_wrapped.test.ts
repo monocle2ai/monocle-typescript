@@ -113,8 +113,9 @@ describe("Langchain OpenAI Integration Tests", () => {
 
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
-    const provider = new NodeTracerProvider();
-    provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
+    const provider = new NodeTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(customExporter)]
+    });
     provider.register();
     setupMonocle("openai_rag_workflow");
   });

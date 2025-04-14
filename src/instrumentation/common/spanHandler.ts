@@ -39,7 +39,7 @@ export interface SpanHandler {
 }
 
 const isRootSpan = function (span) {
-    if (typeof span.parentSpanId === "string" && span.parentSpanId.length > 0)
+    if (typeof span?.parentSpanContext?.spanId === "string" && span?.parentSpanContext?.spanId?.length > 0)
         return false
     return true;
 };

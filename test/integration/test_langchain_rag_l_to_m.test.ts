@@ -64,8 +64,9 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
 
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
-    const provider = new NodeTracerProvider();
-    provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
+    const provider = new NodeTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(customExporter)]
+    });
     provider.register();
     setupMonocle("raanne_rag_ltom");
   });

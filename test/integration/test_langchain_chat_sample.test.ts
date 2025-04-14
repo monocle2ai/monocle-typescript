@@ -95,8 +95,11 @@ describe("Langchain Integration Tests", () => {
     customExporter = new CustomConsoleSpanExporter();
 
     // Setup the provider with our custom exporter
-    const provider = new NodeTracerProvider();
-    provider.addSpanProcessor(new BatchSpanProcessor(customExporter));
+    const provider = new NodeTracerProvider({
+      spanProcessors: [
+        new BatchSpanProcessor(customExporter)
+      ]
+    });
     provider.register();
 
     // Backup OpenAI environment variables
