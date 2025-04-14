@@ -18,5 +18,22 @@ export const config = [
         spanName: "openai_embeddings",
         output_processor: [retrievalConfig],
         spanHandler: new NonFrameworkSpanHandler()
-    }
+    },
+    {
+        package: "openai/resources/responses/responses",
+        object: "Responses",
+        method: "create",
+        spanName: "openai_responses",
+        spanHandler: new NonFrameworkSpanHandler(),
+        output_processor: [require("./entities/inference.js").config],
+    },
+    {
+        package:"openai/resources/responses/responses",
+        object: "AsyncResponses",
+        method: "create",
+        spanName: "openai_async_responses",
+        spanHandler: new NonFrameworkSpanHandler(),
+        output_processor: [require("./entities/inference.js").config],
+    },
+  
 ];
