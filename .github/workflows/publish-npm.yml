@@ -43,30 +43,6 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check CHANGELOG.md for version entry
-        run: |
-          VERSION="${{ steps.package-version.outputs.version }}"
-          if ! grep -q "## $VERSION" CHANGELOG.md; then
-            echo "Error: Version $VERSION not found in CHANGELOG.md"
-            echo "Please add an entry for this version in the CHANGELOG.md file"
-            exit 1
-          fi
-          echo "CHANGELOG.md contains entry for version $VERSION"
-
-      - name: Extract release notes
-        id: extract-release-notes
-        run: |
-          VERSION="${{ steps.package-version.outputs.version }}"
-          # Extract the content between current version and the next version marker or end of file
-          RELEASE_NOTES=$(awk -v ver="## $VERSION" '
-            $0 ~ ver {flag=1; next}
-            /^## [0-9]+\.[0-9]+\.[0-9]+/ {if (flag) exit}
-            flag {print}
-          ' CHANGELOG.md)
-          # Store release notes in a file
-          echo "$RELEASE_NOTES" > release_notes.md
-          echo "Extracted release notes for version $VERSION"
-
       - name: Check if version is a pre-release
         id: check-prerelease
         run: |
@@ -78,6 +54,32 @@ jobs:
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "Version $VERSION is a stable release"
           fi
+
+      - name: Check CHANGELOG.md for version entry
+        if: steps.check-prerelease.outputs.is_prerelease == 'false'
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          if ! grep -q "## $VERSION" CHANGELOG.md; then
+            echo "Error: Version $VERSION not found in CHANGELOG.md"
+            echo "Please add an entry for this version in the CHANGELOG.md file"
+            exit 1
+          fi
+          echo "CHANGELOG.md contains entry for version $VERSION"
+
+      - name: Extract release notes
+        id: extract-release-notes
+        if: steps.check-prerelease.outputs.is_prerelease == 'false'
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          # Extract the content between current version and the next version marker or end of file
+          RELEASE_NOTES=$(awk -v ver="## $VERSION" '
+            $0 ~ ver {flag=1; next}
+            /^## [0-9]+\.[0-9]+\.[0-9]+/ {if (flag) exit}
+            flag {print}
+          ' CHANGELOG.md)
+          # Store release notes in a file
+          echo "$RELEASE_NOTES" > release_notes.md
+          echo "Extracted release notes for version $VERSION"
 
       - name: Configure Git
         run: |
