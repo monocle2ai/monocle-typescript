@@ -19,15 +19,6 @@ export const config = [
     },
     {
         "package": "llamaindex",
-        "object": "OpenAI",
-        "method": "chat",
-        "spanName": "llamaindex.openai_chat",
-        "output_processor": [
-           inferenceConfig
-        ]
-    },
-    {
-        "package": "llamaindex",
         "object": "BaseLLM",
         "method": "complete",
         "spanName": "llamaindex.llm_chat",

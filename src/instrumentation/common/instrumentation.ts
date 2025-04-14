@@ -1,13 +1,11 @@
-// @esm-only
 import { registerModule } from "./esmModule"
-// @end-esm-only
 
 import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
 } from '@opentelemetry/instrumentation';
 import { context } from "@opentelemetry/api";
-import { Resource } from "@opentelemetry/resources";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
@@ -53,9 +51,9 @@ class MonocleInstrumentation extends InstrumentationBase {
         const groupedPackages = this._groupPackagesByName(packagesForInstrumentation);
 
         // Create module definitions for each group
-        for (const [packageName, elements] of Object.entries(groupedPackages)) {
+        for (const [_, elements] of Object.entries(groupedPackages)) {
             const module = new InstrumentationNodeModuleDefinition(
-                packageName,
+                elements[0].package,
                 ['*'],
                 this._getOnPatchMain(elements).bind(this),
             );
@@ -150,7 +148,7 @@ class MonocleInstrumentation extends InstrumentationBase {
         const groups = {};
 
         for (const pkg of packages) {
-            const key = pkg.package;
+            const key = `${pkg.package}_${pkg.object}_${pkg.method}`;
             if (!groups[key]) {
                 groups[key] = [];
             }
@@ -238,28 +236,29 @@ const setupMonocle = (
     try {
         consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
 
-        // @esm-only
         registerModule();
-        // @end-esm-only
 
-        const resource = new Resource({
+        const resource = resourceFromAttributes({
             SERVICE_NAME: workflowName
-        })
+        });
+        
         const contextManager = new AsyncHooksContextManager();
         contextManager.enable();
         context.setGlobalContextManager(contextManager);
-        const tracerProvider = new NodeTracerProvider({
-            resource: resource
-        })
+
         const monocleProcessors: SpanProcessor[] = [];
         if (!spanProcessors.length) {
             addSpanProcessors(monocleProcessors);
         }
-
-        [...spanProcessors, ...monocleProcessors].forEach(processor => {
+        const finalSpanProcessors = [...spanProcessors, ...monocleProcessors];
+        finalSpanProcessors.forEach(processor => {
             consoleLog(`Adding span processor: ${processor.constructor.name}`);
-            tracerProvider.addSpanProcessor(processor);
         });
+
+        const tracerProvider = new NodeTracerProvider({
+            resource: resource,
+            spanProcessors: finalSpanProcessors
+        })
         // for (let processor of spanProcessors)
         //     tracerProvider.addSpanProcessor(processor)
         const userWrapperMethods: any[] = []

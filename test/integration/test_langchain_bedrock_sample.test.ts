@@ -64,9 +64,9 @@ describe("Langchain Bedrock Integration Tests", () => {
 
   beforeAll(() => {
     customExporter = new CustomConsoleSpanExporter();
-    const provider = new NodeTracerProvider();
-
-    provider.addSpanProcessor(new SimpleSpanProcessor(customExporter));
+    const provider = new NodeTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(customExporter)]
+    });
 
     // Register the provider
     provider.register();
