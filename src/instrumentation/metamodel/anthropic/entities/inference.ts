@@ -1,3 +1,4 @@
+import { detectSdk } from "../../../common/spanHandler.js";
 import { extractAssistantMessage, getLlmMetadata } from "../../utils.js"
 
 export const config = {
@@ -6,10 +7,11 @@ export const config = {
     [
       {
         "_comment": "provider type ,name , deployment , inference_endpoint",
-        "attribute": "type",
-        "accessor": function () {
-          return "inference.anthropic";
-        }
+       "attribute": "type",
+       "accessor": function ({instance, args}) {
+        const sdk = detectSdk(instance, args);
+        return `${sdk.sdkType}.${sdk.sdkName}`;
+      }
       },
       {
         "attribute": "deployment",
