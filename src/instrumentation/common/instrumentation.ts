@@ -230,12 +230,15 @@ class MonocleInstrumentation extends InstrumentationBase {
 const setupMonocle = (
     workflowName: string,
     spanProcessors: SpanProcessor[] = [],
-    wrapperMethods: any[] = []
+    wrapperMethods: any[] = [],
+    exporter_list: string = null
 ) => {
 
     try {
         consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
-
+        if (spanProcessors.length && exporter_list) {
+            throw new Error('Cannot set both spanProcessors and exporter_list.');
+        }
         registerModule();
 
         const resource = resourceFromAttributes({
@@ -248,7 +251,7 @@ const setupMonocle = (
 
         const monocleProcessors: SpanProcessor[] = [];
         if (!spanProcessors.length) {
-            addSpanProcessors(monocleProcessors);
+            addSpanProcessors(monocleProcessors, exporter_list);
         }
         const finalSpanProcessors = [...spanProcessors, ...monocleProcessors];
         finalSpanProcessors.forEach(processor => {
@@ -289,7 +292,7 @@ const setupMonocle = (
     }
 }
 
-function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
+function addSpanProcessors(monocleProcessors: SpanProcessor[] = [], exporter_list:string = null) {
     consoleLog('Adding span processors, environment:', {
         MONOCLE_EXPORTER_DELAY: process.env.MONOCLE_EXPORTER_DELAY,
         MONOCLE_EXPORTER: process.env.MONOCLE_EXPORTER,
@@ -298,10 +301,11 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
     const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
     const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5;
 
-    if (!process.env.MONOCLE_EXPORTER &&
+    const exporters:string = exporter_list || process.env.MONOCLE_EXPORTER ;
+    if (!exporters &&
         Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
         consoleLog(`addSpanProcessors| Using AWS S3 span exporter and Console span exporter`);
-        okahuProcessors.push(
+        monocleProcessors.push(
             new PatchedBatchSpanProcessor(
                 new AWSS3SpanExporter({}),
                 {
@@ -310,7 +314,7 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
             )
 
         )
-        okahuProcessors.push(new PatchedBatchSpanProcessor(
+        monocleProcessors.push(new PatchedBatchSpanProcessor(
             new ConsoleSpanExporter(),
             {
                 scheduledDelayMillis: scheduledDelayMillis
@@ -318,8 +322,8 @@ function addSpanProcessors(okahuProcessors: SpanProcessor[] = []) {
         ))
     }
     else {
-        okahuProcessors.push(
-            ...getMonocleExporters().map((exporter) => {
+        monocleProcessors.push(
+            ...getMonocleExporters(exporters).map((exporter) => {
                 return new PatchedBatchSpanProcessor(
                     exporter,
                     {

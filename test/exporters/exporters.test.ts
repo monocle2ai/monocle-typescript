@@ -97,4 +97,13 @@ describe('getMonocleExporters', () => {
         expect(exporters[1]).toBeInstanceOf(MonocleConsoleSpanExporter);
         expect(exporters[2]).toBeInstanceOf(FileSpanExporter);
     });
+
+    it('should return multiple exporters when contains comma-separated values as argument', () => {
+        process.env.MONOCLE_EXPORTER = 'console,file';
+        const exporters = getMonocleExporters('console,file,okahu');
+        expect(exporters).toHaveLength(3);
+        expect(exporters[0]).toBeInstanceOf(MonocleConsoleSpanExporter);
+        expect(exporters[1]).toBeInstanceOf(FileSpanExporter);
+        expect(exporters[2]).toBeInstanceOf(OkahuSpanExporter);
+    });
 });

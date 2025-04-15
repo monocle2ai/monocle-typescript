@@ -19,13 +19,13 @@ const monocleExporters = {
     "console": (options: GetMonocleExportersOptions = {}) => new MonocleConsoleSpanExporter({ taskProcessor: options.taskProcessor }),
 };
 
-function getMonocleExporters(options: GetMonocleExportersOptions = {}) {
+function getMonocleExporters(exporter_list: string = null, options: GetMonocleExportersOptions = {}) {
     const getMonocleExporterOptions = options || {};
     if (isAwsLambdaEnvironment() && !getMonocleExporterOptions.taskProcessor) {
         consoleLog('getMonocleExporters| Using LambdaExportTaskProcessor for AWS Lambda environment');
         getMonocleExporterOptions.taskProcessor = new LambdaExportTaskProcessor();
     }
-    const exporterNameList = (process.env.MONOCLE_EXPORTER || 'console').split(',');
+    const exporterNameList = (exporter_list || process.env.MONOCLE_EXPORTER || 'console').split(',');
     consoleLog(`getMonocleExporters| Initializing exporters with config: ${exporterNameList}`);
 
     let exporters = [];
