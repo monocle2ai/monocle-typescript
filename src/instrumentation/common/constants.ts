@@ -28,6 +28,9 @@ export interface WrapperArguments {
 }
 const WORKFLOW_TYPE_KEY = "monocle.workflow_type"
 export const WORKFLOW_TYPE_KEY_SYMBOL = Symbol(WORKFLOW_TYPE_KEY)
+export const ADD_NEW_WORKFLOW_STRING = "monocle.add_new_workflow"
+export const ADD_NEW_WORKFLOW_SYMBOL = Symbol(ADD_NEW_WORKFLOW_STRING);
+export const MONOCLE_SDK_LANGUAGE = "monocle_apptrace.language"
 export const WORKFLOW_TYPE_GENERIC = "workflow.generic"
 export const MONOCLE_SDK_VERSION = "monocle_apptrace.version"
 

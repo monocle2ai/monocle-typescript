@@ -1,7 +1,7 @@
 import { context, Tracer } from "@opentelemetry/api";
 import { setScopesInternal } from "./utils";
-import { attachWorkflowType, DefaultSpanHandler, isNonWorkflowRootSpan, SpanHandler } from "./spanHandler";
-import { WrapperArguments } from "./constants";
+import { attachWorkflowType, DefaultSpanHandler, isRootSpan, SpanHandler } from "./spanHandler";
+import { ADD_NEW_WORKFLOW_SYMBOL, WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
 
 export const getPatchedMain = function (element: WrapperArguments) {
@@ -82,59 +82,70 @@ function processSpanWithTracing(
     element: WrapperArguments,
     spanHandler: SpanHandler,
     original: Function,
-    args: any,
-    recursive = false
+    args: any
 ) {
     const tracer = element.tracer;
-    const skipSpan = element.skipSpan || spanHandler.skipSpan({ instance: thisArg, args: args, element });
     let currentContext = context.active();
-    if (!element.skipSpan || recursive) {
-        currentContext = attachWorkflowType(element, recursive)
+    const skipSpan = element.skipSpan || spanHandler.skipSpan({ instance: thisArg, args: args, element });
+    if (!element.skipSpan) {
+        currentContext = attachWorkflowType(element);
     }
     if (skipSpan) {
         spanHandler.preTracing(element);
         return original.apply(thisArg, args);
     }
+    else {
+        //add_workflow_span = get_value(ADD_NEW_WORKFLOW) == True
+        const shouldAddWorkflowSpan = currentContext.getValue(ADD_NEW_WORKFLOW_SYMBOL) === true;
+        currentContext = currentContext.setValue(ADD_NEW_WORKFLOW_SYMBOL, false);
+        return context.with(currentContext, () => {
+            return handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan });
+        });
+    }
+
+}
+
+function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan }: { currentContext: any, tracer: Tracer, element: WrapperArguments, spanHandler: SpanHandler, thisArg: () => any, args: any, original: Function, shouldAddWorkflowSpan: boolean }) {
     let returnValue: any;
 
-    return context.with(currentContext, () => {
-        return tracer.startActiveSpan(
-            getSpanName(element),
-            (span) => {
-                spanHandler.preProcessSpan({ span: span, instance: thisArg, args: args, element: element });
-                if (isNonWorkflowRootSpan(span, element) && !recursive) {
-                    returnValue = processSpanWithTracing(thisArg, element, spanHandler, original, args, true);
-                    span.updateName("workflow." + getSpanName(element));
-                    if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
-                        returnValue.then(() => {
-                            span.end();
-                        }).catch(() => {
-                            span.end();
-                        });
-                    }
-                    else {
+
+    return tracer.startActiveSpan(
+        getSpanName(element),
+        (span) => {
+            spanHandler.setDefaultMonocleAttributes({ span: span, instance: thisArg, args: args, element: element });
+            if (isRootSpan(span) || shouldAddWorkflowSpan) {
+                spanHandler.setWorkflowProperties({ span, instance: thisArg, args: args, element });
+                returnValue = handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan: false });
+                span.updateName("workflow");
+                if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                    returnValue.then(() => {
                         span.end();
-                    }
+                    }).catch(() => {
+                        span.end();
+                    });
                 }
                 else {
-                    returnValue = original.apply(thisArg, args);
-                    if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
-                        returnValue.then((result: any) => {
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args });
-                        }).catch((error: any) => {
-                            span.setStatus({ code: 2, message: error?.message || "Error occurred" });
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args });
-                        });
-                    }
-                    else {
-                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args });
-                    }
+                    span.end();
                 }
-
-                return returnValue;
             }
-        );
-    });
+            else {
+                returnValue = original.apply(thisArg, args);
+                if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                    returnValue.then((result: any) => {
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args });
+                    }).catch((error: any) => {
+                        span.setStatus({ code: 2, message: error?.message || "Error occurred" });
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args });
+                    });
+                }
+                else {
+                    postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args });
+                }
+            }
+
+            return returnValue;
+        }
+    );
 }
 
 function getSpanName(element: WrapperArguments): string {

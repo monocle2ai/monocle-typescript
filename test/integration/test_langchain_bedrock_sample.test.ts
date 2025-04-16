@@ -189,7 +189,7 @@ describe("Langchain Bedrock Integration Tests", () => {
 
     if (rootSpan) {
       expect(rootSpan.attributes["entity.1.name"]).toBe("langchain_app_1");
-      expect(rootSpan.attributes["entity.1.type"]).toBe("workflow.langchain");
+      expect(rootSpan.attributes["entity.1.type"]).toBe("workflow");
     }
   }, 10000);
 });
