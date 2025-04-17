@@ -3,6 +3,7 @@ import { setScopesInternal } from "./utils";
 import { attachWorkflowType, DefaultSpanHandler, isRootSpan, SpanHandler } from "./spanHandler";
 import { ADD_NEW_WORKFLOW_SYMBOL, WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
+import { Span } from "./opentelemetryUtils";
 
 export const getPatchedMain = function (element: WrapperArguments) {
     const spanHandler: SpanHandler = element.spanHandler || new DefaultSpanHandler();
@@ -111,8 +112,7 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
 
     return tracer.startActiveSpan(
         getSpanName(element),
-        (span) => {
-            spanHandler.setDefaultMonocleAttributes({ span: span, instance: thisArg, args: args, element: element });
+        (span: Span) => {
             if (isRootSpan(span) || shouldAddWorkflowSpan) {
                 spanHandler.setWorkflowProperties({ span, instance: thisArg, args: args, element });
                 returnValue = handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan: false });
@@ -142,6 +142,9 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                     postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args });
                 }
             }
+
+            spanHandler.setDefaultMonocleAttributes({ span: span, instance: thisArg, args: args, element: element });
+
 
             return returnValue;
         }

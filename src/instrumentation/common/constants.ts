@@ -26,6 +26,7 @@ export interface WrapperArguments {
     scopeName?: string,
     spanType?: string,
 }
+
 const WORKFLOW_TYPE_KEY = "monocle.workflow_type"
 export const WORKFLOW_TYPE_KEY_SYMBOL = Symbol(WORKFLOW_TYPE_KEY)
 export const ADD_NEW_WORKFLOW_STRING = "monocle.add_new_workflow"

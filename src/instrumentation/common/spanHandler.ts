@@ -1,7 +1,8 @@
 import { MONOCLE_SDK_LANGUAGE, MONOCLE_SDK_VERSION, service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
 // import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
-import { context, Span, SpanStatusCode } from "@opentelemetry/api";
+import { context, SpanStatusCode } from "@opentelemetry/api";
+import { Span } from "./opentelemetryUtils";
 import { MONOCLE_VERSION } from './monocle_version';
 
 export interface SpanHandler {
@@ -51,7 +52,7 @@ export interface SpanHandler {
     preTracing(element: WrapperArguments): void;
 }
 
-export function isRootSpan(span) {
+export function isRootSpan(span: Span) {
     if (typeof span?.parentSpanContext?.spanId === "string" && span?.parentSpanContext?.spanId?.length > 0)
         return false
     return true;
@@ -72,12 +73,12 @@ const WORKFLOW_TYPE_MAP = {
     "@microsoft/teams-ai": "workflow.microsoft_teams_ai"
 }
 
-function getWorkflowName(span) {
+function getWorkflowName(span: Span) {
     try {
-        return span.resource.attributes["SERVICE_NAME"];
+        return span.resource.attributes["SERVICE_NAME"] as string;
     } catch (e) {
         console.error(`Error getting workflow name: ${e}`);
-        return `workflow.${span.context.traceId}`;
+        return `workflow.${span.spanContext().traceId}`;
     }
 }
 
@@ -285,6 +286,8 @@ export class DefaultSpanHandler implements SpanHandler {
     public static setMonocleAttributes(span: Span) {
         span.setAttribute(MONOCLE_SDK_VERSION, MONOCLE_VERSION);
         span.setAttribute(MONOCLE_SDK_LANGUAGE, "js");
+        const workflowName = getWorkflowName(span);
+        span.setAttribute("workflow.name", workflowName);
         const scopes = getScopesInternal();
         for (const scopeKey in scopes) {
             span.setAttribute(`scope.${scopeKey}`, scopes[scopeKey]);
