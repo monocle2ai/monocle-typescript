@@ -3,7 +3,6 @@ import { service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYP
 import { getScopesInternal } from "./utils";
 import { context, Span, SpanStatusCode } from "@opentelemetry/api";
 import { MONOCLE_VERSION } from './monocle_version';
-import { SDK_CONFIGS, SdkConfig, SdkDetectionResult } from './sdkConfigs';
 export interface SpanHandler {
     preProcessSpan({ span, instance, args, element }: {
         span: Span;
@@ -326,45 +325,3 @@ export function isNonWorkflowRootSpan(curr_span: Span, element: WrapperArguments
 
 
 
-
-export function detectSdk(instance: any, args: any): SdkDetectionResult {
-    for (const config of SDK_CONFIGS) {
-        if (matchesSdkPatterns(instance, args, config)) {
-            return {
-                sdkName: config.name,
-                sdkType: config.type
-            };
-        }
-    }
-    
-    return {
-        sdkName: 'unknown',
-        sdkType: 'inference'
-    };
-}
-
-function matchesSdkPatterns(instance: any, args: any, config: SdkConfig): boolean {
-    const { patterns } = config;
-    
-    return (
-        matchesPattern(instance?.baseURL, patterns.baseUrl) ||
-        matchesPattern(args[0]?.model, patterns.modelPrefix, 'startsWith') ||
-        matchesPattern(instance?.constructor?.name, patterns.constructorName, 'exact') ||
-        matchesPattern(instance?._client?.baseURL, patterns.clientBaseUrl)
-    );
-}
-
-function matchesPattern(value: string, patterns?: string[], matchType: 'includes' | 'startsWith' | 'exact' = 'includes'): boolean {
-    if (!value || !patterns) return false;
-    
-    return patterns.some(pattern => {
-        switch (matchType) {
-            case 'includes':
-                return value.includes(pattern);
-            case 'startsWith':
-                return value.startsWith(pattern);
-            case 'exact':
-                return value === pattern;
-        }
-    });
-}

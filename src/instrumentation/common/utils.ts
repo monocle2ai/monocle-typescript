@@ -188,3 +188,58 @@ export function isVercelEnvironment(): boolean {
 export function isAwsLambdaEnvironment(): boolean {
     return !!process.env.AWS_LAMBDA_RUNTIME_API && !isVercelEnvironment()
 }
+export function extractInferenceEndpoint(instance: any): string | undefined {
+    try {
+        if (instance?.client) {
+            if (instance.client._client?.base_url) {
+                return instance.client._client.base_url.toString();
+            }
+            if (instance.client.meta?.endpoint_url) {
+                return instance.client.meta.endpoint_url.toString();
+            }
+        }
+        
+        if (instance?._client?.base_url) {
+            return instance._client.base_url.toString();
+        }
+        
+        if (instance?._client?.baseURL) {
+            return instance._client.baseURL.toString();
+        }
+
+        return undefined;
+    } catch (e) {
+        console.warn("Error extracting inference endpoint:", e);
+        return undefined;
+    }
+}
+
+export function detectSdkType(instance: any): string {
+    try {
+        const endpoint = extractInferenceEndpoint(instance);
+        
+        if (endpoint?.includes('anthropic.com')) {
+            return 'inference.anthropic';
+        }
+        if (endpoint?.includes('openai.com')) {
+            return 'inference.openai';
+        }
+        if (endpoint?.includes('cohere.ai')) {
+            return 'inference.cohere';
+        }
+        
+        const constructorName = instance?.constructor?.name || 
+                              instance?._client?.constructor?.name;
+        
+        if (constructorName) {
+            if (constructorName.includes('Anthropic')) return 'inference.anthropic';
+            if (constructorName.includes('OpenAI')) return 'inference.openai';
+            if (constructorName.includes('Cohere')) return 'inference.cohere';
+        }
+
+        return 'inference.unknown';
+    } catch (e) {
+        console.warn("Error detecting SDK type:", e);
+        return 'inference.unknown';
+    }
+}

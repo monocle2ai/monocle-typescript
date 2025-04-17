@@ -1,4 +1,4 @@
-import { detectSdk } from "../../../common/spanHandler.js";
+import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils.js";
 import { extractAssistantMessage, getLlmMetadata } from "../../utils.js"
 
 export const config = {
@@ -6,12 +6,17 @@ export const config = {
   "attributes": [
     [
       {
-        "_comment": "provider type ,name , deployment , inference_endpoint",
-       "attribute": "type",
-       "accessor": function ({instance, args}) {
-        const sdk = detectSdk(instance, args);
-        return `${sdk.sdkType}.${sdk.sdkName}`;
-      }
+        "_comment": "provider type, name, deployment, inference_endpoint",
+        "attribute": "type",
+        "accessor": function ({instance}) {
+          return detectSdkType(instance);
+        }
+      },
+      {
+        "attribute": "inference_endpoint",
+        "accessor": function ({ instance }) {
+          return extractInferenceEndpoint(instance) || "unknown_endpoint";
+        }
       },
       {
         "attribute": "deployment",
@@ -19,12 +24,7 @@ export const config = {
           return instance.engine || instance.deployment || instance.deployment_name || instance.deployment_id || instance.azure_deployment
         }
       },
-      {
-        "attribute": "inference_endpoint",
-        "accessor": function ({ instance }) {
-          return instance.azure_endpoint || instance.api_base || instance?.client?.baseURL
-        }
-      }
+
     ],
     [
       {
