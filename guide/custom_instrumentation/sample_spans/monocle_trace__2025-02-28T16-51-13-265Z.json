@@ -14,7 +14,7 @@
             "status_code": "UNSET"
         },
         "attributes": {
-            "monocle-typescript.version": "0.0.1",
+            "monocle_apptrace.version": "0.0.1",
             "span.type": "retrieval",
             "entity.1.name": "gemini.app",
             "entity.1.type": "workflow.generic",

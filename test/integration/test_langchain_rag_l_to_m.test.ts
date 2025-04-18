@@ -201,7 +201,7 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
       // Check root span
       if (!span.parent && span.name === "langchain.workflow") {
         expect(spanAttributes["entity.1.name"]).toBe("raanne_rag_ltom");
-        expect(spanAttributes["entity.1.type"]).toBe("workflow.langchain");
+        expect(spanAttributes["entity.1.type"]).toBe("workflow");
       }
     }
   }, 30000);

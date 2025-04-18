@@ -13,7 +13,6 @@ rm -rf dist; mkdir dist
 # Copy src to dist/src and build from dist/src into dist, so that
 # the source map for index.js.map will refer to ./src/index.ts etc
 cp -rp src README.md dist
-echo "export const LIB_VERSION = \"$(node -p "require('./package.json').version")\";" > dist/src/instrumentation/common/monocle_version.ts
 
 # rm dist/src/_shims/*-deno.ts dist/src/_shims/auto/*-deno.ts
 for file in LICENSE CHANGELOG.md; do
@@ -44,6 +43,17 @@ find dist -name esmModule.cjs -type f | while read -r file; do
   # Use sed to remove lines between and including the comment markers
   # The -i option for in-place editing differs between macOS and Linux, so we use a temp file
   sed '/\/\/ @esm-only/,/\/\/ @end-esm-only/d' "$file" > "$temp_file"
+  # Replace the original file with the modified content
+  mv "$temp_file" "$file"
+done
+
+# find monocle_version.** and replace __MONOCLE_VERSION__ with the version from package.json
+find dist -name monocle_version.** -type f | while read -r file; do
+  echo "Processing $file"
+  # Create a temporary file
+  temp_file=$(mktemp)
+  # Use sed to replace the version placeholder with the actual version
+  sed "s/__MONOCLE_VERSION__/$(node -p "require('./package.json').version")/g" "$file" > "$temp_file"
   # Replace the original file with the modified content
   mv "$temp_file" "$file"
 done

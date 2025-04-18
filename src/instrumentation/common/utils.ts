@@ -5,6 +5,7 @@ import { RandomIdGenerator } from "@opentelemetry/sdk-trace-node";
 import { MONOCLE_SCOPE_NAME_PREFIX, SCOPE_CONFIG_PATH, SCOPE_METHOD_FILE } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
+import { Span } from './opentelemetryUtils';
 
 let _instrumentor = null
 export function setInstrumentor(instrumentor: any) {
@@ -135,7 +136,7 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
         const tracer: Tracer = _instrumentor.getTracer();
         const contextWithWorkflow = attachWorkflowType();
         return context_api.with(contextWithWorkflow, () => {
-            return tracer.startActiveSpan("workflow", (span) => {
+            return tracer.startActiveSpan("workflow", (span: Span) => {
                 DefaultSpanHandler.setMonocleAttributes(span);
                 DefaultSpanHandler.setWorkflowAttributes({ span, wrappedPackage: null });
                 // Mark that we're about to call the function

@@ -28,7 +28,7 @@
     "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
     "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
     "test": "vitest run",
-    "test:run": "npx vitest run test/integration/test_sagemaker_sample.test.ts",
+    "test:run": "npx vitest run test/integration/azure-openai.test.ts",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage"
   },
