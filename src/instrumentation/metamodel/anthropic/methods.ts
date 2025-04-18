@@ -1,3 +1,4 @@
+import { NonFrameworkSpanHandler } from "../../common/spanHandler";
 import { config as inferenceConfig } from "./entities/inference";
 
 export const config = [
@@ -6,7 +7,9 @@ export const config = [
         object: "Messages",
         method: "create",
         spanName: "anthropic.messages.create",
-        output_processor: [inferenceConfig]
+        output_processor: [inferenceConfig],
+        spanHandler: new NonFrameworkSpanHandler()
+        
 
     },
     {
@@ -14,7 +17,9 @@ export const config = [
         object: "Messages",
         method: "stream",
         spanName: "anthropic.messages.stream",
-        output_processor: [inferenceConfig]
+        output_processor: [inferenceConfig],
+        spanHandler: new NonFrameworkSpanHandler()
+
 
     },
 ];

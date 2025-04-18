@@ -1,3 +1,4 @@
+import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils.js";
 import { extractAssistantMessage, getLlmMetadata } from "../../utils.js"
 
 export const config = {
@@ -5,10 +6,16 @@ export const config = {
   "attributes": [
     [
       {
-        "_comment": "provider type ,name , deployment , inference_endpoint",
+        "_comment": "provider type, name, deployment, inference_endpoint",
         "attribute": "type",
-        "accessor": function () {
-          return "inference.anthropic";
+        "accessor": function ({instance}) {
+          return detectSdkType(instance);
+        }
+      },
+      {
+        "attribute": "inference_endpoint",
+        "accessor": function ({ instance }) {
+          return extractInferenceEndpoint(instance) || "unknown_endpoint";
         }
       },
       {
@@ -17,12 +24,7 @@ export const config = {
           return instance.engine || instance.deployment || instance.deployment_name || instance.deployment_id || instance.azure_deployment
         }
       },
-      {
-        "attribute": "inference_endpoint",
-        "accessor": function ({ instance }) {
-          return instance.azure_endpoint || instance.api_base || instance?.client?.baseURL
-        }
-      }
+
     ],
     [
       {
