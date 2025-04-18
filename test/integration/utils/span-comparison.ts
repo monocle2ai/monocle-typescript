@@ -1,36 +1,6 @@
-export interface Span {
-    name: string;
-    parent_id?: string;
-    context: {
-        trace_id: string;
-        span_id: string;
-    };
-    events?: Array<{
-        timestamp: string;
-        attributes?: {
-            input?: any;
-            response?: any;
-            [key: string]: any;
-        };
-        [key: string]: any;
-    }>;
-    attributes?: {
-        "monocle-typescript.version"?: string;
-        [key: string]: any;
-    }
-    [key: string]: any;
-}
+import { SpanExport } from '../../../dist/src/exporters/utils'
 
-export const sortSpans = (spans: Span[]): Span[] => {
-    return [...spans].sort((a, b) => {
-        if (a.name === b.name) {
-            return Object.keys(a.attributes).length  > Object.keys(b.attributes).length ? 1 : -1;
-        }
-        return a.name > b.name ? 1 : -1;
-    });
-};
-
-export const cleanSpan = (span: Span): Partial<Span> => {
+export const cleanSpan = (span: SpanExport): Partial<SpanExport> => {
     const cleaned = JSON.parse(JSON.stringify(span));
     delete cleaned.context.trace_id;
     delete cleaned.context.span_id;
@@ -50,7 +20,16 @@ export const cleanSpan = (span: Span): Partial<Span> => {
         });
     }
     if (cleaned.attributes) {
-        if (cleaned.attributes["monocle-typescript.version"]) delete cleaned.attributes["monocle-typescript.version"];
+        if (cleaned.attributes["monocle_apptrace.version"]) delete cleaned.attributes["monocle_apptrace.version"];
     }
     return cleaned;
+};
+
+export const sortSpans = (spans: SpanExport[]): SpanExport[] => {
+    return [...spans].sort((a, b) => {
+        if (a.name === b.name) {
+            return Object.keys(a.attributes).length  > Object.keys(b.attributes).length ? 1 : -1;
+        }
+        return a.name > b.name ? 1 : -1;
+    });
 };

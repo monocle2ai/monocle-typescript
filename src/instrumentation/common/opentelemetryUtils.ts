@@ -2,6 +2,8 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { consoleLog } from '../../common/logging';
 import { waitUntil } from "@vercel/functions";
 import { isVercelEnvironment } from "./utils";
+import { Span as APISpan } from '@opentelemetry/api';
+import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 
 // @ts-ignore: private field access required
 class PatchedBatchSpanProcessor extends BatchSpanProcessor {
@@ -15,12 +17,12 @@ class PatchedBatchSpanProcessor extends BatchSpanProcessor {
             this._isExporting = true;
             // @ts-ignore: private field access required
             const flushPromise = this._flushOneBatch()
-            if(isVercelEnvironment()) {
+            if (isVercelEnvironment()) {
                 consoleLog('Vercel detected, waiting for spans to be exported');
                 waitUntil(flushPromise)
             }
 
-            
+
             flushPromise
                 .finally(() => {
                     // @ts-ignore: private field access required
@@ -62,5 +64,7 @@ class PatchedBatchSpanProcessor extends BatchSpanProcessor {
 }
 // @ts-ignore: private field access required
 PatchedBatchSpanProcessor.prototype._maybeStartTimer = PatchedBatchSpanProcessor.prototype._maybeStartTimer1;
+
+export type Span = APISpan & ReadableSpan;
 
 export { PatchedBatchSpanProcessor }
