@@ -2,7 +2,37 @@
 
 All notable changes to Monocle TypeScript will be documented in this file.
 
-## 0.1.2 (2025-04-02)
+## 0.1.2-beta.2 (2025-04-21)
+
+### Features
+
+- **Vercel**
+  - Added handling for Vercel environments [#58](https://github.com/monocle2ai/monocle-typescript/pull/58)
+  - Added instrumentation for Vercel AI SDK [#48](https://github.com/monocle2ai/monocle-typescript/pull/48)
+
+- **Anthropic**
+  - Added instrumentation for Anthropic SDK [#47](https://github.com/monocle2ai/monocle-typescript/pull/47)
+
+- **OpenAI**
+  - Added responses and sync responses methods for OpenAI
+  - Upgraded OpenAI SDK [#51](https://github.com/monocle2ai/monocle-typescript/pull/51)
+
+- **Workflow**
+  - Added workflow span changes [#56](https://github.com/monocle2ai/monocle-typescript/pull/56)
+
+- **SDK**
+  - Generic SDK changes [#57](https://github.com/monocle2ai/monocle-typescript/pull/57)
+
+- **Exporter**
+  - Support passing exporter list as parameter to `setup_monocle_telemetry()` [#54](https://github.com/monocle2ai/monocle-typescript/pull/54)
+
+### Maintenance
+
+- Updated tests [#55](https://github.com/monocle2ai/monocle-typescript/pull/55)
+- Added new TypeScript compile process [#50](https://github.com/monocle2ai/monocle-typescript/pull/50)
+- Fix CommonJS issues [#52](https://github.com/monocle2ai/monocle-typescript/pull/52)
+
+## 0.1.2-beta.1 (2025-04-02)
 
 ### Features
 
