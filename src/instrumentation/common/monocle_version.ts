@@ -1,1 +1,1 @@
-export const MONOCLE_VERSION = "0.1.0";
+export const MONOCLE_VERSION = "__MONOCLE_VERSION__";

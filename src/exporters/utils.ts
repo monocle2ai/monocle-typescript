@@ -6,6 +6,36 @@ export function getUrlFriendlyTime(date = new Date()) {
   return format(date, "yyyyMMdd'T'HHmmss");
 }
 
+export interface SpanExport {
+  name: string;
+  context: {
+    trace_id: string;
+    span_id: string;
+    trace_flags: number;
+    trace_state: any;
+  };
+  kind: number;
+  parent_id: string;
+  start_time: string;
+  end_time: string;
+  status: {
+    status_code: string;
+  };
+  attributes: Record<string, any>;
+  events: Array<{
+    name: string;
+    timestamp?: string;
+    time?: any;
+    attributes?: Record<string, any>;
+  }>;
+  links: Array<any>;
+  resource: {
+    attributes: {
+      "service.name": string;
+    }
+  };
+}
+
 // generate random alphanumeric string of given length
 export function makeid(length) {
   let result = '';
@@ -20,7 +50,7 @@ export function makeid(length) {
 }
 
 export function exportInfo(span: Span) {
-  const span_object = {
+  const span_object: SpanExport = {
     name: span.name,
     context: {
       trace_id: span.spanContext().traceId,
@@ -41,7 +71,7 @@ export function exportInfo(span: Span) {
     resource: {
       attributes: {
         // ...span.resource.attributes,
-        "service.name": span.resource.attributes.SERVICE_NAME,
+        "service.name": span.resource.attributes.SERVICE_NAME as string,
       }
     },
   };

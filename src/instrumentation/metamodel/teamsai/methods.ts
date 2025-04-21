@@ -15,7 +15,6 @@ export const config = [
     object: "ActionPlanner",
     method: "completePrompt",
     spanName: "teamsai.actionPlanner.completePrompt",
-    spanType: "workflow",
     output_processor: [
       actionPlannerConfig
     ]
