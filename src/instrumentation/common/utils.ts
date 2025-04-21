@@ -5,6 +5,7 @@ import { RandomIdGenerator } from "@opentelemetry/sdk-trace-node";
 import { MONOCLE_SCOPE_NAME_PREFIX, SCOPE_CONFIG_PATH, SCOPE_METHOD_FILE } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
+import { Span } from './opentelemetryUtils';
 
 let _instrumentor = null
 export function setInstrumentor(instrumentor: any) {
@@ -135,7 +136,7 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
         const tracer: Tracer = _instrumentor.getTracer();
         const contextWithWorkflow = attachWorkflowType();
         return context_api.with(contextWithWorkflow, () => {
-            return tracer.startActiveSpan("workflow", (span) => {
+            return tracer.startActiveSpan("workflow", (span: Span) => {
                 DefaultSpanHandler.setMonocleAttributes(span);
                 DefaultSpanHandler.setWorkflowAttributes({ span, wrappedPackage: null });
                 // Mark that we're about to call the function
@@ -187,4 +188,59 @@ export function isVercelEnvironment(): boolean {
 
 export function isAwsLambdaEnvironment(): boolean {
     return !!process.env.AWS_LAMBDA_RUNTIME_API && !isVercelEnvironment()
+}
+export function extractInferenceEndpoint(instance: any): string | undefined {
+    try {
+        if (instance?.client) {
+            if (instance.client._client?.base_url) {
+                return instance.client._client.base_url.toString();
+            }
+            if (instance.client.meta?.endpoint_url) {
+                return instance.client.meta.endpoint_url.toString();
+            }
+        }
+        
+        if (instance?._client?.base_url) {
+            return instance._client.base_url.toString();
+        }
+        
+        if (instance?._client?.baseURL) {
+            return instance._client.baseURL.toString();
+        }
+
+        return undefined;
+    } catch (e) {
+        console.warn("Error extracting inference endpoint:", e);
+        return undefined;
+    }
+}
+
+export function detectSdkType(instance: any): string {
+    try {
+        const endpoint = extractInferenceEndpoint(instance);
+        
+        if (endpoint?.includes('anthropic.com')) {
+            return 'inference.anthropic';
+        }
+        if (endpoint?.includes('openai.com')) {
+            return 'inference.openai';
+        }
+        if (endpoint?.includes('cohere.ai')) {
+            return 'inference.cohere';
+        }
+        
+        const constructorName = instance?.constructor?.name || 
+                              instance?._client?.constructor?.name;
+        
+        if (constructorName) {
+            if (constructorName.includes('Anthropic')) return 'inference.anthropic';
+            if (constructorName.includes('OpenAI')) return 'inference.openai';
+            if (constructorName.includes('Cohere')) return 'inference.cohere';
+        }
+
+        return 'inference.unknown';
+    } catch (e) {
+        console.warn("Error detecting SDK type:", e);
+        return 'inference.unknown';
+    }
 }

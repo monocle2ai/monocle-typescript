@@ -28,7 +28,7 @@
     "prettier": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --write",
     "prettier:check": "prettier \"{src,__{tests}__}/**/*.{ts,mts}\" --config .prettierrc --check",
     "test": "vitest run",
-    "test:run": "npx vitest run test/integration/test_sagemaker_sample.test.ts",
+    "test:run": "npx vitest run test/integration/azure-openai.test.ts",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage"
   },
@@ -54,6 +54,7 @@
     "@aws-sdk/client-sagemaker-runtime": "^3.782.0",
     "@aws-sdk/credential-providers": "^3.782.0",
     "@eslint/js": "^9.24.0",
+    "@langchain/anthropic": "^0.3.17",
     "@langchain/aws": "^0.1.8",
     "@langchain/community": "^0.3.40",
     "@langchain/core": "^0.3.44",

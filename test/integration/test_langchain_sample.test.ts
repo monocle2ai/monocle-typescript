@@ -109,7 +109,7 @@ describe("LangChain Integration Tests", () => {
       // Check root span
       if (!span.parent && span.name === "langchain.workflow") {
         expect(spanAttributes["entity.1.name"]).toBe("langchain_app_1");
-        expect(spanAttributes["entity.1.type"]).toBe("workflow.langchain");
+        expect(spanAttributes["entity.1.type"]).toBe("workflow");
       }
     }
   });

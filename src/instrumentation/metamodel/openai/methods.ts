@@ -26,14 +26,6 @@ export const config = [
         spanName: "openai_responses",
         output_processor: [inferenceConfig],
         spanHandler: new NonFrameworkSpanHandler(),
-    },
-    {
-        package: "openai/resources/responses/responses",
-        object: "AsyncResponses",
-        method: "create",
-        spanName: "openai_async_responses",
-        output_processor: [retrievalConfig],
-        spanHandler: new NonFrameworkSpanHandler(),
-    },
+    }
 
 ];
