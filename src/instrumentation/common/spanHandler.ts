@@ -4,7 +4,6 @@ import { getScopesInternal } from "./utils";
 import { context, SpanStatusCode } from "@opentelemetry/api";
 import { Span } from "./opentelemetryUtils";
 import { MONOCLE_VERSION } from './monocle_version';
-
 export interface SpanHandler {
     setDefaultMonocleAttributes({ span, instance, args, element }: {
         span: Span;
@@ -342,5 +341,6 @@ export function attachWorkflowType(element?: WrapperArguments) {
 function isWorkflowSpanActive() {
     return typeof context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) === "string";
 }
+
 
 
