@@ -2,7 +2,6 @@ import * as module_private_1 from 'module'
 import { consoleLog } from '../../common/logging'
 import { isVercelEnvironment } from './utils'
 
-// @ts-ignore
 export function registerModule() {
     // @esm-only
     try {
@@ -10,7 +9,6 @@ export function registerModule() {
 
         import('import-in-the-middle/hook.mjs')
 
-        // @ts-ignore
         if (isVercelEnvironment()) {
             module_private_1.register('import-in-the-middle/hook.mjs', "file:///var/task/node_modules")
         }
