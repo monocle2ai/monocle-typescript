@@ -351,7 +351,19 @@ export function setScopes<A extends unknown[], F extends (...args: A) => ReturnT
         ...args
     )
 }
+export function attachHeadersScopes<A extends unknown[], F extends (...args: A) => ReturnType<F>>(
+    header: Record<string, string | null>,
+    fn: F,
+    thisArg?: ThisParameterType<F>,
+    ...args: A
+) {
+    const scopes = Object.keys(header).reduce((acc, key) => {
+        acc[key] = header[key];
+        return acc;
+    }, {} as Record<string, string | null>);
 
+    return setScopes(scopes, fn, thisArg, ...args);
+}
 export function setScopesBind(
     scopes: Record<string, string | null>,
     fn: Function
