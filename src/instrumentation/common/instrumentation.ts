@@ -8,7 +8,7 @@ import { context } from "@opentelemetry/api";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
-import { combinedPackages } from "./packages";
+import { combinedPackages, MethodConfig } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { getPatchedMain, getPatchedScopeMain, getPatchedMainList } from "./wrapper";
 import { AWS_CONSTANTS } from './constants';
@@ -55,13 +55,61 @@ class MonocleInstrumentation extends InstrumentationBase {
             const module = new InstrumentationNodeModuleDefinition(
                 elements[0].package,
                 ['*'],
+                // patch
                 this._getOnPatchMain(elements).bind(this),
+                // unpatch
+                this._unPatch(elements).bind(this),
             );
             modules.push(module);
         }
 
         consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
+    }
+
+    _unPatch(elements: MethodConfig[]): (exports: any, moduleVersion?: string) => void {
+        return (exports, _moduleVersion) => {
+            try {
+                if (elements.length === 1) {
+                    const element = elements[0];
+                    if (typeof exports === "function") {
+                        this._unwrap(
+                            exports.prototype,
+                            element.method
+                        );
+                    }
+                    if (!element.object) {
+                        this._unwrap(exports, element.method);
+                    }
+                    else {
+                        this._unwrap(
+                            exports[element.object].prototype,
+                            element.method
+                        );
+                    }
+                } else {
+                    if (typeof exports === "function") {
+                        this._unwrap(
+                            exports.prototype,
+                            elements[0].method
+                        );
+                    }
+                    else {
+                        this._unwrap(
+                            exports[elements[0].object].prototype,
+                            elements[0].method
+                        );
+                    }
+                }
+            } catch (e) {
+                consoleLog('Error in _unPatch', {
+                    package: elements[0].package,
+                    elements: elements.length,
+                    error: e.message,
+                    stack: e.stack
+                });
+            }
+        };
     }
 
     enable() {
@@ -145,7 +193,7 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     // Helper method to group packages by name
     _groupPackagesByName(packages) {
-        const groups = {};
+        const groups: Record<string, any[]> = {};
 
         for (const pkg of packages) {
             const key = `${pkg.package}_${pkg.object}_${pkg.method}`;

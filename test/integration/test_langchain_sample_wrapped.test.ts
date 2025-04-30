@@ -164,7 +164,6 @@ describe("Langchain OpenAI Integration Tests", () => {
 
     // Example usage of ragChain
     const result = await ragChain.invoke("What is Task Decomposition?");
-    console.log(result);
 
     // Validate telemetry spans
     const spans = customExporter.getCapturedSpans();

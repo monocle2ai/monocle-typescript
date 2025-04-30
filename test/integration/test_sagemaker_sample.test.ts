@@ -112,7 +112,6 @@ Use three sentences maximum and keep the answer concise.\
 
     // Convert buffer to string
     const responseStr = content.toString("utf-8");
-    console.log(`The response provided by the endpoint: ${responseStr}`);
 
     const parsedResponse = JSON.parse(responseStr) as LLMResponseResult;
     return parsedResponse.answer;
@@ -190,7 +189,6 @@ async function search_similar_documents_opensearch(
     //   }]);
     // }
     const docs = await doc_search.similaritySearch(query);
-    console.log(`Retrieved docs: ${JSON.stringify(docs)}`);
     return docs.map((doc: Document) => doc.pageContent);
   } catch (error) {
     console.error("Error during similarity search:", error);

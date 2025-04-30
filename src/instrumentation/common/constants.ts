@@ -16,11 +16,11 @@ export const SCOPE_CONFIG_PATH = process.env.SCOPE_CONFIG_PATH
 
 export interface WrapperArguments {
     tracer: Tracer, 
-    spanName: string, 
+    spanName?: string, 
     package: string, 
     object: string, 
     method: string, 
-    output_processor: any,
+    output_processor?: any,
     spanHandler?: SpanHandler,
     skipSpan?: boolean,
     scopeName?: string,

@@ -30,7 +30,12 @@
     "test": "vitest run",
     "test:run": "npx vitest run test/integration/azure-openai.test.ts",
     "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:report": "vitest run --coverage && npx serve coverage",
+    "test:unit": "vitest run test/unit/*.test.ts",
+    "test:unit:coverage": "vitest run --coverage test/unit/*.test.ts",
+    "test:integration": "vitest run test/integration/**/*.test.ts",
+    "test:integration:coverage": "vitest run --coverage test/integration/**/*.test.ts"
   },
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {

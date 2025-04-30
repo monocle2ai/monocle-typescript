@@ -123,7 +123,6 @@ describe("Langchain Bedrock Integration Tests", () => {
     // Example usage of ragChain
     const query = "What is Task Decomposition?";
     const result = await ragChain.invoke(query);
-    console.log(result);
 
     // Validate telemetry spans
 

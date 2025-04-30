@@ -75,7 +75,6 @@ describe("LangChain Integration Tests", () => {
 
     // Invoke the chain
     const result = await ragChain.invoke("What is Task Decomposition?");
-    console.log(result);
 
     // Verify telemetry spans
     const spans = customExporter.getCapturedSpans();
