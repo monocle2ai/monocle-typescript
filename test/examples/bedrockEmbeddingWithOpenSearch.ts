@@ -1,15 +1,10 @@
-const { setupMonocle, startTrace } = require("../../dist");
+import { setupMonocle } from '../../src';
+import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { Client } from '@opensearch-project/opensearch';
+import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws';
+import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+
 setupMonocle("bedrock-opensearch.app");
-
-const {
-  BedrockRuntimeClient,
-  InvokeModelCommand
-} = require("@aws-sdk/client-bedrock-runtime");
-const { Client } = require('@opensearch-project/opensearch');
-const { AwsSigv4Signer } = require('@opensearch-project/opensearch/aws');
-const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
-
-
 
 // Configuration
 const BEDROCK_REGION = "us-east-1";
@@ -256,7 +251,6 @@ if (require.main === module) {
       
     return val
   })
-
 }
 
 const wrappedRunWorkflow = () => {
@@ -270,7 +264,7 @@ const wrappedRunWorkflow = () => {
   })
 };
 
-module.exports = {
-  main: wrappedRunWorkflow,
+export {
+  wrappedRunWorkflow as main,
 };
 

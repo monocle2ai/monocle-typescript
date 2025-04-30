@@ -1,3 +1,6 @@
+import { setupMonocle } from '../../src'
+setupMonocle("sagemaker.app");
+
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest';

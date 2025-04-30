@@ -114,6 +114,20 @@ describe('DefaultSpanHandler', () => {
       const mockElement = { spanType: 'inference' } as WrapperArguments;
       expect(spanHandler.skipSpan({ instance: {}, args: {} as IArguments, element: mockElement })).toBe(false);
     });
+
+    it('should return false for non-workflow span types', () => {
+      vi.spyOn(context, 'active').mockReturnValue({ 
+        getValue: vi.fn().mockReturnValue('workflow.langchain') 
+      } as any);
+      
+      const result = spanHandler.skipSpan({ 
+        instance: {}, 
+        args: {} as IArguments, 
+        element: { spanType: 'inference' } as WrapperArguments 
+      });
+      
+      expect(result).toBe(false);
+    });
   });
 
   describe('setDefaultMonocleAttributes', () => {
@@ -130,6 +144,7 @@ describe('DefaultSpanHandler', () => {
       expect(mockSpan.setAttribute).toHaveBeenCalledWith('workflow.name', 'test-service');
     //   expect(mockSpan.setAttribute).toHaveBeenCalledWith('scope.testScope', 'testValue');
     });
+
   });
 
   describe('setWorkflowProperties', () => {
@@ -147,6 +162,34 @@ describe('DefaultSpanHandler', () => {
       expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.1.type', 'workflow.langchain');
       expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.2.type', 'app_hosting.generic');
       expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.2.name', 'generic');
+    });
+
+    it('should handle different package types correctly', () => {
+      // Test with langchain package
+      spanHandler.setWorkflowProperties({ 
+        span: mockSpan, 
+        instance: {}, 
+        args: {} as IArguments, 
+        element: { package: 'langchain' } as WrapperArguments 
+      });
+      
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.type', 'workflow');
+      expect(mockSpan.updateName).toHaveBeenCalledWith('workflow');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.1.name', 'test-service');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.1.type', 'workflow.langchain');
+      
+      // Reset mocks
+      vi.clearAllMocks();
+      
+      // Test with llamaindex package
+      spanHandler.setWorkflowProperties({ 
+        span: mockSpan, 
+        instance: {}, 
+        args: {} as IArguments, 
+        element: { package: 'llamaindex' } as WrapperArguments 
+      });
+      
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.1.type', 'workflow.llamaindex');
     });
   });
 
@@ -250,6 +293,108 @@ describe('DefaultSpanHandler', () => {
       
       expect(mockSpan.addEvent).toHaveBeenCalledWith('test-event', { test_key: 'test_value' });
     });
+
+    it('should process attributes when they are a nested array structure', () => {
+      const mockAccessor = vi.fn().mockReturnValue('test-value');
+      const outputProcessor = [{
+        type: 'inference',
+        attributes: [
+          [
+            {
+              attribute: 'model',
+              accessor: mockAccessor
+            }
+          ]
+        ]
+      }];
+      
+      spanHandler.processSpan({ 
+        span: mockSpan, 
+        instance: {}, 
+        args: {} as IArguments, 
+        returnValue: {}, 
+        outputProcessor,
+        wrappedPackage: 'test-package' 
+      });
+      
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.type', 'inference');
+      expect(mockAccessor).toHaveBeenCalledTimes(1);
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.3.model', 'test-value');
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('entity.3.model', 'test-value');
+    });
+
+    it('should handle events with complex attribute structures', () => {
+      const mockAccessor = vi.fn().mockReturnValue({ 
+        message_id: '12345',
+        content: 'test content',
+        role: 'user'
+      });
+      
+      const outputProcessor = [{
+        type: 'chat',
+        events: [
+          {
+            name: 'chat-message',
+            attributes: [
+              {
+                accessor: mockAccessor
+              }
+            ]
+          }
+        ]
+      }];
+      
+      spanHandler.processSpan({ 
+        span: mockSpan, 
+        instance: {}, 
+        args: {} as IArguments, 
+        returnValue: {}, 
+        outputProcessor,
+        wrappedPackage: 'test-package' 
+      });
+      
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.type', 'chat');
+      expect(mockAccessor).toHaveBeenCalledTimes(1);
+      expect(mockSpan.addEvent).toHaveBeenCalledWith('chat-message', {
+        message_id: '12345',
+        content: 'test content',
+        role: 'user'
+      });
+    });
+
+    it('should handle errors in accessors gracefully', () => {
+      console.error = vi.fn(); // Mock console.error
+      
+      const errorAccessor = vi.fn().mockImplementation(() => {
+        throw new Error('Accessor error');
+      });
+      
+      const outputProcessor = [{
+        type: 'inference',
+        attributes: [
+          [
+            {
+              attribute: 'failing',
+              accessor: errorAccessor
+            }
+          ]
+        ]
+      }];
+      
+      spanHandler.processSpan({ 
+        span: mockSpan, 
+        instance: {}, 
+        args: {} as IArguments, 
+        returnValue: {}, 
+        outputProcessor,
+        wrappedPackage: 'test-package' 
+      });
+      
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.type', 'inference');
+      expect(errorAccessor).toHaveBeenCalledTimes(1);
+      expect(console.error).toHaveBeenCalled();
+      // Should continue processing and not throw
+    });
   });
 });
 
@@ -287,6 +432,28 @@ describe('NonFrameworkSpanHandler', () => {
       } as any);
       
       expect(spanHandler.skipProcessor({} as any)).toBe(false);
+    });
+  });
+
+  describe('skipProcessor with different workflow types', () => {
+    it('should return true for custom workflow types', () => {
+      vi.spyOn(context, 'active').mockReturnValue({ 
+        getValue: vi.fn().mockReturnValue('workflow.custom') 
+      } as any);
+      
+      const result = spanHandler.skipProcessor({} as any);
+      
+      expect(result).toBe(false);
+    });
+    
+    it('should handle missing workflow types correctly', () => {
+      vi.spyOn(context, 'active').mockReturnValue({ 
+        getValue: vi.fn().mockReturnValue(null) 
+      } as any);
+      
+      const result = spanHandler.skipProcessor({} as any);
+      
+      expect(result).toBe(false);
     });
   });
 });

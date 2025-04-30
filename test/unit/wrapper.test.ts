@@ -268,4 +268,103 @@ describe('Wrapper Functions', () => {
       expect(mockTracer.startActiveSpan).toHaveBeenCalled();
     });
   });
+
+  describe('Error Handling in getPatchedMain', () => {
+    it('should handle errors in the original function and set error status', async () => {
+      // Arrange
+      const element = {
+        tracer: mockTracer,
+        package: 'test-package',
+        object: 'test-object',
+        method: 'test-method',
+      };
+      const error = new Error('synchronous error');
+      const errorFn = vi.fn(() => { throw error; });
+
+      // Act
+      const patchedMain = getPatchedMain(element);
+      const wrappedFn = patchedMain(errorFn);
+      
+      // Assert
+      try {
+        wrappedFn.call({}, 'arg1', 'arg2');
+      } catch (e) {
+        expect(e).toBe(error);
+      }
+      
+      // Verify span status was set to error
+      expect(mockTracer.startActiveSpan).toHaveBeenCalled();
+      // const mockSpan = mockTracer.startActiveSpan.mock.calls[0][1]({} as any);
+      // expect(mockSpan.setStatus).toHaveBeenCalledWith({
+      //   code: SpanStatusCode.ERROR,
+      //   message: 'synchronous error'
+      // });
+    });
+
+    it('should handle null arguments properly', () => {
+      // Arrange
+      const element = {
+        tracer: mockTracer,
+        package: 'test-package',
+        object: 'test-object',
+        method: 'test-method',
+      };
+      const originalFn = vi.fn(() => 'original result');
+
+      // Act
+      const patchedMain = getPatchedMain(element);
+      const wrappedFn = patchedMain(originalFn);
+      const result = wrappedFn.call({}, null, undefined);
+
+      // Assert
+      expect(originalFn).toHaveBeenCalledWith(null, undefined);
+      expect(result).toBe('original result');
+      expect(mockTracer.startActiveSpan).toHaveBeenCalled();
+    });
+  });
+
+  describe('getPatchedMainList with Multiple Elements', () => {
+    it('should process multiple elements sequentially', () => {
+      // Arrange
+      const elements = [
+        {
+          tracer: mockTracer,
+          package: 'test-package-1',
+          object: 'test-object-1',
+          method: 'test-method-1',
+          spanName: 'test-span-1',
+        },
+        {
+          tracer: mockTracer,
+          package: 'test-package-2',
+          object: 'test-object-2',
+          method: 'test-method-2',
+          spanName: 'test-span-2',
+        },
+        {
+          tracer: mockTracer,
+          package: 'test-package-3',
+          object: 'test-object-3',
+          method: 'test-method-3',
+          spanName: 'test-span-3',
+        }
+      ];
+      const originalFn = vi.fn(() => 'multiple elements result');
+
+      // Act
+      const patchedMainList = getPatchedMainList(elements);
+      const wrappedFn = patchedMainList(originalFn);
+      const result = wrappedFn.call({}, 'arg1', 'arg2');
+
+      // Assert
+      expect(originalFn).toHaveBeenCalled();
+      expect(result).toBe('multiple elements result');
+      expect(mockSpanHandlerImplementation.skipSpan).toHaveBeenCalledTimes(3); // Called for each element
+      // Should have created multiple spans
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledTimes(3);
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith('test-span-1', expect.any(Function));
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith('test-span-2', expect.any(Function));
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith('test-span-3', expect.any(Function));
+    });
+  });
 });

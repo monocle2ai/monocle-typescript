@@ -1,11 +1,12 @@
-const { setupMonocle } = require("../../dist");
+import { setupMonocle } from '../../src';
+import { AnthropicClient, ClientOptions } from "@anthropic-ai/sdk";
 
 setupMonocle("anthropic.app");
 
-const { Anthropic } = require("@anthropic-ai/sdk");
+const apiKey = process.env.ANTHROPIC_API_KEY || "your-api-key";
 
-const client = new Anthropic({
-  apiKey: process.env["ANTHROPIC_API_KEY"], 
+const client = new AnthropicClient({
+  apiKey: apiKey, 
 });
 
 async function main() {
@@ -35,10 +36,8 @@ async function main() {
   
 }
 
-exports.main = main;
-
 if (require.main === module) {
-  main().catch((error) => {
-    console.error("Error occurred:", error);
-  });
+  main().catch(console.error);
 }
+
+export { main };

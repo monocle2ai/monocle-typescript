@@ -1,8 +1,7 @@
-const { setupMonocle } = require("../../dist");
+import { setupMonocle } from '../../src';
+import OpenAI from 'openai';
 
 setupMonocle("openai.app");
-
-const { OpenAI } = require("openai");
 
 const client = new OpenAI({
   apiKey: process.env["OPENAI_API_KEY"], // This is the default and can be omitted
@@ -50,11 +49,8 @@ async function main() {
   console.log(response2.output_text);
 }
 
-exports.main = main;
-
-// Only run if this file is being executed directly (not imported)
 if (require.main === module) {
-  main().catch((error) => {
-    console.error("Error occurred:", error);
-  });
+  main().catch(console.error);
 }
+
+export { main };

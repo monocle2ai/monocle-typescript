@@ -1,10 +1,9 @@
-const { setupMonocle } = require("../../dist");
 
-setupMonocle("sagemaker.app");
-const {
-  SageMakerRuntimeClient,
-  InvokeEndpointCommand
-} = require("@aws-sdk/client-sagemaker-runtime");
+import { 
+  SageMakerRuntimeClient, 
+  InvokeEndpointCommand 
+} from "@aws-sdk/client-sagemaker-runtime";
+
 
 async function invokeSageMakerEndpoint() {
   // Initialize the SageMaker client
@@ -59,10 +58,12 @@ async function invokeSageMakerEndpoint() {
     throw error;
   }
 }
+
 if (require.main === module) {
   // If this file is run directly, invoke the function
   invokeSageMakerEndpoint().catch(console.error);
 }
-module.exports = {
-  main: invokeSageMakerEndpoint
+
+export {
+  invokeSageMakerEndpoint as main
 };

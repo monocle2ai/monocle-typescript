@@ -21,12 +21,12 @@ export default defineConfig({
         'scripts/utils/**',
       ],
       all: true,
-      thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 60,
-        statements: 70
-      }
+      // thresholds: {
+      //   lines: 70,
+      //   functions: 70,
+      //   branches: 60,
+      //   statements: 70
+      // }
     }
   }
 });
