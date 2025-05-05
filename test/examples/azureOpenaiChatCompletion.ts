@@ -1,10 +1,8 @@
-const { setupMonocle } = require("../../dist");
+import { setupMonocle } from '../../src';
+import { OpenAI } from "openai";
 
-setupMonocle("openai.app");
+setupMonocle("azure-openai.app");
 
-const { OpenAI } = require("openai");
-
-// Create Azure OpenAI client
 const client = new OpenAI({
   apiKey: process.env["AZURE_OPENAI_API_KEY"],
   baseURL: process.env["AZURE_OPENAI_ENDPOINT_1"], // Azure endpoint URL
@@ -13,7 +11,7 @@ const client = new OpenAI({
 });
 
 async function main() {
-  // Chat completion
+
   const chatCompletion = await client.chat.completions.create({
     messages: [
       { role: "user", content: "What is an americano?" },
@@ -35,6 +33,7 @@ async function main() {
   });
   // Embedding
   const embeddingResponse = await embeddingClient.embeddings.create({
+    model: "",
     input: "What is an americano?",
     encoding_format: "float"
   });
@@ -47,11 +46,8 @@ async function main() {
   //   console.log("First 5 dimensions:", embedding.slice(0, 5));
 }
 
-exports.main = main;
-
-// Only run if this file is being executed directly (not imported)
 if (require.main === module) {
-  main().catch((error) => {
-    console.error("Error occurred:", error);
-  });
+  main().catch(console.error);
 }
+
+export { main };

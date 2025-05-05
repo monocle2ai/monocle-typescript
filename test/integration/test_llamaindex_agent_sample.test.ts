@@ -135,7 +135,6 @@ describe("LlamaIndex Agent Test", () => {
     const userInput = "Please order 3 espresso coffees";
     try {
       const response = await agent.chat({ message: userInput });
-      console.log(`Bot: ${response}`);
     } finally {
       parentSpan.end();
     }

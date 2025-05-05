@@ -236,24 +236,9 @@ describe("Langchain Integration Tests", () => {
       chat_history: chatHistory
     });
 
-    console.log(aiMsg2.answer);
 
     // Get captured spans for assertions
     const spans = customExporter.getCapturedSpans();
-
-    // Log spans for debugging
-    console.log(
-      "Captured spans:",
-      JSON.stringify(
-        spans.map((span) => ({
-          name: span.name,
-          type: span.attributes["span.type"],
-          attributes: Object.keys(span.attributes)
-        })),
-        null,
-        2
-      )
-    );
 
     // Test assertions for retrieval spans
     const retrievalSpan = spans.find(

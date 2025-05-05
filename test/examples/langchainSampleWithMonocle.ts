@@ -1,18 +1,17 @@
-const { setupMonocle, setScopes, setScopesBind } = require("../../dist")
+import { setupMonocle, setScopes, setScopesBind } from "../../src";
+import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
+import { formatDocumentsAsString } from "langchain/util/document";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import {
+    RunnableSequence,
+    RunnablePassthrough,
+} from "@langchain/core/runnables";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+
 setupMonocle(
     "langchain.app"
 )
-
-const { ChatOpenAI, OpenAIEmbeddings } = require("@langchain/openai")
-const { formatDocumentsAsString } = require("langchain/util/document");
-const { PromptTemplate } = require("@langchain/core/prompts");
-const { MemoryVectorStore } = require("langchain/vectorstores/memory")
-
-const {
-    RunnableSequence,
-    RunnablePassthrough,
-} = require("@langchain/core/runnables");
-const { StringOutputParser } = require("@langchain/core/output_parsers");
 
 let langchainInvoke = async (msg) => {
     const model = new ChatOpenAI({});
@@ -51,13 +50,13 @@ Question: {question}`);
 // bind the whole function with a scope
 langchainInvoke = setScopesBind({
     "langchain.scope_bind_test": "1"
-}, langchainInvoke)
+}, langchainInvoke) as any;
 
 // Only run if this file is being executed directly (not imported)
 if (require.main === module) {
     langchainInvoke("What is coffee?").then(console.debug)
 }
 
-module.exports = {
+export {
     langchainInvoke
 }

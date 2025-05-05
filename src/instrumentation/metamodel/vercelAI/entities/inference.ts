@@ -65,7 +65,6 @@ export const config = {
                   _comment: "this is input to Gemini LLM",
                   attribute: "input",
                   accessor: ({ args }: ACCESSOR_ARGS) => {
-                      console.log("args", args);
                       const messages = [];
                       if(args[0] && typeof args[0].system === 'string') {
                           messages.push(`{ '${"system"}': '${args[0].system}' }`);
@@ -86,7 +85,6 @@ export const config = {
                   _comment: "this is output from Gemini LLM",
                   attribute: "response",
                   accessor: ({ response }: ACCESSOR_ARGS) => {
-                      console.log("response", response);
                       if(response.text){
                           return [response.text];
                       }

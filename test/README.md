@@ -66,12 +66,33 @@ export OPENSEARCH_PASSWORD="your-open-search-password"
 
 ## Testing the Project
 
-Once the environment variables are set, you can run the run the tests using the following commands.
+Once the environment variables are set, you can run the tests using the following commands.
 
-### For Windows:
+### Running Tests
 
-1. To run the test, run the following command in Command Prompt or PowerShell:
-
+1. To run all tests:
    ```cmd
    npm test
    ```
+
+2. To run tests with coverage:
+   ```cmd
+   npm run test:coverage
+   ```
+
+3. To run unit tests only:
+   ```cmd
+   npm run test:unit
+   ```
+
+4. To run integration tests only:
+   ```cmd
+   npm run test:integration
+   ```
+
+5. To view the coverage report in a browser:
+   ```cmd
+   npm run test:coverage:report
+   ```
+
+The coverage report will show the percentage of code covered by tests, helping you identify areas that need additional test coverage.

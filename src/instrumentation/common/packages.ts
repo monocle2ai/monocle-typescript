@@ -8,7 +8,16 @@ import { config as openSearchPackages } from "../metamodel/opensearch/methods";
 import { config as vercelAiPackages } from "../metamodel/vercelAI/methods";
 import { config as anthropicPackages } from "../metamodel/anthropic/methods";
 
-export const combinedPackages = [
+export interface MethodConfig {
+  package: string;
+  object: string;
+  method: string;
+  spanName?: string;
+  spanType?: string;
+  output_processor?: any[];
+}
+
+export const combinedPackages: MethodConfig[] = [
   ...langchainPackages,
   ...llamaindexPackages,
   ...openaiPackages,

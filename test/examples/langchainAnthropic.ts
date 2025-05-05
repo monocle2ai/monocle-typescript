@@ -1,10 +1,9 @@
-const { setupMonocle } = require("../../dist");
+import { setupMonocle } from '../../src';
+import { ChatAnthropic } from "@langchain/anthropic";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 setupMonocle("anthropic.app");
-
-const { ChatAnthropic } = require("@langchain/anthropic");
-const { StringOutputParser } = require("@langchain/core/output_parsers");
-const { HumanMessage, SystemMessage } = require("@langchain/core/messages");
 
 // Initialize the LangChain Anthropic chat model
 const model = new ChatAnthropic({
@@ -31,7 +30,7 @@ async function main() {
   console.log("\nStreaming Result:");
 
   for await (const chunk of stream) {
-    process.stdout.write(chunk.content);
+    process.stdout.write(chunk.content as string);
   }
   console.log("\n");
 
@@ -45,7 +44,7 @@ async function main() {
   console.log(chainResult);
 }
 
-exports.main = main;
+export { main };
 
 if (require.main === module) {
   main().catch((error) => {

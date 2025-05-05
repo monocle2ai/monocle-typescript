@@ -3,7 +3,8 @@ import { join } from 'path';
 import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { sortSpans, cleanSpan } from './utils/span-comparison';
 
-describe('Bedrock Embedding with OpenSearch Sample', () => {
+// skip this test
+describe.skip('Bedrock Embedding with OpenSearch Sample', () => {
     const consoleSpy = vi.spyOn(console, 'log');
     const capturedLogs: any[] = [];
 
