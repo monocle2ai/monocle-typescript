@@ -74,8 +74,11 @@ export function getPatchedMain({ tracer, spanHandler, ...element }: WrapperArgum
                             }
                         });
                     }
-
-                    return original.apply(this, args);
+                    else {
+                        // Add preTracing call when span is skipped
+                        handler.preTracing(elementWithTracer);
+                        return original.apply(this, args);
+                    }
                 } catch (error) {
                     span.setStatus({
                         code: 2,

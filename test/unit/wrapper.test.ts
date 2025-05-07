@@ -46,7 +46,10 @@ vi.mock('../../src/common/logging', () => ({
 vi.mock('../../src/instrumentation/common/utils', () => ({
   setScopesInternal: vi.fn((scopes, ctx, fn) => fn()),
 }));
-
+vi.mock('../../src/instrumentation/common/utils', () => ({
+  setScopesInternal: vi.fn((scopes, ctx, fn) => fn()),
+  getSourcePath: vi.fn().mockReturnValue('test/examples/mockFile.ts'), // Add mock implementation
+}));
 describe('Wrapper Functions', () => {
   // Create a mock tracer function that returns a mock span
   const mockTracer: Tracer = {
@@ -71,6 +74,7 @@ describe('Wrapper Functions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    
   });
 
   afterEach(() => {
