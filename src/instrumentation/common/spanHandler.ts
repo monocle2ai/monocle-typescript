@@ -4,6 +4,7 @@ import { getScopesInternal } from "./utils";
 import { context, SpanStatusCode } from "@opentelemetry/api";
 import { Span } from "./opentelemetryUtils";
 import { MONOCLE_VERSION } from './monocle_version';
+import { consoleLog } from "../../common/logging";
 export interface SpanHandler {
     setDefaultMonocleAttributes({ span, instance, args, element, sourcePath }: {
         span: Span;
@@ -289,7 +290,7 @@ export class DefaultSpanHandler implements SpanHandler {
         span.setAttribute(MONOCLE_SDK_VERSION, MONOCLE_VERSION);
         span.setAttribute(MONOCLE_SDK_LANGUAGE, "js");
         if (sourcePath) {
-            console.log("sourcePath", sourcePath);
+            consoleLog("sourcePath", sourcePath);
             span.setAttribute("span.source", sourcePath);
         }
         const workflowName = getWorkflowName(span);
