@@ -25,6 +25,7 @@ export interface WrapperArguments {
     skipSpan?: boolean,
     scopeName?: string,
     spanType?: string,
+    sourcePath: string,
 }
 
 const WORKFLOW_TYPE_KEY = "monocle.workflow_type"
