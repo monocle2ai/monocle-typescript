@@ -28,18 +28,20 @@ class FileSpanExporter {
 
     export(spans, resultCallback) {
         consoleLog('exporting spans to file.');
-        
+
+        const isRootSpan = spans.some((span) => !span.parentSpanId);
+
         if (this.taskProcessor) {
             consoleLog('using task processor for file export');
-            this.taskProcessor.queueTask(this._sendSpans.bind(this), spans);
+            this.taskProcessor.queueTask(() => this._sendSpans(spans, isRootSpan, resultCallback));
             return resultCallback({ code: ExportResultCode.SUCCESS });
         }
         
-        return this._sendSpans(spans, resultCallback);
+        return this._sendSpans(spans, isRootSpan, resultCallback);
     }
 
     shutdown() {
-        this._sendSpans([], () => { });
+        this._sendSpans([], () => { }, false);
         return this.forceFlush();
     }
 
@@ -51,11 +53,14 @@ class FileSpanExporter {
         return exportInfo(span);
     }
 
-    async _sendSpans(spans, done) {
+    async _sendSpans(spans, done, isRootSpan = false) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const fileName = `${this.file_prefix}${timestamp}.json`;
         const filePath = join(this.outPath, fileName);
-        const body = JSON.stringify(spans.map(span => this._exportInfo(span)));
+        const body = JSON.stringify({
+            is_root_span: isRootSpan,
+            spans: spans.map(span => this._exportInfo(span)),
+        });
         consoleLog('writing spans to file:', filePath);
 
         try {
