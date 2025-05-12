@@ -1,9 +1,10 @@
-import { setupMonocle } from '../../src';
+import { setupMonocle } from '../../dist';
+setupMonocle("anthropic.app");
+
 import { ChatAnthropic } from "@langchain/anthropic";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-setupMonocle("anthropic.app");
 
 // Initialize the LangChain Anthropic chat model
 const model = new ChatAnthropic({

@@ -1,5 +1,5 @@
-import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils.js";
-import { extractAssistantMessage, getLlmMetadata } from "../../utils.js"
+import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils";
+import { extractAssistantMessage, getLlmMetadata } from "../../utils"
 
 export const config = {
   "type": "inference",
