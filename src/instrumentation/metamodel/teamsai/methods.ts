@@ -1,6 +1,6 @@
 // import { NonFrameworkSpanHandler } from "../../common/spanHandler";
-import { config as teamsOutputConfig } from "./entities/teamsOutputProcessor.js";
-import { config as actionPlannerConfig } from "./entities/actionPlannerOutputProcessor.js";
+import { config as teamsOutputConfig } from "./entities/teamsOutputProcessor";
+import { config as actionPlannerConfig } from "./entities/actionPlannerOutputProcessor";
 
 export const config = [
   {
