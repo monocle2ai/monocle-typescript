@@ -4,14 +4,12 @@ import { getScopesInternal } from "./utils";
 import { context, SpanStatusCode } from "@opentelemetry/api";
 import { Span } from "./opentelemetryUtils";
 import { MONOCLE_VERSION } from './monocle_version';
-import { consoleLog } from "../../common/logging";
 export interface SpanHandler {
-    setDefaultMonocleAttributes({ span, instance, args, element, sourcePath }: {
+    setDefaultMonocleAttributes({ span, instance, args, element }: {
         span: Span;
         instance: any;
         args: IArguments;
         element: WrapperArguments;
-        sourcePath: any;
     }): void;
 
     skipSpan({ instance, args, element }: {
@@ -26,7 +24,6 @@ export interface SpanHandler {
         args: IArguments;
         returnValue: any;
         outputProcessor: any;
-        sourcePath: string;
     }): void;
 
     skipProcessor({ instance, args, element }: {
@@ -117,15 +114,14 @@ export class DefaultSpanHandler implements SpanHandler {
     }
 
     setDefaultMonocleAttributes({
-        span, sourcePath
+        span,
     }: {
         span: Span;
         instance: any;
         args: IArguments;
         element: WrapperArguments;
-        sourcePath: string;
     }) {
-        DefaultSpanHandler.setMonocleAttributes(span, sourcePath);
+        DefaultSpanHandler.setMonocleAttributes(span);
     }
 
     setWorkflowProperties({ span, element }: {
@@ -286,13 +282,9 @@ export class DefaultSpanHandler implements SpanHandler {
         }
     }
 
-    public static setMonocleAttributes(span: Span, sourcePath) {
+    public static setMonocleAttributes(span: Span) {
         span.setAttribute(MONOCLE_SDK_VERSION, MONOCLE_VERSION);
         span.setAttribute(MONOCLE_SDK_LANGUAGE, "js");
-        if (sourcePath) {
-            consoleLog("sourcePath", sourcePath);
-            span.setAttribute("span.source", sourcePath);
-        }
         const workflowName = getWorkflowName(span);
         span.setAttribute("workflow.name", workflowName);
         const scopes = getScopesInternal();

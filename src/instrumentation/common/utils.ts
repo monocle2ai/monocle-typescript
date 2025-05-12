@@ -1,5 +1,5 @@
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'fs'
 import { context as context_api, propagation, Context, Tracer } from "@opentelemetry/api";
 import { RandomIdGenerator } from "@opentelemetry/sdk-trace-node";
 import { MONOCLE_SCOPE_NAME_PREFIX, SCOPE_CONFIG_PATH, SCOPE_METHOD_FILE } from "./constants";
@@ -7,41 +7,6 @@ import { consoleLog } from "../../common/logging";
 import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
 import { Span } from './opentelemetryUtils';
 
-export function getSourcePath(): string {
-    try {
-        const stack = new Error().stack;
-        const stackLines = stack?.split('\n') || [];
-        
-        // Find the first non-internal call in the stack
-        const callerLine = stackLines.find(line => {
-            return line.includes('at') && 
-                   !line.includes('node:internal') && 
-                   !line.includes('node_modules') &&
-                   !line.includes('getPatchedMain') &&
-                   !line.includes('getSourcePath') &&
-                   !line.includes('instrumentation') &&
-                   !line.includes('wrapper.ts') &&
-                   !line.includes('spanHandler.ts');
-        });
-
-        if (callerLine) {
-            // Extract file path from the stack trace
-            const match = callerLine.match(/\((.+?):\d+:\d+\)/) || 
-                         callerLine.match(/at (.+?):\d+:\d+/);
-            if (match && match[1]) {
-                // Convert to relative path
-                const fullPath = match[1];
-                const projectRoot = process.cwd();
-                const relativePath = fullPath.replace(projectRoot, '').replace(/\\/g, '/');
-                return relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
-            }
-        }
-        return 'unknown_source';
-    } catch (error) {
-        console.warn('Error getting source path:', error);
-        return 'unknown_source';
-    }
-}
 let _instrumentor = null
 export function setInstrumentor(instrumentor: any) {
     _instrumentor = instrumentor;
@@ -172,8 +137,7 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
         const contextWithWorkflow = attachWorkflowType();
         return context_api.with(contextWithWorkflow, () => {
             return tracer.startActiveSpan("workflow", (span: Span) => {
-                const sourcePath = getSourcePath();
-                DefaultSpanHandler.setMonocleAttributes(span, sourcePath);
+                DefaultSpanHandler.setMonocleAttributes(span);
                 DefaultSpanHandler.setWorkflowAttributes({ span, wrappedPackage: null });
                 // Mark that we're about to call the function
                 isFnCalled = true;
