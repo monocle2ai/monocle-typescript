@@ -1,5 +1,5 @@
 // import { NonFrameworkSpanHandler } from "../../common/spanHandler";
-// import { config as retrievalConfig } from "./entities/retrieval.js";
+// import { config as retrievalConfig } from "./entities/retrieval";
 
 export const config = [
   // {

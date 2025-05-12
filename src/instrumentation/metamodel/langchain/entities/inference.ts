@@ -1,4 +1,4 @@
-import { extractAssistantMessage, getLlmMetadata } from "../../utils.js"
+import { extractAssistantMessage, getLlmMetadata } from "../../utils"
 
 export const config = {
     "type": "inference",
