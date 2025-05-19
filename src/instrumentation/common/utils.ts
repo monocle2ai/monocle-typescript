@@ -19,19 +19,18 @@ const NODE_PACKAGES = [
     'ai'
 ];
 
-
 export function getSourcePath(): string {
     try {
         const stack = new Error().stack;
         const stackLines = stack?.split('\n') || [];
         
         // Find the first non-internal call in the stack
-        let callerLine = stackLines.find(line => {
+        let callerLine = stackLines.reverse().find(line => {
             return line.includes('at') && 
                    !line.includes('node:internal') && 
-                   !line.includes('getSourcePath') &&
                    !line.includes('node_modules') &&
-                   !line.includes('instrumentation/common') &&
+                   !line.includes('getPatchedMain') &&
+                   !line.includes('getSourcePath') &&
                    (line.includes('/test/') || line.includes('/src/'));
         });
 

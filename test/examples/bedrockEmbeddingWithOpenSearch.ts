@@ -1,10 +1,13 @@
-import { setupMonocle } from '../../src';
+import { setupMonocle, startTrace } from '../../dist';
+
+setupMonocle("bedrock-opensearch.app");
+
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { Client } from '@opensearch-project/opensearch';
 import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import { KnnVectorMethod } from '@opensearch-project/opensearch/api/_types/_common.mapping.js';
 
-setupMonocle("bedrock-opensearch.app");
 
 // Configuration
 const BEDROCK_REGION = "us-east-1";
@@ -100,16 +103,20 @@ async function createKnnIndexIfNotExists() {
         mappings: {
           properties: {
             embedding: {
-              type: "knn_vector",
+              type: 'knn_vector' as const,
               dimension: EMBEDDING_DIMENSION,
               method: {
-                name: "hnsw",
-                space_type: "cosinesimil",
-                engine: "nmslib"
-              }
+                name: 'hnsw',
+                space_type: 'cosinesimil',
+                engine: 'nmslib'
+              } as KnnVectorMethod
             },
-            text: { type: "text" },
-            id: { type: "keyword" }
+            text: { 
+              type: 'text' as const 
+            },
+            id: { 
+              type: 'keyword' as const 
+            }
           }
         }
       };
@@ -246,7 +253,7 @@ if (require.main === module) {
   startTrace(() => {
     const val = runWorkflow()
 
-      val.then(result => console.log("Workflow completed successfully"))
+      val.then(() => console.log("Workflow completed successfully"))
       .catch(error => console.error("Workflow failed:", error));
       
     return val
@@ -257,7 +264,7 @@ const wrappedRunWorkflow = () => {
   return startTrace(() => {
     const val = runWorkflow()
 
-      val.then(result => console.log("Workflow completed successfully"))
+      val.then(() => console.log("Workflow completed successfully"))
       .catch(error => console.error("Workflow failed:", error));
       
     return val

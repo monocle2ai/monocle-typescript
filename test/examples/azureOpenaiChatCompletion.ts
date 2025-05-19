@@ -1,7 +1,7 @@
-import { setupMonocle } from '../../src';
-import { OpenAI } from "openai";
-
+import { setupMonocle } from '../../dist';
 setupMonocle("azure-openai.app");
+
+import { OpenAI } from "openai";
 
 const client = new OpenAI({
   apiKey: process.env["AZURE_OPENAI_API_KEY"],
