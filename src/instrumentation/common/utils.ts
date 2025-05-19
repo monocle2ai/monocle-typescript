@@ -31,7 +31,6 @@ export function getSourcePath(): string {
                    !line.includes('node_modules') &&
                    !line.includes('getPatchedMain') &&
                    !line.includes('getSourcePath') &&
-                   !line.includes('node_modules') &&
                    (line.includes('/test/') || line.includes('/src/'));
         });
 
@@ -63,6 +62,8 @@ export function getSourcePath(): string {
         return 'unknown_source';
     }
 }
+
+
 let _instrumentor = null
 export function setInstrumentor(instrumentor: any) {
     _instrumentor = instrumentor;
