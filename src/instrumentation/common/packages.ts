@@ -7,15 +7,7 @@ import { config as bedrockPackages } from "../metamodel/bedrock/methods";
 import { config as openSearchPackages } from "../metamodel/opensearch/methods";
 import { config as vercelAiPackages } from "../metamodel/vercelAI/methods";
 import { config as anthropicPackages } from "../metamodel/anthropic/methods";
-
-export interface MethodConfig {
-  package: string;
-  object: string;
-  method: string;
-  spanName?: string;
-  spanType?: string;
-  output_processor?: any[];
-}
+import { MethodConfig } from "./constants";
 
 export const combinedPackages: MethodConfig[] = [
   ...langchainPackages,

@@ -42,6 +42,7 @@ export function getSourcePath(): string {
         return 'unknown_source';
     }
 }
+
 let _instrumentor = null
 export function setInstrumentor(instrumentor: any) {
     _instrumentor = instrumentor;

@@ -14,19 +14,25 @@ export const MONOCLE_SCOPE_NAME_PREFIX = 'monocle.scope.';
 export const SCOPE_METHOD_FILE = process.env.SCOPE_METHOD_FILE || 'monocle_scopes.json';
 export const SCOPE_CONFIG_PATH = process.env.SCOPE_CONFIG_PATH
 
-export interface WrapperArguments {
-    tracer: Tracer, 
-    spanName?: string, 
-    package: string, 
-    object: string, 
-    method: string, 
-    output_processor?: any,
-    spanHandler?: SpanHandler,
-    skipSpan?: boolean,
-    scopeName?: string,
-    spanType?: string,
-    sourcePath: string,
+
+
+export interface MethodConfig {
+  package: string;
+  object: string;
+  method: string;
+  spanName?: string;
+  spanType?: string;
+  output_processor?: any[];
+  scopeName?: string;
+  scopeValue?: string | ((...args: any[]) => string);
+  scopeValues?: Record<string, string> | (( {currentArgs, element}: {currentArgs: any[], element: MethodConfig}) => Record<string, string>);
+  skipSpan?: boolean;
 }
+export interface WrapperArguments extends MethodConfig {
+    tracer: Tracer, 
+    spanHandler?: SpanHandler
+}
+
 
 const WORKFLOW_TYPE_KEY = "monocle.workflow_type"
 export const WORKFLOW_TYPE_KEY_SYMBOL = Symbol(WORKFLOW_TYPE_KEY)

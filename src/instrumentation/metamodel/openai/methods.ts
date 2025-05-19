@@ -26,6 +26,14 @@ export const config = [
         spanName: "openai_responses",
         output_processor: [inferenceConfig],
         spanHandler: new NonFrameworkSpanHandler(),
+    },
+    {
+        package: "openai/resources/responses/responses",
+        object: "Responses",
+        method: "stream",
+        spanName: "openai_responses_stream",
+        output_processor: [inferenceConfig],
+        spanHandler: new NonFrameworkSpanHandler(),
     }
 
 ];
