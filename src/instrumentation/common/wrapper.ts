@@ -8,10 +8,9 @@ import { Span } from "./opentelemetryUtils";
 
 export function getPatchedMain({ tracer, spanHandler, ...element }: WrapperArguments) {
     return function (original: Function) {
-        return function (this: any, ...args: IArguments[]) {
-            const sourcePath = getSourcePath();
-            
+        return function (this: any, ...args: IArguments[]) {            
             return tracer.startActiveSpan(element.spanName || element.method, (span: Span) => {
+                const sourcePath = getSourcePath();
                 try {
                     const handler = spanHandler || new DefaultSpanHandler();
                     const elementWithTracer: WrapperArguments = { 
