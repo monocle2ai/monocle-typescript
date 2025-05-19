@@ -7,33 +7,53 @@ import { consoleLog } from "../../common/logging";
 import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
 import { Span } from './opentelemetryUtils';
 
+
+const NODE_PACKAGES = [
+    'anthropic-ai',
+    'aws-sdk',
+    'langchain',
+    'llamaindex',
+    'openai',
+    'opensearch-project',
+    'microsoft',
+    'ai'
+];
+
 export function getSourcePath(): string {
     try {
         const stack = new Error().stack;
         const stackLines = stack?.split('\n') || [];
         
         // Find the first non-internal call in the stack
-        const callerLine = stackLines.find(line => {
+        let callerLine = stackLines.reverse().find(line => {
             return line.includes('at') && 
                    !line.includes('node:internal') && 
                    !line.includes('node_modules') &&
                    !line.includes('getPatchedMain') &&
                    !line.includes('getSourcePath') &&
-                   !line.includes('instrumentation') &&
-                   !line.includes('wrapper.ts') &&
-                   !line.includes('spanHandler.ts');
+                   (line.includes('/test/') || line.includes('/src/'));
         });
+
+        // If no application code found, look for important library functions
+        if (!callerLine) {
+            callerLine = stackLines.find(line => {                
+                // Check for important packages
+                const hasImportantPackage = NODE_PACKAGES.some(pkg => 
+                    line.includes(`node_modules/${pkg}`) ||
+                    line.includes(`node_modules/@${pkg}/`)
+                );
+
+                return line.includes('at') && hasImportantPackage;
+            });
+        }
 
         if (callerLine) {
             // Extract file path from the stack trace
-            const match = callerLine.match(/\((.+?):\d+:\d+\)/) || 
-                         callerLine.match(/at (.+?):\d+:\d+/);
-            if (match && match[1]) {
-                // Convert to relative path
-                const fullPath = match[1];
-                const projectRoot = process.cwd();
-                const relativePath = fullPath.replace(projectRoot, '').replace(/\\/g, '/');
-                return relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+            const match = callerLine.match(/\((.+?):(\d+):\d+\)/) || 
+                         callerLine.match(/at\s+(.+?):(\d+):\d+/);
+            if (match && match[1] && match[2]) {
+                const [_, fullPath, lineNumber] = match;
+                return `${fullPath}:${lineNumber}` || 'unknown_source';
             }
         }
         return 'unknown_source';

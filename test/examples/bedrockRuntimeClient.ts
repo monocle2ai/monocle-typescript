@@ -1,10 +1,11 @@
-import { setupMonocle } from '../../src';
+import { setupMonocle } from '../../dist';
+setupMonocle("bedrock.app");
+
 import { 
   BedrockRuntimeClient, 
   InvokeModelCommand 
 } from "@aws-sdk/client-bedrock-runtime";
 
-setupMonocle("bedrock.app");
 
 async function invokeBedrockModel() {
   // Initialize the Bedrock client
