@@ -1,3 +1,5 @@
+import { setupMonocle } from '../../dist';
+setupMonocle("openai.app");
 
 import { 
   SageMakerRuntimeClient, 

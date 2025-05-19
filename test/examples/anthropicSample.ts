@@ -1,12 +1,12 @@
-import { setupMonocle } from '../../src';
-import { AnthropicClient, ClientOptions } from "@anthropic-ai/sdk";
-
+import { setupMonocle } from "../../dist";
 setupMonocle("anthropic.app");
+
+import { Anthropic } from "@anthropic-ai/sdk";
 
 const apiKey = process.env.ANTHROPIC_API_KEY || "your-api-key";
 
-const client = new AnthropicClient({
-  apiKey: apiKey, 
+const client = new Anthropic({
+  apiKey: apiKey,
 });
 
 async function main() {
@@ -20,20 +20,28 @@ async function main() {
     system: "You are a helpful assistant to answer questions about coffee."
   });
   console.log("Message Completion Result:");
-  console.log(messageCompletion.content[0].text);
+  const content = messageCompletion.content[0];
+  if ("text" in content) {
+    console.log("Message completion successful");
+    console.log("Response:", content.text);
+  }
 
   // Message streaming
-  const stream = await client.messages.stream({
+  const stream = await client.messages.create({
     model: "claude-3-5-sonnet-20240620",
     max_tokens: 1024,
     messages: [
       { role: "user", content: "What is an americano?" },
     ],
-    system: "You are a helpful assistant to answer questions about coffee."
+    system: "You are a helpful assistant to answer questions about coffee.",
+    stream: true,
   });
 
-  console.log("Streaming Result:", stream);
-  
+  for await (const chunk of stream) {
+    if (chunk.type === "content_block_delta" && "text" in chunk.delta) {
+      process.stdout.write(chunk.delta.text);
+    }
+  }
 }
 
 if (require.main === module) {

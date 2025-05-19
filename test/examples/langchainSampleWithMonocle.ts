@@ -1,4 +1,8 @@
-import { setupMonocle, setScopes, setScopesBind } from "../../src";
+import { setupMonocle, setScopes, setScopesBind } from "../../dist";
+setupMonocle(
+    "langchain.app"
+)
+
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { formatDocumentsAsString } from "langchain/util/document";
 import { PromptTemplate } from "@langchain/core/prompts";
@@ -8,10 +12,6 @@ import {
     RunnablePassthrough,
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-
-setupMonocle(
-    "langchain.app"
-)
 
 let langchainInvoke = async (msg) => {
     const model = new ChatOpenAI({});
