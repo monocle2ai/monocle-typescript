@@ -50,14 +50,11 @@ export function getSourcePath(): string {
 
         if (callerLine) {
             // Extract file path from the stack trace
-            const match = callerLine.match(/\((.+?):\d+:\d+\)/) || 
-                         callerLine.match(/at (.+?):\d+:\d+/);
-            if (match && match[1]) {
-                // Convert to relative path
-                const fullPath = match[1];
-                const projectRoot = process.cwd();
-                const relativePath = fullPath.replace(projectRoot, '').replace(/\\/g, '/');
-                return relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+            const match = callerLine.match(/\((.+?):(\d+):\d+\)/) || 
+                         callerLine.match(/at\s+(.+?):(\d+):\d+/);
+            if (match && match[1] && match[2]) {
+                const [_, fullPath, lineNumber] = match;
+                return `${fullPath}:${lineNumber}` || 'unknown_source';
             }
         }
         return 'unknown_source';
