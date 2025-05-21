@@ -238,8 +238,17 @@ export class DefaultSpanHandler implements SpanHandler {
                                 }
                             }
                         });
-
-                        span.addEvent(eventName, eventAttributes);
+                        // matching_timestamp = getattr(ret_result, "timestamps", {}).get(event_name, None)
+                        // if isinstance(matching_timestamp, int):
+                        //     span.add_event(name=event_name, attributes=event_attributes, timestamp=matching_timestamp)
+                        // else:
+                        //     span.add_event(name=event_name, attributes=event_attributes)
+                        const matchingTimestamp = returnValue?.timestamps?.[eventName];
+                        if (typeof matchingTimestamp === 'number') {
+                            span.addEvent(eventName, eventAttributes, matchingTimestamp);
+                        } else {
+                            span.addEvent(eventName, eventAttributes);
+                        }
                     });
                 }
             } else {

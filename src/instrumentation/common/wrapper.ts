@@ -1,92 +1,16 @@
 import { context, Tracer } from "@opentelemetry/api";
 import { getSourcePath, setScopesInternal } from "./utils";
 import { attachWorkflowType, DefaultSpanHandler, isRootSpan, SpanHandler } from "./spanHandler";
-import { ADD_NEW_WORKFLOW_SYMBOL, WrapperArguments } from "./constants";
+import { ADD_NEW_WORKFLOW_SYMBOL, MethodConfig, WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { Span } from "./opentelemetryUtils";
 
-
-export function getPatchedMain({ tracer, spanHandler, ...element }: WrapperArguments) {
-    return function (original: Function) {
-        return function (this: any, ...args: IArguments[]) {            
-            return tracer.startActiveSpan(element.spanName || element.method, (span: Span) => {
-                const sourcePath = getSourcePath();
-                try {
-                    const handler = spanHandler || new DefaultSpanHandler();
-                    const elementWithTracer: WrapperArguments = { 
-                        ...element, 
-                        tracer,
-                        sourcePath 
-                    };
-
-                    handler.setDefaultMonocleAttributes({ 
-                        span, 
-                        instance: this, 
-                        args: arguments,  // Use arguments instead of args
-                        element: elementWithTracer,
-                        sourcePath 
-                    });
-
-                    if (!handler.skipSpan({ 
-                        instance: this, 
-                        args: arguments, 
-                        element: elementWithTracer 
-                    })) {
-                        const currentContext = attachWorkflowType(elementWithTracer);
-                        
-                        return context.with(currentContext, () => {
-                            const result = original.apply(this, args);
-                            
-                            if (result && typeof result.then === 'function') {
-                                return result
-                                    .then((value: any) => {
-                                        handler.postProcessSpan({ 
-                                            span, 
-                                            instance: this, 
-                                            args: arguments,
-                                            returnValue: value, 
-                                            outputProcessor: element.output_processor,
-                                            sourcePath
-                                        });
-                                        span.end();
-                                        return value;
-                                    })
-                                    .catch((error: Error) => {
-                                        span.setStatus({
-                                            code: 2,
-                                            message: error?.message || "Error occurred"
-                                        });
-                                        span.end();
-                                        throw error;
-                                    });
-                            } else {
-                                handler.postProcessSpan({ 
-                                    span, 
-                                    instance: this, 
-                                    args: arguments,
-                                    returnValue: result, 
-                                    outputProcessor: element.output_processor,
-                                    sourcePath
-                                });
-                                span.end();
-                                return result;
-                            }
-                        });
-                    }
-                    else {
-                        // Add preTracing call when span is skipped
-                        handler.preTracing(elementWithTracer);
-                        return original.apply(this, args);
-                    }
-                } catch (error) {
-                    span.setStatus({
-                        code: 2,
-                        message: error?.message || "Error occurred"
-                    });
-                    span.end();
-                    throw error;
-                }
-            });
+export const getPatchedMain = function (element: WrapperArguments) {
+    const spanHandler: SpanHandler = element.spanHandler || new DefaultSpanHandler();
+    return function mainMethodName(original: Function) {
+        return function patchMainMethodName() {
+            const sourcePathValue = getSourcePath();
+            return processSpanWithTracing(this, element, spanHandler, original, arguments, sourcePathValue);
         };
     };
 }
@@ -95,22 +19,60 @@ export const getPatchedMainList = function (elements: WrapperArguments[]) {
     const spanHandler = new DefaultSpanHandler();
     return function mainMethodName(original: Function) {
         return function patchMainMethodName() {
+            const sourcePathValue = getSourcePath();
             // If element is an array, we need to process multiple elements
-            return processMultipleElementsWithTracing(this, elements, spanHandler, original, arguments);
+            return processMultipleElementsWithTracing(this, elements, spanHandler, original, arguments, sourcePathValue);
         };
     };
 }
 
-export const getPatchedScopeMain = function ({ tracer, ...element }: { tracer: Tracer, spanName: string, package: string, object: string, method: string, output_processor: any, scopeName: string }) {
+export const getPatchedScopeMain = function (element: MethodConfig) {
     return function mainMethodName(original: Function) {
-        return function patchMainMethodName() {
+        return function patchMainMethodName(...args: any[]) {
             consoleLog(`calling scope wrapper ${element.scopeName}`);
-            return setScopesInternal({ [element.scopeName]: null },
-                context.active(),
-                () => {
-                    return original.apply(this, arguments);
+            let scopeName: string = element.scopeName;
+            let scopeValue: string = null;
+            let scopeValues: Record<string, string> = null;
+            if (typeof element.scopeValue === "function") {
+                try {
+                    scopeValue = element.scopeValue(args);
                 }
-            )
+                catch (error) {
+                    consoleLog(`Error in scopeValue function: ${error}`);
+                }
+            }
+            if (typeof element.scopeValues === "object") {
+                scopeValues = element.scopeValues;
+            }
+            if (typeof element.scopeValues === "function") {
+                try {
+                    scopeValues = element.scopeValues({ currentArgs: args, element });
+                }
+                catch (error) {
+                    consoleLog(`Error in scopeValues function: ${error}`);
+                }
+            }
+            if (typeof element.scopeValue === "string") {
+                scopeValue = element.scopeValue;
+            }
+            if (typeof scopeValues === "object") {
+                return setScopesInternal({ ...scopeValues },
+                    context.active(),
+                    () => {
+                        return original.apply(this, args);
+                    }
+                )
+            }
+            else if (typeof scopeName === "string") {
+                return setScopesInternal({ [scopeName]: scopeValue },
+                    context.active(),
+                    () => {
+                        return original.apply(this, args);
+                    }
+                )
+            }
+            // If no scope name is provided, just call the original function
+            return original.apply(this, args);
         };
     };
 }
@@ -121,9 +83,10 @@ function processMultipleElementsWithTracing(
     spanHandler: SpanHandler,
     original: Function,
     args: any,
+    sourcePathValue: string
 ) {
     // Process elements recursively, creating nested spans
-    return processElementsRecursively(thisArg, elements, 0, spanHandler, original, args);
+    return processElementsRecursively(thisArg, elements, 0, spanHandler, original, args, sourcePathValue);
 }
 
 function processElementsRecursively(
@@ -132,7 +95,8 @@ function processElementsRecursively(
     index: number,
     spanHandler: SpanHandler,
     original: Function,
-    args: any
+    args: any,
+    sourcePath: string
 ) {
     // Base case: if we've processed all elements, call the original function
     if (index >= elements.length) {
@@ -149,10 +113,10 @@ function processElementsRecursively(
         currentSpanHandler,
         // Instead of calling original directly, we'll call a function that processes the next element
         function () {
-            return processElementsRecursively(thisArg, elements, index + 1, spanHandler, original, args);
+            return processElementsRecursively(thisArg, elements, index + 1, spanHandler, original, args, sourcePath);
         },
         args,
-        currentElement.sourcePath
+        sourcePath
     );
 }
 
@@ -192,19 +156,22 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
     return tracer.startActiveSpan(
         getSpanName(element),
         (span: Span) => {
+            const endSpan = () => {
+                span.end();
+            };
             if (isRootSpan(span) || shouldAddWorkflowSpan) {
                 spanHandler.setWorkflowProperties({ span, instance: thisArg, args: args, element });
                 returnValue = handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan: false, sourcePath });
                 span.updateName("workflow");
                 if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
                     returnValue.then(() => {
-                        span.end();
+                        endSpan();
                     }).catch(() => {
-                        span.end();
+                        endSpan();
                     });
                 }
                 else {
-                    span.end();
+                    endSpan();
                 }
             }
             else {
@@ -234,8 +201,21 @@ function getSpanName(element: WrapperArguments): string {
     return element.spanName || (element.package || '' + element.object || '' + element.method || '');
 }
 
-function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath }) {
-    spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null, sourcePath });
-    spanHandler.processSpan({ span, instance: instance, args: args, outputProcessor: element.output_processor, returnValue, wrappedPackage: element.package, sourcePath });
-    span.end();
+function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath }: { instance: () => any, spanHandler: SpanHandler, span: Span, returnValue: any, element: WrapperArguments, args: any, sourcePath: string }) {
+
+    // if to_wrap.get("output_processor") and to_wrap.get("output_processor").get("response_processor"):
+    // # Process the stream
+    // to_wrap.get("output_processor").get("response_processor")(to_wrap, return_value, post_process_span_internal)
+    const spanProcessor = ({ finalReturnValue }) => {
+        spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null, sourcePath: sourcePath });
+        spanHandler.processSpan({ span, instance: instance, args: args, outputProcessor: element.output_processor, returnValue: finalReturnValue, wrappedPackage: element.package });
+        span.end();
+    }
+    if (element.output_processor && typeof element.output_processor[0].response_processor === "function") {
+        element.output_processor[0].response_processor({ element, returnValue, spanProcessor });
+    }
+    else {
+        spanProcessor({ finalReturnValue: returnValue });
+    }
+
 }

@@ -1,5 +1,6 @@
 import { registerModule } from "./esmModule"
 
+
 import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
@@ -8,10 +9,10 @@ import { context } from "@opentelemetry/api";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
-import { combinedPackages, MethodConfig } from "./packages";
+import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { getPatchedMain, getPatchedScopeMain, getPatchedMainList } from "./wrapper";
-import { AWS_CONSTANTS } from './constants';
+import { AWS_CONSTANTS, MethodConfig } from './constants';
 import * as path from 'path';
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
@@ -62,6 +63,8 @@ class MonocleInstrumentation extends InstrumentationBase {
             );
             modules.push(module);
         }
+
+        //  openai => chatcompletion.ts => Completion => create
 
         consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
@@ -206,7 +209,7 @@ class MonocleInstrumentation extends InstrumentationBase {
         return groups;
     }
 
-    _getOnPatchMain(elements) {
+    _getOnPatchMain(elements: MethodConfig[]): (moduleExports: any, moduleVersion?: string) => any {
         return (moduleExports) => {
             try {
                 // Handle single or multiple elements
@@ -265,11 +268,11 @@ class MonocleInstrumentation extends InstrumentationBase {
             }
         }
     }
-
-    _patchMainMethodName(element) {
+    // make sure original and return function have same signature
+    _patchMainMethodName(element: MethodConfig): (original: Function) => Function {
         const tracer = this.tracer
-        if (element.scopeName) {
-            return getPatchedScopeMain({ tracer, ...element })
+        if (element.scopeName || element.scopeValues) {
+            return getPatchedScopeMain({ ...element })
         }
         return getPatchedMain({ tracer, ...element })
     }
