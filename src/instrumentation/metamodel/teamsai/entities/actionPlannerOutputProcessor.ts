@@ -1,7 +1,7 @@
 import { getLlmMetadata } from "../../utils";
 
 export const config = {
-  type: "inference",
+  type: "generic",
   attributes: [
     [
       {
@@ -28,64 +28,6 @@ export const config = {
     ]
   ],
   events: [
-    {
-      name: "data.input",
-      _comment: "input configuration to ActionPlanner",
-      attributes: [
-        {
-          attribute: "prompt_name",
-          accessor: ({ args }) => {
-            return args[2]?.name || "unknown";
-          }
-        },
-        {
-          attribute: "validator",
-          accessor: ({ args }) => {
-            return (
-              args[3]?.__proto__?.constructor?.name ||
-              "DefaultResponseValidator"
-            );
-          }
-        },
-        {
-          attribute: "memory_type",
-          accessor: ({ args }) => {
-            if (args[1]?._scopes) {
-              return Object.keys(args[1]._scopes).join(", ");
-            }
-            return "unknown";
-          }
-        }
-      ]
-    },
-    {
-      name: "data.output",
-      _comment: "output from ActionPlanner",
-      attributes: [
-        {
-          attribute: "status",
-          accessor: ({ response }) => {
-            return response.status;
-          }
-        },
-        {
-          attribute: "response",
-          accessor: ({ response }) => {
-            try {
-              const messageContent = response?.message?.content || "";
-              const parsedContent = JSON.parse(messageContent);
-
-              return (
-                parsedContent?.results?.[0]?.answer || "No response available"
-              );
-            } catch (error) {
-              console.error("Error extracting response:", error);
-              return "Error parsing response";
-            }
-          }
-        }
-      ]
-    },
     {
       name: "metadata",
       attributes: [

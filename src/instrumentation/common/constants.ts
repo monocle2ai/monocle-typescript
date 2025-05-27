@@ -41,6 +41,7 @@ export const ADD_NEW_WORKFLOW_SYMBOL = Symbol(ADD_NEW_WORKFLOW_STRING);
 export const MONOCLE_SDK_LANGUAGE = "monocle_apptrace.language"
 export const WORKFLOW_TYPE_GENERIC = "workflow.generic"
 export const MONOCLE_SDK_VERSION = "monocle_apptrace.version"
+export const MONOCLE_DETECTED_SPAN_ERROR = "monocle_apptrace.detected_span_error"
 
 // # Azure environment constants
 const AZURE_ML_ENDPOINT_ENV_NAME = "AZUREML_ENTRY_SCRIPT"

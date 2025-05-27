@@ -4,6 +4,13 @@ export interface ACCESSOR_ARGS {
   response: any 
 }
 
+export class MonocleSpanException extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MonocleSpanException";
+  }
+}
+
 export function extractMessages(args) {
   /**
    * Extract system and user messages

@@ -164,10 +164,13 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                 returnValue = handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan: false, sourcePath });
                 span.updateName("workflow");
                 if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
-                    returnValue.then(() => {
+                    // Return the promise chain to ensure proper propagation
+                    returnValue = returnValue.then((result: any) => {
                         endSpan();
-                    }).catch(() => {
+                        return result;
+                    }).catch((error: any) => {
                         endSpan();
+                        throw error;
                     });
                 }
                 else {
@@ -175,22 +178,39 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                 }
             }
             else {
-                returnValue = original.apply(thisArg, args);
-                if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
-                    returnValue.then((result: any) => {
-                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args, sourcePath });
-                    }).catch((error: any) => {
-                        span.setStatus({ code: 2, message: error?.message || "Error occurred" });
-                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args, sourcePath });
-                    });
+                let ex = null;
+                try {
+                    returnValue = original.apply(thisArg, args);
                 }
-                else {
-                    postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args, sourcePath });
+                catch (error) {
+                    ex = error;
+                    // span.setStatus({ code: 2, message: error?.message || "Error occurred" });
+                    consoleLog(`Error in span processing: ${error}`);
+                    throw error;
+                }
+                finally {
+                    if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                        // Return the promise chain to ensure proper propagation
+                        returnValue = returnValue.then((result: any) => {
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args, sourcePath, exception: ex });
+                            return result;
+                        }).catch((error: any) => {
+                            span.setStatus({ code: 2, message: error?.message || "Error occurred" });
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args, sourcePath, exception: error || ex });
+                            if (span.isRecording()) {
+                                span.end()
+                            }
+
+                            throw error;
+                        });
+                    }
+                    else {
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args, sourcePath, exception: ex });
+                    }
                 }
             }
 
             spanHandler.setDefaultMonocleAttributes({ span: span, instance: thisArg, args: args, element: element, sourcePath: sourcePath });
-
 
             return returnValue;
         }
@@ -201,13 +221,13 @@ function getSpanName(element: WrapperArguments): string {
     return element.spanName || (element.package || '' + element.object || '' + element.method || '');
 }
 
-function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath }: { instance: () => any, spanHandler: SpanHandler, span: Span, returnValue: any, element: WrapperArguments, args: any, sourcePath: string }) {
+function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath, exception }: { instance: () => any, spanHandler: SpanHandler, span: Span, returnValue: any, element: WrapperArguments, args: any, sourcePath: string, exception: any }) {
 
     // if to_wrap.get("output_processor") and to_wrap.get("output_processor").get("response_processor"):
     // # Process the stream
     // to_wrap.get("output_processor").get("response_processor")(to_wrap, return_value, post_process_span_internal)
     const spanProcessor = ({ finalReturnValue }) => {
-        spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null, sourcePath: sourcePath });
+        spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null, sourcePath: sourcePath, exception: exception });
         spanHandler.processSpan({ span, instance: instance, args: args, outputProcessor: element.output_processor, returnValue: finalReturnValue, wrappedPackage: element.package });
         span.end();
     }
