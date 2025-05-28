@@ -1,0 +1,155 @@
+
+Test 1 - With tracking headers:
+{"name":"openai_embeddings","context":{"trace_id":"fe0f3770807c33eb5d5d2e4614dbcd93","span_id":"d8635123bc4d4ee1","trace_flags":
+1},"kind":0,"parent_id":"cdb059168bd2ba43","start_time":"2025-04-25T09:13:09.346000Z","end_time":"2025-04-25T09:13:10.227000Z","
+status":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"req-abc","scope.x-trace
+-id":"trace-123","span.type":"retrieval","entity.1.name":"text-embedding-ada-002","entity.1.type":"model.embedding.text-embeddin
+g-ada-002","entity.count":1},"events":[{"name":"data.input","timestamp":"2025-04-25T09:13:10.226000Z","attributes":{"input":["Co
+ffee is a beverage brewed from roasted, ground coffee beans."]}},{"name":"data.output","timestamp":"2025-04-25T09:13:10.226000Z"
+,"attributes":{"response":"0.0015230204444378614,-0.020329931750893593,-0.004430320113897324,-0.030350670218467712,-0.0069041503
+593325615,0.006477735936641693,0.006440110970288515,-0.009870238602161407,-0.01345713622868061,-0.009086388163268566..."}}],"lin
+ks":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"workflow.openai_embeddings","context":{"trace_id":"fe0f3770807c33eb5d5d2e4614dbcd93","span_id":"cdb059168bd2ba43","trac
+e_flags":1},"kind":0,"parent_id":"None","start_time":"2025-04-25T09:13:09.343000Z","end_time":"2025-04-25T09:13:10.227000Z","sta
+tus":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"req-abc","scope.x-trace-id
+":"trace-123","span.type":"workflow","entity.1.name":"langchain.app","entity.1.type":"workflow.generic","entity.2.type":"app_hos
+ting.generic","entity.2.name":"generic"},"events":[],"links":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"langchain.vectorstore_retriever","context":{"trace_id":"96b5b378731925f21d7bbdf100fcc6dd","span_id":"49df66a8c8712f02",
+"trace_flags":1},"kind":0,"parent_id":"365cd8a41cdd592d","start_time":"2025-04-25T09:13:10.234000Z","end_time":"2025-04-25T09:13
+:10.928000Z","status":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"test-123"
+,"scope.x-trace-id":"trace-123","scope.x-session-id":"session-456","scope.x-correlation-id":"corr-789","scope.user-agent":"langc
+hain-test","span.type":"retrieval","entity.1.name":"MemoryVectorStore","entity.1.type":"vectorstore.MemoryVectorStore","entity.2
+.name":"text-embedding-ada-002","entity.2.type":"model.embedding.text-embedding-ada-002","entity.count":2},"events":[{"name":"da
+ta.input","timestamp":"2025-04-25T09:13:10.928000Z","attributes":{"input":"What is coffee?"}},{"name":"data.output","timestamp":
+"2025-04-25T09:13:10.928000Z","attributes":{"response":"Coffee is a beverage brewed from roasted, ground coffee beans."}}],"link
+s":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+Headers attached to context: {
+  'x-request-id': 'test-123',
+  'x-session-id': 'session-456',
+  'x-correlation-id': 'corr-789',
+  'user-agent': 'langchain-test'
+}
+Result: Coffee is a beverage brewed from roasted, ground coffee beans.
+
+Test 2 - With auth headers:
+{"name":"langchain.chat","context":{"trace_id":"96b5b378731925f21d7bbdf100fcc6dd","span_id":"f334c6a1388b2e35","trace_flags":1},
+"kind":0,"parent_id":"365cd8a41cdd592d","start_time":"2025-04-25T09:13:10.941000Z","end_time":"2025-04-25T09:13:11.611000Z","sta
+tus":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"test-123","scope.x-trace-i
+d":"trace-123","scope.x-session-id":"session-456","scope.x-correlation-id":"corr-789","scope.user-agent":"langchain-test","span.
+type":"inference","entity.1.type":"inference.openai","entity.1.inference_endpoint":"https://api.openai.com/v1","entity.2.name":"
+gpt-3.5-turbo","entity.2.type":"model.llm.gpt-3.5-turbo","entity.count":2},"events":[{"name":"data.input","timestamp":"2025-04-2
+5T09:13:11.610000Z","attributes":{"input":["Answer the question based only on the following context:\nCoffee is a beverage brewe
+d from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"I don't know\".\n\nQuestion: What is coffee?
+"]}},{"name":"data.output","timestamp":"2025-04-25T09:13:11.610000Z","attributes":{"response":["Coffee is a beverage brewed from
+ roasted, ground coffee beans."]}},{"name":"metadata","timestamp":"2025-04-25T09:13:11.611000Z","attributes":{"completion_tokens
+":13,"prompt_tokens":53,"total_tokens":66}}],"links":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"langchain.sequence","context":{"trace_id":"96b5b378731925f21d7bbdf100fcc6dd","span_id":"365cd8a41cdd592d","trace_flags"
+:1},"kind":0,"parent_id":"None","start_time":"2025-04-25T09:13:10.231000Z","end_time":"2025-04-25T09:13:11.613000Z","status":{"s
+tatus_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"test-123","scope.x-trace-id":"trac
+e-123","scope.x-session-id":"session-456","scope.x-correlation-id":"corr-789","scope.user-agent":"langchain-test","span.type":"w
+orkflow","entity.1.name":"langchain.app","entity.1.type":"workflow.langchain","entity.2.type":"app_hosting.generic","entity.2.na
+me":"generic","entity.count":2},"events":[],"links":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"openai_embeddings","context":{"trace_id":"794336d2b5b25874d81e60296cc0d402","span_id":"01d2916a7fe7fc25","trace_flags":
+1},"kind":0,"parent_id":"e69a8881f6cf7876","start_time":"2025-04-25T09:13:11.625000Z","end_time":"2025-04-25T09:13:12.168000Z","
+status":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.authorization":"Bearer test-token","sc
+ope.x-api-key":"test-api-key","span.type":"retrieval","entity.1.name":"text-embedding-ada-002","entity.1.type":"model.embedding.
+text-embedding-ada-002","entity.count":1},"events":[{"name":"data.input","timestamp":"2025-04-25T09:13:12.168000Z","attributes":
+{"input":["Coffee is a beverage brewed from roasted, ground coffee beans."]}},{"name":"data.output","timestamp":"2025-04-25T09:1
+3:12.168000Z","attributes":{"response":"0.0015230204444378614,-0.020329931750893593,-0.004430320113897324,-0.030350670218467712,
+-0.0069041503593325615,0.006477735936641693,0.006440110970288515,-0.009870238602161407,-0.01345713622868061,-0.00908638816326856
+6..."}}],"links":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"workflow.openai_embeddings","context":{"trace_id":"794336d2b5b25874d81e60296cc0d402","span_id":"e69a8881f6cf7876","trac
+e_flags":1},"kind":0,"parent_id":"None","start_time":"2025-04-25T09:13:11.625000Z","end_time":"2025-04-25T09:13:12.169000Z","sta
+tus":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.authorization":"Bearer test-token","scope
+.x-api-key":"test-api-key","span.type":"workflow","entity.1.name":"langchain.app","entity.1.type":"workflow.generic","entity.2.t
+ype":"app_hosting.generic","entity.2.name":"generic"},"events":[],"links":[],"resource":{"attributes":{"service.name":"langchain
+.app"}}}
+{"name":"langchain.vectorstore_retriever","context":{"trace_id":"6f904e3195bee47129cf51a7dca93cc1","span_id":"7a27991e40e37dcc",
+"trace_flags":1},"kind":0,"parent_id":"b5c2cf97c2dbfe11","start_time":"2025-04-25T09:13:12.175000Z","end_time":"2025-04-25T09:13
+:13.108000Z","status":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.authorization":"Bearer t
+est-token","scope.x-api-key":"test-api-key","scope.x-request-id":"test-123","scope.x-session-id":"session-456","scope.x-correlat
+ion-id":"corr-789","scope.user-agent":"langchain-test","span.type":"retrieval","entity.1.name":"MemoryVectorStore","entity.1.typ
+e":"vectorstore.MemoryVectorStore","entity.2.name":"text-embedding-ada-002","entity.2.type":"model.embedding.text-embedding-ada-
+002","entity.count":2},"events":[{"name":"data.input","timestamp":"2025-04-25T09:13:13.108000Z","attributes":{"input":"What is c
+offee?"}},{"name":"data.output","timestamp":"2025-04-25T09:13:13.108000Z","attributes":{"response":"Coffee is a beverage brewed
+from roasted, ground coffee beans."}}],"links":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+Headers attached to context: {
+  'x-request-id': 'test-123',
+  'x-session-id': 'session-456',
+  'x-correlation-id': 'corr-789',
+  'user-agent': 'langchain-test'
+}
+Result: Coffee is a beverage brewed from roasted, ground coffee beans.
+
+Test 3 - Nested header scopes:
+{"name":"langchain.chat","context":{"trace_id":"6f904e3195bee47129cf51a7dca93cc1","span_id":"3ebbdd868ec6007a","trace_flags":1},
+"kind":0,"parent_id":"b5c2cf97c2dbfe11","start_time":"2025-04-25T09:13:13.111000Z","end_time":"2025-04-25T09:13:13.791000Z","sta
+tus":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.authorization":"Bearer test-token","scope
+.x-api-key":"test-api-key","scope.x-request-id":"test-123","scope.x-session-id":"session-456","scope.x-correlation-id":"corr-789
+","scope.user-agent":"langchain-test","span.type":"inference","entity.1.type":"inference.openai","entity.1.inference_endpoint":"
+https://api.openai.com/v1","entity.2.name":"gpt-3.5-turbo","entity.2.type":"model.llm.gpt-3.5-turbo","entity.count":2},"events":
+[{"name":"data.input","timestamp":"2025-04-25T09:13:13.791000Z","attributes":{"input":["Answer the question based only on the fo
+llowing context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't know the answer, you can say \"
+I don't know\".\n\nQuestion: What is coffee?"]}},{"name":"data.output","timestamp":"2025-04-25T09:13:13.791000Z","attributes":{"
+response":["Coffee is a beverage brewed from roasted, ground coffee beans."]}},{"name":"metadata","timestamp":"2025-04-25T09:13:
+13.791000Z","attributes":{"completion_tokens":13,"prompt_tokens":53,"total_tokens":66}}],"links":[],"resource":{"attributes":{"s
+ervice.name":"langchain.app"}}}
+{"name":"langchain.sequence","context":{"trace_id":"6f904e3195bee47129cf51a7dca93cc1","span_id":"b5c2cf97c2dbfe11","trace_flags"
+:1},"kind":0,"parent_id":"None","start_time":"2025-04-25T09:13:12.172000Z","end_time":"2025-04-25T09:13:13.792000Z","status":{"s
+tatus_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.authorization":"Bearer test-token","scope.x-api-k
+ey":"test-api-key","scope.x-request-id":"test-123","scope.x-session-id":"session-456","scope.x-correlation-id":"corr-789","scope
+.user-agent":"langchain-test","span.type":"workflow","entity.1.name":"langchain.app","entity.1.type":"workflow.langchain","entit
+y.2.type":"app_hosting.generic","entity.2.name":"generic","entity.count":2},"events":[],"links":[],"resource":{"attributes":{"se
+rvice.name":"langchain.app"}}}
+{"name":"openai_embeddings","context":{"trace_id":"20895a8a9029c2824e0cd5fd8b2168aa","span_id":"7a2d8f7e1da03dd9","trace_flags":
+1},"kind":0,"parent_id":"94462a2df18ef0e7","start_time":"2025-04-25T09:13:13.795000Z","end_time":"2025-04-25T09:13:14.575000Z","
+status":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"req-abc","scope.x-trace
+-id":"trace-123","scope.authorization":"Bearer test-token","scope.x-api-key":"test-api-key","span.type":"retrieval","entity.1.na
+me":"text-embedding-ada-002","entity.1.type":"model.embedding.text-embedding-ada-002","entity.count":1},"events":[{"name":"data.
+input","timestamp":"2025-04-25T09:13:14.575000Z","attributes":{"input":["Coffee is a beverage brewed from roasted, ground coffee
+ beans."]}},{"name":"data.output","timestamp":"2025-04-25T09:13:14.575000Z","attributes":{"response":"0.0015230204444378614,-0.0
+20329931750893593,-0.004430320113897324,-0.030350670218467712,-0.0069041503593325615,0.006477735936641693,0.006440110970288515,-
+0.009870238602161407,-0.01345713622868061,-0.009086388163268566..."}}],"links":[],"resource":{"attributes":{"service.name":"lang
+chain.app"}}}
+{"name":"workflow.openai_embeddings","context":{"trace_id":"20895a8a9029c2824e0cd5fd8b2168aa","span_id":"94462a2df18ef0e7","trac
+e_flags":1},"kind":0,"parent_id":"None","start_time":"2025-04-25T09:13:13.794000Z","end_time":"2025-04-25T09:13:14.574000Z","sta
+tus":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"req-abc","scope.x-trace-id
+":"trace-123","scope.authorization":"Bearer test-token","scope.x-api-key":"test-api-key","span.type":"workflow","entity.1.name":
+"langchain.app","entity.1.type":"workflow.generic","entity.2.type":"app_hosting.generic","entity.2.name":"generic"},"events":[],
+"links":[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"langchain.vectorstore_retriever","context":{"trace_id":"38bfb6d4642eb1bab1cc99da6dbc4b70","span_id":"9d1b2e82ecf50238",
+"trace_flags":1},"kind":0,"parent_id":"d33aad6981825e9e","start_time":"2025-04-25T09:13:14.581000Z","end_time":"2025-04-25T09:13
+:15.312000Z","status":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"test-123"
+,"scope.x-trace-id":"trace-123","scope.authorization":"Bearer test-token","scope.x-api-key":"test-api-key","scope.x-session-id":
+"session-456","scope.x-correlation-id":"corr-789","scope.user-agent":"langchain-test","span.type":"retrieval","entity.1.name":"M
+emoryVectorStore","entity.1.type":"vectorstore.MemoryVectorStore","entity.2.name":"text-embedding-ada-002","entity.2.type":"mode
+l.embedding.text-embedding-ada-002","entity.count":2},"events":[{"name":"data.input","timestamp":"2025-04-25T09:13:15.311000Z","
+attributes":{"input":"What is coffee?"}},{"name":"data.output","timestamp":"2025-04-25T09:13:15.311000Z","attributes":{"response
+":"Coffee is a beverage brewed from roasted, ground coffee beans."}}],"links":[],"resource":{"attributes":{"service.name":"langc
+hain.app"}}}
+Headers attached to context: {
+  'x-request-id': 'test-123',
+  'x-session-id': 'session-456',
+  'x-correlation-id': 'corr-789',
+  'user-agent': 'langchain-test'
+}
+Result: Coffee is a beverage brewed from roasted, ground coffee beans.
+{"name":"langchain.chat","context":{"trace_id":"38bfb6d4642eb1bab1cc99da6dbc4b70","span_id":"3901d6015b407ee4","trace_flags":1},
+"kind":0,"parent_id":"d33aad6981825e9e","start_time":"2025-04-25T09:13:15.316000Z","end_time":"2025-04-25T09:13:16.836000Z","sta
+tus":{"status_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"test-123","scope.x-trace-i
+d":"trace-123","scope.authorization":"Bearer test-token","scope.x-api-key":"test-api-key","scope.x-session-id":"session-456","sc
+ope.x-correlation-id":"corr-789","scope.user-agent":"langchain-test","span.type":"inference","entity.1.type":"inference.openai",
+"entity.1.inference_endpoint":"https://api.openai.com/v1","entity.2.name":"gpt-3.5-turbo","entity.2.type":"model.llm.gpt-3.5-tur
+bo","entity.count":2},"events":[{"name":"data.input","timestamp":"2025-04-25T09:13:16.836000Z","attributes":{"input":["Answer th
+e question based only on the following context:\nCoffee is a beverage brewed from roasted, ground coffee beans. .\nIf you don't
+know the answer, you can say \"I don't know\".\n\nQuestion: What is coffee?"]}},{"name":"data.output","timestamp":"2025-04-25T09
+:13:16.836000Z","attributes":{"response":["Coffee is a beverage brewed from roasted, ground coffee beans."]}},{"name":"metadata"
+,"timestamp":"2025-04-25T09:13:16.836000Z","attributes":{"completion_tokens":13,"prompt_tokens":53,"total_tokens":66}}],"links":
+[],"resource":{"attributes":{"service.name":"langchain.app"}}}
+{"name":"langchain.sequence","context":{"trace_id":"38bfb6d4642eb1bab1cc99da6dbc4b70","span_id":"d33aad6981825e9e","trace_flags"
+:1},"kind":0,"parent_id":"None","start_time":"2025-04-25T09:13:14.579000Z","end_time":"2025-04-25T09:13:16.837000Z","status":{"s
+tatus_code":"UNSET"},"attributes":{"monocle-typescript.version":"0.1.0","scope.x-request-id":"test-123","scope.x-trace-id":"trac
+e-123","scope.authorization":"Bearer test-token","scope.x-api-key":"test-api-key","scope.x-session-id":"session-456","scope.x-co
+rrelation-id":"corr-789","scope.user-agent":"langchain-test","span.type":"workflow","entity.1.name":"langchain.app","entity.1.ty
+pe":"workflow.langchain","entity.2.type":"app_hosting.generic","entity.2.name":"generic","entity.count":2},"events":[],"links":[
+],"resource":{"attributes":{"service.name":"langchain.app"}}}
