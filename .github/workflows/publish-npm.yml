@@ -43,7 +43,20 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Check if version is a pre-release
+        id: check-prerelease
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          if [[ $VERSION == *"-alpha"* || $VERSION == *"-beta"* || $VERSION == *"-rc"* || $VERSION == *"-next"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "Version $VERSION is a pre-release, skipping GitHub Release and PR creation"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION is a stable release"
+          fi
+
       - name: Check CHANGELOG.md for version entry
+        if: steps.check-prerelease.outputs.is_prerelease == 'false'
         run: |
           VERSION="${{ steps.package-version.outputs.version }}"
           if ! grep -q "## $VERSION" CHANGELOG.md; then
@@ -55,6 +68,7 @@ jobs:
 
       - name: Extract release notes
         id: extract-release-notes
+        if: steps.check-prerelease.outputs.is_prerelease == 'false'
         run: |
           VERSION="${{ steps.package-version.outputs.version }}"
           # Extract the content between current version and the next version marker or end of file
@@ -84,6 +98,7 @@ jobs:
 
       - name: Check if GitHub Release exists
         id: check-release
+        if: steps.check-prerelease.outputs.is_prerelease == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -96,7 +111,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        if: steps.check-release.outputs.release_exists != 'true'
+        if: steps.check-prerelease.outputs.is_prerelease == 'false' && steps.check-release.outputs.release_exists != 'true'
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -107,6 +122,7 @@ jobs:
             --notes-file release_notes.md
 
       - name: Create Pull Request to main
+        if: steps.check-prerelease.outputs.is_prerelease == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
