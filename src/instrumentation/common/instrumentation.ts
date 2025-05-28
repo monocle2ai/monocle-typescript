@@ -350,7 +350,7 @@ function addSpanProcessors(monocleProcessors: SpanProcessor[] = [], exporter_lis
         isLambda: Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)
     });
     const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
-    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5;
+    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5000;
 
     const exporters:string = exporter_list || process.env.MONOCLE_EXPORTER ;
     if (!exporters &&

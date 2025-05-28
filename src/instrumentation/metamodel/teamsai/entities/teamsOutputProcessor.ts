@@ -1,3 +1,4 @@
+import { consoleLog } from "../../../../common/logging";
 import { extractTeamsAiInfo, MonocleSpanException } from "../../utils";
 
 // def get_status_code(arguments):
@@ -15,7 +16,7 @@ import { extractTeamsAiInfo, MonocleSpanException } from "../../utils";
 //         return 'success'
 //     else:
 //         return 'error'
-    
+
 // def get_response(arguments) -> str:
 //     status = get_status_code(arguments)
 //     response:str = ""
@@ -52,74 +53,80 @@ import { extractTeamsAiInfo, MonocleSpanException } from "../../utils";
 //         return ''
 
 function getResponse(args) {
-    const status = getStatusCode(args);
-    let response = "";
-    if (status === "success") {
-        if (args.response && args.response.message) {
-            response = args.response.message.content;
-        }
-        else {
-            response = JSON.stringify(args.response);
-        }
+  const status = getStatusCode(args);
+  let response = "";
+  if (status === "success") {
+    if (args.response && args.response.message) {
+      response = args.response.message.content;
+      try {
+        response = JSON.parse(response).results[0].answer;
+      } catch (e) {
+        consoleLog("Failed to parse teams response answer:", e);
+      }
     }
     else {
-        if (args.exception) {
-            response = getExceptionMessage(args);
-        }
-        else if (args.response && args.response.error) {
-            response = args.response.error.message
-        }
+      response = JSON.stringify(args.response);
     }
-    return response;
+  }
+  else {
+    if (args.exception) {
+      response = getExceptionMessage(args);
+    }
+    else if (args.response && args.response.error) {
+      response = args.response.error.message
+    }
+  }
+  return response;
 }
 function getStatusCode(args) {
-    if (args.exception) {
-        return getExceptionStatusCode(args);
-    }
-    else if (args.response && args.response.status) {
-        return args.response.status;
-    }
-    else {
-        return "success";
-    }
+  if (args.exception) {
+    return getExceptionStatusCode(args);
+  }
+  else if (args.response && args.response.status) {
+    return args.response.status;
+  }
+  else {
+    return "success";
+  }
 }
+
 function getStatus(args) {
-    if (args.exception) {
-        return "error";
-    }
-    else if (getStatusCode(args) === "success") {
-        return "success";
-    }
-    else {
-        return "error";
-    }
+  if (args.exception) {
+    return "error";
+  }
+  else if (getStatusCode(args) === "success") {
+    return "success";
+  }
+  else {
+    return "error";
+  }
 }
 function checkStatus(args) {
-    const status = getStatusCode(args);
-    if (status !== "success") {
-        throw new MonocleSpanException(status);
-    }
+  const status = getStatusCode(args);
+  if (status !== "success") {
+    throw new MonocleSpanException(status);
+  }
 }
 function getExceptionStatusCode(args) {
-    if (args.exception && args.exception.code) {
-        return args.exception.code;
-    }
-    else {
-        return "error";
-    }
+  if (args.exception && args.exception.code) {
+    return args.exception.code;
+  }
+  else {
+    return "error";
+  }
 }
 function getExceptionMessage(args) {
-    if (args.exception) {
-        if (args.exception.message) {
-            return args.exception.message;
-        }
-        else {
-            return args.exception.toString();
-        }
+  if (args.exception) {
+    if (args.exception.message) {
+      return args.exception.message;
     }
     else {
-        return "";
+      return args.exception.toString();
     }
+  }
+  else {
+    return "";
+  }
 }
 
 export const config = {

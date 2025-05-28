@@ -52,6 +52,7 @@ export interface SpanHandler {
         outputProcessor: any;
         wrappedPackage: string;
         exception?: any;
+        parentSpan?: Span;
     }): void;
 
     preTracing(element: WrapperArguments): void;
@@ -163,6 +164,7 @@ export class DefaultSpanHandler implements SpanHandler {
         outputProcessor: any;
         wrappedPackage: string;
         exception?: any;
+        parentSpan?: Span;
     }) {
         let spanIndex = 1;
 
@@ -170,7 +172,7 @@ export class DefaultSpanHandler implements SpanHandler {
             spanIndex = 3
         }
 
-        if (!this.skipProcessor({ instance, args, element: null }) && outputProcessor && outputProcessor[0]) {
+        if ((!this.skipProcessor({ instance, args, element: null }) || exception) && outputProcessor && outputProcessor[0]) {
             outputProcessor = outputProcessor[0];
             if (typeof outputProcessor === 'object' && Object.keys(outputProcessor).length > 0) {
                 if (outputProcessor.type) {
@@ -275,7 +277,7 @@ export class DefaultSpanHandler implements SpanHandler {
             }
         }
         else {
-            span.setAttribute("span.type", "generic");
+            span.setAttribute("span.type", outputProcessor?.type || "generic");
         }
         if (spanIndex > 1) {
             span.setAttribute("entity.count", spanIndex - 1);
@@ -347,8 +349,6 @@ export class NonFrameworkSpanHandler extends DefaultSpanHandler {
     }): boolean {
         return this.checkActiveWorkflowType();
     }
-
-
 
     protected checkActiveWorkflowType() {
         const currentActiveWorkflowType = context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) || WORKFLOW_TYPE_GENERIC;
