@@ -242,43 +242,6 @@ export const config = {
           }
         }
       ]
-    },
-    {
-      name: "metadata",
-      attributes: [
-        {
-          _comment: "metadata from Teams AI response",
-          accessor: ({ args }) => {
-            // Calculate latency based on available information
-            const startTime = extractTeamsAiInfo(
-              args[1],
-              "_loadingPromise",
-              Date.now()
-            );
-            const endTime = Date.now();
-
-            // Estimate latency based on prompt manager options
-            const promptTokens = extractTeamsAiInfo(
-              args[2],
-              "_options.max_conversation_history_tokens",
-              0
-            );
-
-            const completionTokens = extractTeamsAiInfo(
-              args[4],
-              "config.completion.max_tokens",
-              0
-            );
-
-            return {
-              prompt_tokens: promptTokens,
-              completion_tokens: completionTokens,
-              total_tokens: promptTokens + completionTokens,
-              latency_ms: endTime - startTime
-            };
-          }
-        }
-      ]
     }
   ]
 };
