@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getPatchedMain, getPatchedMainList, getPatchedScopeMain } from '../../src/instrumentation/common/wrapper';
 import { Context, context, Span, SpanOptions, SpanStatusCode, Tracer } from '@opentelemetry/api';
+import { is } from 'date-fns/locale';
 
 // Create a mock span handler with all required methods
 const mockSpanHandlerImplementation = {
@@ -35,6 +36,19 @@ vi.mock('@opentelemetry/api', () => {
       UNSET: 0,
       OK: 1,
       ERROR: 2
+    },
+    trace: {
+      getActiveSpan: vi.fn(() => ({
+        setAttribute: vi.fn(),
+        addEvent: vi.fn(),
+        updateName: vi.fn(),
+        setStatus: vi.fn(),
+        end: vi.fn(),
+        context: { traceId: 'mock-trace-id', spanId: 'mock-span-id' },
+        resource: { attributes: { "SERVICE_NAME": "test-service" } },
+        parentSpanContext: { spanId: '' },
+        status: { code: 0 },
+      })),
     }
   };
 });
@@ -64,6 +78,7 @@ describe('Wrapper Functions', () => {
         resource: { attributes: { "SERVICE_NAME": "test-service" } },
         parentSpanContext: { spanId: '' },
         status: { code: SpanStatusCode.UNSET },
+        isRecording: vi.fn(() => true),
       };
       return fn(mockSpan);
     }),
