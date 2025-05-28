@@ -1,10 +1,11 @@
-import { MONOCLE_SDK_LANGUAGE, MONOCLE_SDK_VERSION, service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
+import { MONOCLE_DETECTED_SPAN_ERROR, MONOCLE_SDK_LANGUAGE, MONOCLE_SDK_VERSION, service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
 // import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
 import { context, SpanStatusCode } from "@opentelemetry/api";
 import { Span } from "./opentelemetryUtils";
 import { MONOCLE_VERSION } from './monocle_version';
 import { consoleLog } from "../../common/logging";
+import { MonocleSpanException } from "../metamodel/utils";
 export interface SpanHandler {
     setDefaultMonocleAttributes({ span, instance, args, element, sourcePath }: {
         span: Span;
@@ -27,6 +28,7 @@ export interface SpanHandler {
         returnValue: any;
         outputProcessor: any;
         sourcePath: string;
+        exception?: any;
     }): void;
 
     skipProcessor({ instance, args, element }: {
@@ -49,6 +51,8 @@ export interface SpanHandler {
         returnValue: any;
         outputProcessor: any;
         wrappedPackage: string;
+        exception?: any;
+        parentSpan?: Span;
     }): void;
 
     preTracing(element: WrapperArguments): void;
@@ -72,7 +76,7 @@ const WORKFLOW_TYPE_MAP = {
     "llamaindex": "workflow.llamaindex",
     "langchain": "workflow.langchain",
     "haystack": "workflow.haystack",
-    "@microsoft/teams-ai": "workflow.microsoft_teams_ai"
+    "@microsoft/teams-ai": "workflow.teams_ai"
 }
 
 function getWorkflowName(span: Span) {
@@ -138,23 +142,29 @@ export class DefaultSpanHandler implements SpanHandler {
         DefaultSpanHandler.setAppHostingIdentifierAttribute(span);
     }
 
-    postProcessSpan({ span }: {
+    postProcessSpan({ span, exception }: {
         span: Span;
         instance: any;
         args: IArguments;
         returnValue: any;
         outputProcessor: any;
+        exception?: any;
     }) {
-        setSpanStatus(span);
+        if (!exception) {
+            setSpanStatus(span);
+        }
+
     }
 
-    processSpan({ span, instance, args, returnValue, outputProcessor }: {
+    processSpan({ span, instance, args, returnValue, outputProcessor, exception }: {
         span: Span;
         instance: any;
         args: IArguments;
         returnValue: any;
         outputProcessor: any;
         wrappedPackage: string;
+        exception?: any;
+        parentSpan?: Span;
     }) {
         let spanIndex = 1;
 
@@ -162,7 +172,7 @@ export class DefaultSpanHandler implements SpanHandler {
             spanIndex = 3
         }
 
-        if (!this.skipProcessor({ instance, args, element: null }) && outputProcessor && outputProcessor[0]) {
+        if ((!this.skipProcessor({ instance, args, element: null }) || exception) && outputProcessor && outputProcessor[0]) {
             outputProcessor = outputProcessor[0];
             if (typeof outputProcessor === 'object' && Object.keys(outputProcessor).length > 0) {
                 if (outputProcessor.type) {
@@ -209,7 +219,8 @@ export class DefaultSpanHandler implements SpanHandler {
                     const accessorMapping = {
                         "args": args,
                         "response": returnValue,
-                        "instance": instance
+                        "instance": instance,
+                        "exception": exception
                     };
 
                     events.forEach((event: any) => {
@@ -234,7 +245,17 @@ export class DefaultSpanHandler implements SpanHandler {
                                         }
                                     }
                                 } catch (e) {
-                                    console.error(`Error evaluating accessor for attribute '${attributeKey}': ${e}`);
+                                    if (e instanceof MonocleSpanException) {
+                                        span.setStatus({
+                                            code: SpanStatusCode.ERROR,
+                                            message: e.message
+                                        });
+                                        span.setAttribute(MONOCLE_DETECTED_SPAN_ERROR, true);
+                                    }
+                                    else{
+                                        consoleLog(`Error evaluating accessor for attribute '${attributeKey}': ${e}`);
+                                    }
+                                    
                                 }
                             }
                         });
@@ -256,10 +277,16 @@ export class DefaultSpanHandler implements SpanHandler {
             }
         }
         else {
-            span.setAttribute("span.type", "generic");
+            span.setAttribute("span.type", outputProcessor?.type || "generic");
         }
         if (spanIndex > 1) {
             span.setAttribute("entity.count", spanIndex - 1);
+        }
+        if( span.status.code === SpanStatusCode.UNSET && !exception) {
+            span.setStatus({
+                code: SpanStatusCode.OK,
+                message: "OK"
+            });
         }
     }
 
@@ -322,8 +349,6 @@ export class NonFrameworkSpanHandler extends DefaultSpanHandler {
     }): boolean {
         return this.checkActiveWorkflowType();
     }
-
-
 
     protected checkActiveWorkflowType() {
         const currentActiveWorkflowType = context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) || WORKFLOW_TYPE_GENERIC;

@@ -1,3 +1,8 @@
+import { context } from "@opentelemetry/api";
+import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "../../../common/constants";
+import { NonFrameworkSpanHandler } from "../../../common/spanHandler";
+import { Span } from "../../../common/opentelemetryUtils";
+
 function processStream({ element, returnValue, spanProcessor }) {
     let waitingForFirstToken = true;
     const streamStartTime = Date.now(); // milliseconds
@@ -103,7 +108,59 @@ function processStream({ element, returnValue, spanProcessor }) {
         patchInstanceMethod(returnValue, Symbol.asyncIterator, newAIter);
     }
 }
-console.log(processStream, "processStream")
+
+function getStatusCode(args) {
+    if (args.exception) {
+        return getExceptionStatusCode(args);
+    }
+    else if (args.response && args.response.status) {
+        return args.response.status;
+    }
+    else {
+        return "success";
+    }
+}
+
+function getExceptionMessage(args) {
+  if (args.exception) {
+    if (args.exception.message) {
+      return args.exception.message;
+    }
+    else {
+      return args.exception.toString();
+    }
+  }
+  else {
+    return "";
+  }
+}
+
+function getStatus(args) {
+    if (args.exception) {
+        return "error";
+    }
+    else if (getStatusCode(args) === "success") {
+        return "success";
+    }
+    else {
+        return "error";
+    }
+}
+// function checkStatus(args) {
+//   const status = getStatusCode(args);
+//   if (status !== "success") {
+//     throw new MonocleSpanException(status);
+//   }
+// }
+function getExceptionStatusCode(args) {
+    if (args.exception && args.exception.code) {
+        return args.exception.code;
+    }
+    else {
+        return "error";
+    }
+}
+
 
 
 export const config = {
@@ -198,7 +255,10 @@ export const config = {
                 {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
-                    "accessor": function ({ response }) {
+                    "accessor": function ({ response, exception }) {
+                        if (exception){
+                            return getExceptionMessage({ exception });
+                        }
                         if (response?.output_text !== undefined) {
                             return [response.output_text];
                         }
@@ -206,7 +266,19 @@ export const config = {
                         // Handle original chat.completions.create() format
                         return response?.choices?.[0]?.message?.content ? [response.choices?.[0].message.content] : []
                     }
-                }
+                },
+                {
+                    "attribute": "status",
+                    "accessor": (args) => {
+                        return getStatus(args);
+                    }
+                },
+                {
+                    "attribute": "status_code",
+                    "accessor": (args) => {
+                        return getStatusCode(args);
+                    }
+                },
             ]
         },
         {
@@ -229,4 +301,66 @@ export const config = {
             ]
         },
     ]
+}
+
+export class OpenAISpanHandler extends NonFrameworkSpanHandler {
+    isTeamsSpanInProgress() {
+        const currentActiveWorkflowType = context.active().getValue(WORKFLOW_TYPE_KEY_SYMBOL) || WORKFLOW_TYPE_GENERIC;
+        return currentActiveWorkflowType === "workflow.teams_ai"
+    }
+
+    // If openAI is being called by Teams AI SDK, then retain the metadata part of the span events
+    skipProcessor({ instance, args, element }: {
+        instance: any;
+        args: IArguments;
+        element: WrapperArguments;
+    }) {
+        if (this.isTeamsSpanInProgress()) {
+            return true;
+        } else {
+            return super.skipProcessor({ instance, args, element });
+        }
+    }
+
+    processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage, exception, parentSpan }: {
+        span: Span;
+        instance: any;
+        args: IArguments;
+        returnValue: any;
+        outputProcessor: any;
+        wrappedPackage: string;
+        exception?: any;
+        parentSpan?: Span;
+    }) {
+        if (this.isTeamsSpanInProgress() && !exception) {
+            super.processSpan({
+                span: parentSpan,
+                instance,
+                args,
+                returnValue,
+                outputProcessor,
+                wrappedPackage: wrappedPackage,
+                exception,
+                parentSpan: null,
+            });
+        }
+        else{
+            super.processSpan({
+                span,
+                instance,
+                args,
+                returnValue,
+                outputProcessor,
+                wrappedPackage: wrappedPackage,
+                exception,
+                parentSpan
+
+            });
+        }
+
+        if(this.checkActiveWorkflowType()) {
+            span.setAttribute("span.type", "inference.modelapi");
+        }
+
+    }
 }
