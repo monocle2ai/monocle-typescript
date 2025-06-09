@@ -18,8 +18,10 @@ function processStream({ element, returnValue, spanProcessor }) {
         newProto[methodName] = func;
         Object.setPrototypeOf(obj, newProto);
     }
+    let handled = false;
 
     if (element && typeof returnValue[Symbol.iterator] === 'function') {
+        handled = true;
         const originalIter = returnValue[Symbol.iterator].bind(returnValue);
 
         function* newIter() {
@@ -61,6 +63,7 @@ function processStream({ element, returnValue, spanProcessor }) {
     }
 
     if (element && typeof returnValue[Symbol.asyncIterator] === 'function') {
+        handled = true;
         const originalAIter = returnValue[Symbol.asyncIterator].bind(returnValue);
 
         async function* newAIter() {
@@ -107,6 +110,10 @@ function processStream({ element, returnValue, spanProcessor }) {
         }
 
         patchInstanceMethod(returnValue, Symbol.asyncIterator, newAIter);
+    }
+    // Non streaming case
+    if (!handled && spanProcessor && returnValue && typeof returnValue === "object") {
+        spanProcessor({ finalReturnValue: returnValue });
     }
 }
 
