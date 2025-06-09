@@ -232,3 +232,50 @@ export function extractTeamsAiInfo(
       obj
     );
 }
+
+export function getStatus(args) {
+  if (args.exception) {
+      return args?.exception?.status || "error";
+  }
+  else if (getStatusCode(args) === "success" || getStatusCode(args) === "completed") {
+      return "success";
+  }
+  else {
+      return "error";
+  }
+}
+
+export function getStatusCode(args) {
+  if (args.exception) {
+      return getExceptionStatusCode(args);
+  }
+  else if (args.response && args.response.status) {
+      return args.response.status;
+  }
+  else {
+      return "success";
+  }
+}
+
+export function getExceptionStatusCode(args) {
+  if (args.exception && args.exception.code) {
+      return args.exception.code;
+  }
+  else {
+      return "error";
+  }
+}
+
+export function getExceptionMessage(args) {
+  if (args.exception) {
+    if (args.exception.message) {
+      return args.exception.message;
+    }
+    else {
+      return args.exception.toString();
+    }
+  }
+  else {
+    return "";
+  }
+}

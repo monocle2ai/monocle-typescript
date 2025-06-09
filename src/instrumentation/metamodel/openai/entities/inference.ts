@@ -2,6 +2,7 @@ import { context } from "@opentelemetry/api";
 import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "../../../common/constants";
 import { NonFrameworkSpanHandler } from "../../../common/spanHandler";
 import { Span } from "../../../common/opentelemetryUtils";
+import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 
 function processStream({ element, returnValue, spanProcessor }) {
     let waitingForFirstToken = true;
@@ -17,8 +18,10 @@ function processStream({ element, returnValue, spanProcessor }) {
         newProto[methodName] = func;
         Object.setPrototypeOf(obj, newProto);
     }
+    let handled = false;
 
     if (element && typeof returnValue[Symbol.iterator] === 'function') {
+        handled = true;
         const originalIter = returnValue[Symbol.iterator].bind(returnValue);
 
         function* newIter() {
@@ -60,6 +63,7 @@ function processStream({ element, returnValue, spanProcessor }) {
     }
 
     if (element && typeof returnValue[Symbol.asyncIterator] === 'function') {
+        handled = true;
         const originalAIter = returnValue[Symbol.asyncIterator].bind(returnValue);
 
         async function* newAIter() {
@@ -107,61 +111,11 @@ function processStream({ element, returnValue, spanProcessor }) {
 
         patchInstanceMethod(returnValue, Symbol.asyncIterator, newAIter);
     }
-}
-
-function getStatusCode(args) {
-    if (args.exception) {
-        return getExceptionStatusCode(args);
-    }
-    else if (args.response && args.response.status) {
-        return args.response.status;
-    }
-    else {
-        return "success";
+    // Non streaming case
+    if (!handled && spanProcessor && returnValue && typeof returnValue === "object") {
+        spanProcessor({ finalReturnValue: returnValue });
     }
 }
-
-function getExceptionMessage(args) {
-  if (args.exception) {
-    if (args.exception.message) {
-      return args.exception.message;
-    }
-    else {
-      return args.exception.toString();
-    }
-  }
-  else {
-    return "";
-  }
-}
-
-function getStatus(args) {
-    if (args.exception) {
-        return "error";
-    }
-    else if (getStatusCode(args) === "success") {
-        return "success";
-    }
-    else {
-        return "error";
-    }
-}
-// function checkStatus(args) {
-//   const status = getStatusCode(args);
-//   if (status !== "success") {
-//     throw new MonocleSpanException(status);
-//   }
-// }
-function getExceptionStatusCode(args) {
-    if (args.exception && args.exception.code) {
-        return args.exception.code;
-    }
-    else {
-        return "error";
-    }
-}
-
-
 
 export const config = {
     "type": "inference",

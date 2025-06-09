@@ -1,3 +1,57 @@
+function getExceptionMessage({ exception }: { exception: any }): string {
+  if (exception.name && exception.message) {
+    return `${exception.name}: ${exception.message}`;
+  }
+
+  if (typeof exception === "string") {
+    return exception;
+  }
+
+  try {
+    return JSON.stringify(exception);
+  } catch (err) {
+    return "Unknown error format";
+  }
+}
+
+function getStatusCode({
+  response,
+  exception,
+}: {
+  response?: any;
+  exception?: any;
+}): string {
+  if (exception) return "error";
+
+  if (
+    response &&
+    response.$metadata?.httpStatusCode >= 200 &&
+    response.$metadata?.httpStatusCode < 300
+  ) {
+    return "success";
+  }
+
+  return "error";
+}
+
+function getStatus({
+  response,
+  exception,
+}: {
+  response?: any;
+  exception?: any;
+}): number | string {
+  if (exception && exception.$metadata?.httpStatusCode) {
+    return exception.$metadata.httpStatusCode;
+  }
+
+  if (response && response.$metadata?.httpStatusCode) {
+    return response.$metadata.httpStatusCode;
+  }
+
+  return "error";
+}
+
 export const config = {
   type: "inference",
   attributes: [
@@ -53,13 +107,32 @@ export const config = {
           _comment: "this is response from LLM",
           attribute: "response",
           accessor: function (data) {
-            let decodedResponse;
-            const buffer = Buffer.from(data.response.Body);
-            decodedResponse = buffer.toString();
-            decodedResponse = JSON.parse(decodedResponse);
-            return [decodedResponse.answer || JSON.stringify(decodedResponse)];
+            if (data?.response instanceof Error) {
+              return getExceptionMessage({ exception: data.response });
+            }
+            try {
+              let decodedResponse;
+              const buffer = Buffer.from(data.response.Body);
+              decodedResponse = buffer.toString();
+              decodedResponse = JSON.parse(decodedResponse);
+              return [decodedResponse.answer || JSON.stringify(decodedResponse)];
+            } catch (err) {
+              return `Failed to parse response body: ${err.message}`;
+            }
           }
-        }
+        },
+        {
+          attribute: "status",
+          accessor: (args) => {
+            return getStatus(args);
+          },
+        },
+        {
+          attribute: "status_code",
+          accessor: (args) => {
+            return getStatusCode(args);
+          },
+        },
       ]
     }
   ]

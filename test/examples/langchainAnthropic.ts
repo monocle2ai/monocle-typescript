@@ -5,15 +5,7 @@ import { ChatAnthropic } from "@langchain/anthropic";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-
-// Initialize the LangChain Anthropic chat model
-const model = new ChatAnthropic({
-  modelName: "claude-3-5-sonnet-20240620",
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  maxTokens: 1024,
-});
-
-async function main() {
+async function main(model) {
   // Regular completion
   const messages = [
     new SystemMessage(
@@ -48,7 +40,31 @@ async function main() {
 export { main };
 
 if (require.main === module) {
-  main().catch((error) => {
-    console.error("Error occurred:", error);
-  });
+  (async () => {
+    try {
+      const validClient = new ChatAnthropic({
+        modelName: "claude-3-5-sonnet-20240620",
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY, // Set this in your environment
+        maxTokens: 1024,
+      });
+
+      // INVALID API key client
+      const invalidClient = new ChatAnthropic({
+        modelName: "claude-3-5-sonnet-20240620",
+        anthropicApiKey: "INVALID_KEY",
+        maxTokens: 1024,
+      });
+
+      await main(validClient);
+      await main(invalidClient);
+    } catch (e) {
+      console.error("Error during execution:", e);
+    }
+
+    // Wait 5 seconds then exit
+    setTimeout(() => {
+      console.log("Exiting after 5 seconds...");
+      process.exit(0); // force clean exit
+    }, 5_000);
+  })();
 }

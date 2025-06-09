@@ -1,5 +1,5 @@
 import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils";
-import { extractAssistantMessage, getLlmMetadata } from "../../utils"
+import { extractAssistantMessage, getExceptionMessage, getLlmMetadata, getStatus, getStatusCode } from "../../utils";
 
 export const config = {
   "type": "inference",
@@ -68,7 +68,11 @@ export const config = {
         {
           "_comment": "this is response from LLM",
           "attribute": "response",
-          "accessor": function ({ response }) {
+          "accessor": function ({ response, exception }) {
+            // Handle exception case
+            if (exception) {
+              return getExceptionMessage({ exception });
+            }
             // Handle Anthropic's response format
             if (response?.content) {
               if (Array.isArray(response.content)) {
@@ -83,13 +87,24 @@ export const config = {
             // Fallback to extractAssistantMessage for compatibility
             return [extractAssistantMessage(response) || "unknown_response"];
           }
-        }
+        },
+        {
+          "attribute": "status",
+          "accessor": (args) => {
+            return getStatus(args);
+          },
+        },
+        {
+          "attribute": "status_code",
+          "accessor": (args) => {
+            return getStatusCode(args);
+          },
+        },
       ]
     },
     {
       "name": "metadata",
       "attributes": [
-
         {
           "_comment": "this is response metadata from LLM",
           "accessor": function ({ instance, response }) {

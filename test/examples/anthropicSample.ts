@@ -42,10 +42,42 @@ async function main() {
       process.stdout.write(chunk.delta.text);
     }
   }
+  process.stdout.write("\n\n");
+
+  // Message completion with invalid API key
+  // This is to demonstrate error handling;
+  const invalidClient = new Anthropic({
+    apiKey: "invalid-api-key",
+  });
+
+  const messageCompletionInvalid = await invalidClient.messages.create({
+    model: "claude-3-5-sonnet-20240620",
+    max_tokens: 100,
+    messages: [{ role: "user", content: "Hello?" }],
+    system: "You are a helpful assistant.",
+  });
+
+  console.log("Message Completion Result:");
+  const contentInvalid = messageCompletionInvalid.content[0];
+  if ("text" in contentInvalid) {
+    console.log("Message completion successful");
+    console.log("Response:", contentInvalid.text);
+  }
 }
 
 if (require.main === module) {
-  main().catch(console.error);
+  (async () => {
+    try {
+      await main();
+    } catch (e) {
+      console.error("Error during processing:", e);
+    }
+    // Wait 5 seconds then exit
+    setTimeout(() => {
+      console.log("Exiting after 5 seconds...");
+      process.exit(0); // force clean exit
+    }, 5_000);
+  })();
 }
 
 export { main };
