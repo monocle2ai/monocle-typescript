@@ -2,6 +2,7 @@ import { context } from "@opentelemetry/api";
 import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "../../../common/constants";
 import { NonFrameworkSpanHandler } from "../../../common/spanHandler";
 import { Span } from "../../../common/opentelemetryUtils";
+import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 
 function processStream({ element, returnValue, spanProcessor }) {
     let waitingForFirstToken = true;
@@ -108,60 +109,6 @@ function processStream({ element, returnValue, spanProcessor }) {
         patchInstanceMethod(returnValue, Symbol.asyncIterator, newAIter);
     }
 }
-
-function getStatusCode(args) {
-    if (args.exception) {
-        return getExceptionStatusCode(args);
-    }
-    else if (args.response && args.response.status) {
-        return args.response.status;
-    }
-    else {
-        return "success";
-    }
-}
-
-function getExceptionMessage(args) {
-  if (args.exception) {
-    if (args.exception.message) {
-      return args.exception.message;
-    }
-    else {
-      return args.exception.toString();
-    }
-  }
-  else {
-    return "";
-  }
-}
-
-function getStatus(args) {
-    if (args.exception) {
-        return "error";
-    }
-    else if (getStatusCode(args) === "success") {
-        return "success";
-    }
-    else {
-        return "error";
-    }
-}
-// function checkStatus(args) {
-//   const status = getStatusCode(args);
-//   if (status !== "success") {
-//     throw new MonocleSpanException(status);
-//   }
-// }
-function getExceptionStatusCode(args) {
-    if (args.exception && args.exception.code) {
-        return args.exception.code;
-    }
-    else {
-        return "error";
-    }
-}
-
-
 
 export const config = {
     "type": "inference",
