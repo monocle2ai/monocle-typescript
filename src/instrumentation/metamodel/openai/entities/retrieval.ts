@@ -1,3 +1,5 @@
+import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
+
 export const config = {
     type: "retrieval",
     attributes: [
@@ -48,14 +50,30 @@ export const config = {
                 {
                     _comment: "this is response from LLM",
                     attribute: "response",
-                    accessor: function ({ response }) {
+                    accessor: function ({ response, exception }) {
+                        if (exception){
+                            return getExceptionMessage({ exception });
+                        }
                         if (response && response.data && response.data[0] && response.data[0].embedding) {
                             const embedding: any[] = response.data[0].embedding;
                             return embedding.slice(0, 10).toString() + "..."
                         }
                         return ""
                     }
-                }
+                },
+                {
+                    "attribute": "status",
+                    "accessor": (args) => {
+                        return getStatus(args);
+                    }
+                },
+                {
+                    "attribute": "status_code",
+                    "accessor": (args) => {
+                        return getStatusCode(args);
+                    }
+                },
+
             ]
         }
     ]

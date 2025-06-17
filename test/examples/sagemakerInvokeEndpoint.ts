@@ -7,14 +7,15 @@ import {
 } from "@aws-sdk/client-sagemaker-runtime";
 
 
-async function invokeSageMakerEndpoint() {
-  // Initialize the SageMaker client
-  const client = new SageMakerRuntimeClient({ region: "us-east-1" });
-
+async function invokeSageMakerEndpoint(
+  client,
+  question = "What is coffee?",
+  context = "Coffee is a beverage brewed from roasted, ground coffee beans."
+) {
   // Request payload in required format
   const requestPayload = {
-    question: "What is coffee?",
-    context: "Coffee is a beverage brewed from roasted, ground coffee beans."
+    question,
+    context,
   };
   const requestData = JSON.stringify(requestPayload);
 
@@ -63,9 +64,29 @@ async function invokeSageMakerEndpoint() {
 
 if (require.main === module) {
   // If this file is run directly, invoke the function
-  invokeSageMakerEndpoint().catch(console.error);
+  (async () => {
+    try {
+      const validClient = new SageMakerRuntimeClient({ region: "us-east-1" });
+      const invalidClient = new SageMakerRuntimeClient({
+        region: "us-east-1",
+        credentials: {
+          accessKeyId: "INVALID_KEY",
+          secretAccessKey: "INVALID_SECRET",
+        },
+      });
+
+      await invokeSageMakerEndpoint(validClient);
+      await invokeSageMakerEndpoint(invalidClient);
+    } catch (e) {
+      console.error("Error during langchainInvoke:", e);
+    }
+
+    // Wait 5 seconds then exit
+    setTimeout(() => {
+      console.log("Exiting after 10 seconds...");
+      process.exit(0); // force clean exit
+    }, 5_000);
+  })();
 }
 
-export {
-  invokeSageMakerEndpoint as main
-};
+export { invokeSageMakerEndpoint as main };

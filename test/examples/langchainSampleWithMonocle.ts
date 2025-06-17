@@ -13,8 +13,7 @@ import {
 } from "@langchain/core/runnables";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 
-let langchainInvoke = async (msg) => {
-    const model = new ChatOpenAI({});
+let langchainInvoke = async (msg, model) => {
     const text = "Coffee is a beverage brewed from roasted, ground coffee beans."
     const vectorStore = await MemoryVectorStore.fromTexts(
         [text],
@@ -54,9 +53,27 @@ langchainInvoke = setScopesBind({
 
 // Only run if this file is being executed directly (not imported)
 if (require.main === module) {
-    langchainInvoke("What is coffee?").then(console.debug)
+  (async () => {
+    try {
+      const validModel = new ChatOpenAI({});
+
+      // INVALID API key client
+      const invalidModel = new ChatOpenAI({
+        openAIApiKey: "INVALID_KEY",
+      });
+
+      await langchainInvoke("What is coffee?",validModel);
+      await langchainInvoke("What is coffee?", invalidModel);
+    } catch (e) {
+      console.error("Error during langchainInvoke:", e);
+    }
+
+    // Wait 5 seconds then exit
+    setTimeout(() => {
+      console.log("Exiting after 5 seconds...");
+      process.exit(0); // force clean exit
+    }, 5_000);
+  })();
 }
 
-export {
-    langchainInvoke
-}
+export { langchainInvoke };
