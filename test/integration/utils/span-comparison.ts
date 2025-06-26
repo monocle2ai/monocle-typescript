@@ -1,5 +1,4 @@
 import { SpanExport } from '../../../dist/src/exporters/utils'
-import { metadata } from '../../../../nextjs-app/nextjs-app/src/app/layout';
 
 export const cleanSpan = (span: SpanExport): Partial<SpanExport> => {
     const cleaned = JSON.parse(JSON.stringify(span));
