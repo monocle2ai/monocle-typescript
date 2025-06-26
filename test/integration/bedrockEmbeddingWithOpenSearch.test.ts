@@ -4,7 +4,7 @@ import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { sortSpans, cleanSpan } from './utils/span-comparison';
 
 // skip this test
-describe.skip('Bedrock Embedding with OpenSearch Sample', () => {
+describe('Bedrock Embedding with OpenSearch Sample', () => {
     const consoleSpy = vi.spyOn(console, 'log');
     const capturedLogs: any[] = [];
 
@@ -37,7 +37,7 @@ describe.skip('Bedrock Embedding with OpenSearch Sample', () => {
          await (await import('../examples/bedrockEmbeddingWithOpenSearch')).main();
 
         // Wait for async operations to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const sortedExpectedSpans = sortSpans(expectedSpans);
         const sortedCapturedLogs = sortSpans(capturedLogs);
