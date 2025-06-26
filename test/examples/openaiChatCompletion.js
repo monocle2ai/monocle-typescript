@@ -1,9 +1,10 @@
-import { setupMonocle } from '../../dist';
+const { setupMonocle } = require("../../dist");
+
 setupMonocle("openai.app");
 
-import OpenAI from 'openai';
+const { OpenAI } = require("openai");
 
-async function main(client) {
+async function openaiChat(client) {
   // Chat completion
   try {
     const chatCompletion = await client.chat.completions.create({
@@ -57,24 +58,33 @@ async function main(client) {
   }
 }
 
+
+async function main() {
+
+  try {
+    const validClient = new OpenAI({
+      apiKey: process.env["OPENAI_API_KEY"],
+    });
+
+    // INVALID API key client
+    const invalidClient = new OpenAI({
+      apiKey: "INVALID_KEY",
+    });
+
+    await openaiChat(validClient);
+    await openaiChat(invalidClient);
+  } catch (e) {
+    console.error("Error during openAI chat:", e);
+  }
+}
+
 if (require.main === module) {
   (async () => {
     try {
-      const validClient = new OpenAI({
-        apiKey: process.env["OPENAI_API_KEY"],
-      });
-
-      // INVALID API key client
-      const invalidClient = new OpenAI({
-        apiKey: "INVALID_KEY",
-      });
-
-      await main(validClient);
-      await main(invalidClient);
+      await main();
     } catch (e) {
-      console.error("Error during execution:", e);
+      console.error("Error during processing:", e);
     }
-
     // Wait 5 seconds then exit
     setTimeout(() => {
       console.log("Exiting after 5 seconds...");
@@ -83,4 +93,4 @@ if (require.main === module) {
   })();
 }
 
-export { main };
+module.exports = { main };

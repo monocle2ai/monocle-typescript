@@ -1,7 +1,7 @@
-import { setupMonocle } from '../../dist';
+const { setupMonocle } = require('../../dist');
 setupMonocle("llamaindex.app");
 
-import { Document, MetadataMode, VectorStoreIndex } from "llamaindex";
+const { Document, MetadataMode, VectorStoreIndex } = require("llamaindex");
 
 async function main() {
   // Load essay from abramov.txt in Node

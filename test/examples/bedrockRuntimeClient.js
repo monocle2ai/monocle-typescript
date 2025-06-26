@@ -1,10 +1,10 @@
-import { setupMonocle } from '../../dist';
+const { setupMonocle } = require("../../dist");
 setupMonocle("bedrock.app");
 
-import { 
-  BedrockRuntimeClient, 
-  InvokeModelCommand 
-} from "@aws-sdk/client-bedrock-runtime";
+const {
+  BedrockRuntimeClient,
+  InvokeModelCommand
+} = require("@aws-sdk/client-bedrock-runtime");
 
 
 async function invokeBedrockModel() {
@@ -67,7 +67,6 @@ if (require.main === module) {  // Check if the script is run directly
   invokeBedrockModel().catch(console.error);
 }
 
-export {
-  invokeBedrockModel as main
+module.exports = {
+  main: invokeBedrockModel,
 };
-

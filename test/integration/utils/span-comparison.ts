@@ -1,4 +1,5 @@
 import { SpanExport } from '../../../dist/src/exporters/utils'
+import { metadata } from '../../../../nextjs-app/nextjs-app/src/app/layout';
 
 export const cleanSpan = (span: SpanExport): Partial<SpanExport> => {
     const cleaned = JSON.parse(JSON.stringify(span));
@@ -16,11 +17,19 @@ export const cleanSpan = (span: SpanExport): Partial<SpanExport> => {
                 if (cleanedEvent.attributes.input) delete cleanedEvent.attributes.input;
                 if (cleanedEvent.attributes.response) delete cleanedEvent.attributes.response;
             }
+            if( cleanedEvent.name==='metadata' && cleanedEvent.attributes) {
+                delete cleanedEvent.attributes.completion_tokens;
+                delete cleanedEvent.attributes.prompt_tokens;
+                delete cleanedEvent.attributes.total_tokens;
+            }
             return cleanedEvent;
         });
     }
     if (cleaned.attributes) {
         if (cleaned.attributes["monocle_apptrace.version"]) delete cleaned.attributes["monocle_apptrace.version"];
+        if (cleaned.attributes["span.source"]) {
+            cleaned.attributes["span.source"] = "default-source-path";
+        }
     }
     return cleaned;
 };

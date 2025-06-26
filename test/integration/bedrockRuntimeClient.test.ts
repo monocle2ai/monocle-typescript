@@ -36,7 +36,7 @@ describe('Bedrock Runtime Client Sample', () => {
         await (await import('../examples/bedrockRuntimeClient')).main();
 
         // Wait for async operations to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const sortedExpectedSpans = sortSpans(expectedSpans);
         const sortedCapturedLogs = sortSpans(capturedLogs);

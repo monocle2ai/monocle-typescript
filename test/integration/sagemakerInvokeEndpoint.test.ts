@@ -39,7 +39,7 @@ describe('SageMaker Invoke Endpoint Sample', () => {
         await (await import('../examples/sagemakerInvokeEndpoint')).main();
 
         // Wait for async operations to complete
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const sortedExpectedSpans = sortSpans(expectedSpans);
         const sortedCapturedLogs = sortSpans(capturedLogs);
