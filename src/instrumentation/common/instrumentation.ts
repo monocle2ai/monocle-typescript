@@ -20,7 +20,7 @@ import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
-import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal } from './utils';
+import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal, isVercelEnvironment } from './utils';
 
 class MonocleInstrumentation extends InstrumentationBase {
     constructor(config = {}) {
@@ -315,6 +315,13 @@ const setupMonocle = (
         })
         // for (let processor of spanProcessors)
         //     tracerProvider.addSpanProcessor(processor)
+
+        if (isVercelEnvironment()) {
+            tracerProvider.register({
+                contextManager: contextManager,
+            })
+        }
+        
         const userWrapperMethods: any[] = []
         wrapperMethods.forEach((wrapperMethod: any[]) => {
             if (wrapperMethod) {
