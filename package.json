@@ -35,7 +35,8 @@
     "test:unit": "vitest run test/unit/*.test.ts",
     "test:unit:coverage": "vitest run --coverage test/unit/*.test.ts",
     "test:integration": "vitest run test/integration/*.test.ts",
-    "test:integration:coverage": "vitest run --coverage test/integration/*.test.ts"
+    "test:integration:coverage": "vitest run --coverage test/integration/*.test.ts",
+    "test:server:nextjs": "npx ts-node test/server/nextjs/test.ts"
   },
   "author": "monocle2ai <https://github.com/monocle2ai/monocle-typescript>",
   "dependencies": {
@@ -66,7 +67,7 @@
     "@langchain/core": "^0.3.50",
     "@langchain/openai": "^0.5.8",
     "@opensearch-project/opensearch": "^3.5.1",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.16.0",
     "@types/react": "19.1.7",
     "@typescript-eslint/parser": "^8.29.1",
     "@vitest/coverage-v8": "^3.1.1",
@@ -80,6 +81,8 @@
     "llamaindex": "^0.9.17",
     "openai": "^4.93.0",
     "prettier": "^3.5.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "rimraf": "^6.0.1",
     "ts-api-utils": "^2.1.0",
     "tsc-multi": "^1.1.0",

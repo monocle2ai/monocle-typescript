@@ -1,7 +1,8 @@
 import { createServer } from "http";
 import { parse } from "url";
-import next from "next";
 import { initializeTracing } from "./tracer";
+
+const next = require("next");
 
 const PORT = 8096;
 const dev = process.env.NODE_ENV !== "production";
@@ -9,13 +10,13 @@ const dev = process.env.NODE_ENV !== "production";
 export class NextServer {
   private server: any;
   private app: any;
-  private sdk: any;
 
   async start(): Promise<void> {
     console.log("Going to start Next.js server");
 
     try {
-      this.sdk = initializeTracing();
+
+      initializeTracing();
 
       this.app = next({ dev, dir: __dirname });
       await this.app.prepare();
