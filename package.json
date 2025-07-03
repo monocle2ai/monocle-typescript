@@ -51,7 +51,6 @@
     "axios": "^1.8.4",
     "date-fns": "^4.1.0",
     "import-in-the-middle": "^1.13.1",
-    "next": "^15.3.3",
     "require-in-the-middle": "^7.5.2"
   },
   "devDependencies": {
@@ -79,6 +78,7 @@
     "hnswlib-node": "^3.0.0",
     "langchain": "^0.3.24",
     "llamaindex": "^0.9.17",
+    "next": "^15.3.3",
     "openai": "^4.93.0",
     "prettier": "^3.5.3",
     "react": "^19.0.0",
