@@ -279,3 +279,27 @@ export function getExceptionMessage(args) {
     return "";
   }
 }
+
+export function extractGeminiEndpoint(instance) {
+  if (instance && instance.apiClient && instance.apiClient.clientOptions) {
+    const clientOptions = instance.apiClient.clientOptions;
+    return (
+      clientOptions?.httpOptions?.baseUrl ||
+      "https://generativelanguage.googleapis.com"
+    );
+  }
+  return "https://generativelanguage.googleapis.com";
+}
+
+export function resolveFromAlias(my_map, alias) {
+  const params = my_map[0];
+  if (params && typeof params === "object") {
+    const aliases = Array.isArray(alias) ? alias : [alias];
+    for (const i of aliases) {
+      if (i in params && params[i] != null) {
+        return params[i];
+      }
+    }
+  }
+  return null;
+}
