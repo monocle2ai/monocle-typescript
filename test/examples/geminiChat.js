@@ -21,22 +21,22 @@ async function geminiChat(ai) {
 async function geminiDirectGeneration(ai) {
   try {
     console.log("Direct content generation...");
-    
+
     // First message
     const response1 = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: "I have 2 dogs in my house."
     });
-    
+
     console.log("Response 1:");
     console.log(response1.text);
 
     // Second message (context-free)
     const response2 = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      model: "gemini-2.5-flash",
       contents: "How many paws are in my house?"
     });
-    
+
     console.log("\nResponse 2:");
     console.log(response2.text);
 
@@ -49,7 +49,7 @@ async function geminiDirectGeneration(ai) {
           parts: [{ text: "I have 2 dogs in my house." }]
         },
         {
-          role: "model", 
+          role: "model",
           parts: [{ text: response1.text }]
         },
         {
@@ -61,18 +61,35 @@ async function geminiDirectGeneration(ai) {
 
     console.log("\nContextual Response:");
     console.log(conversationResponse.text);
-    
+
   } catch (error) {
     console.error("Error during Gemini generation:", error);
   }
 }
 
 
+async function geminiChatEmbedding(ai) {
+  try {
+
+    const response = await ai.models.embedContent({
+      model: 'gemini-embedding-exp-03-07',
+      contents: 'What is the meaning of life?',
+    });
+
+    console.log(response.embeddings);
+  } catch (e) {
+    console.error("Error during generateContent:", e);
+    return;
+  }
+}
+
 async function main() {
   try {
     await geminiChat(new GoogleGenAI({}));
     await geminiDirectGeneration(new GoogleGenAI({}));
+    await geminiChatEmbedding(new GoogleGenAI({}));
     await geminiChat(new GoogleGenAI({ apiKey: "INVALID_KEY" }));
+    await geminiChatEmbedding(new GoogleGenAI({ apiKey: "INVALID_KEY" }));
   } catch (e) {
     console.error("Error during gemini chat:", e);
   }

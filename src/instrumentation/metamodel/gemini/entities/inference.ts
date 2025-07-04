@@ -1,31 +1,11 @@
-import { getStatus, getStatusCode } from "../../utils";
+import {
+  extractGeminiEndpoint,
+  getStatus,
+  getStatusCode,
+  resolveFromAlias,
+} from "../../utils";
 
-function extractInferenceEndpoint(instance) {
-  if (instance && instance.apiClient && instance.apiClient.clientOptions) {
-    const clientOptions = instance.apiClient.clientOptions;
-
-    return (
-      clientOptions?.httpOptions?.baseUrl ||
-      "https://generativelanguage.googleapis.com"
-    );
-  }
-  return "https://generativelanguage.googleapis.com";
-}
-
-function resolveFromAlias(my_map, alias) {
-  const params = my_map[0];
-  if (params && typeof params === "object") {
-    const aliases = Array.isArray(alias) ? alias : [alias];
-    for (const i of aliases) {
-      if (i in params && params[i] != null) {
-        return params[i];
-      }
-    }
-  }
-  return null;
-}
-
-function updateSpanFromLlmResponse(response, _instance) {
+function getMetadataUsage(response, _instance) {
   try {
     let metadata = null;
     if (response && response.usageMetadata) {
@@ -97,34 +77,84 @@ function extractMessages(args) {
   return [];
 }
 
-function extractAssistantMessage(args) {
-  const { response, exception } = args;
-
-  if (exception) {
-    return [exception.message || String(exception)];
-  }
-
+function extractInferenceOutput(result) {
   try {
-    if (response && typeof response.text === "function") {
-      const responseText = response.text();
-      return [responseText];
+    // Handle direct exception case
+    if (result?.exception) {
+      const error = result.exception;
+      if (error.message) {
+        return [error.message];
+      }
+      return [String(error)];
     }
 
-    if (response && response.candidates && response.candidates.length > 0) {
-      const candidate = response.candidates[0];
-      if (
-        candidate.content &&
-        candidate.content.parts &&
-        candidate.content.parts.length > 0
-      ) {
-        const responseText = candidate.content.parts[0].text || "";
-        return [responseText];
-      }
+    // Handle error in response structure
+    if (result?.error) {
+      return [result.error.message || JSON.stringify(result.error)];
     }
+
+    // Handle API error structure
+    if (result?.response?.error) {
+      return [
+        result.response.error.message || JSON.stringify(result.response.error),
+      ];
+    }
+
+    const status = getStatusCode(result);
+    const messages: any[] = [];
+    let role = "model";
+
+    // Check if result has candidates with role information
+    if (result?.candidates?.length > 0 && result.candidates[0]?.content?.role) {
+      role = result.candidates[0].content.role;
+    }
+
+    if (status === "success") {
+      let extractedText = "";
+
+      // Try multiple paths to extract text from Gemini response
+      if (result?.text && result.text.length > 0) {
+        extractedText = result.text;
+      } else if (result?.candidates?.length > 0) {
+        const candidate = result.candidates[0];
+
+        // Check for text directly in candidate
+        if (candidate.content?.parts?.length > 0) {
+          const parts = candidate.content.parts;
+          extractedText = parts.map((part) => part.text || "").join("");
+        } else if (candidate.text) {
+          extractedText = candidate.text;
+        }
+      } else if (result?.response?.text) {
+        extractedText = result.response.text;
+      } else if (result?.response?.candidates?.length > 0) {
+        const candidate = result.response.candidates[0];
+        if (candidate.content?.parts?.length > 0) {
+          extractedText = candidate.content.parts
+            .map((part) => part.text || "")
+            .join("");
+        }
+      }
+
+      if (extractedText && extractedText.length > 0) {
+        const messageObj = {};
+        messageObj[role] = extractedText;
+        messages.push(messageObj);
+      }
+    } else if (result?.error) {
+      return result.error;
+    }
+
+    return messages.length > 0 ? JSON.stringify(messages[0]) : "";
   } catch (e) {
-    console.warn(`Warning: Error occurred in extracting Gemini response: ${e}`);
+    if (e instanceof TypeError || e.name === "TypeError") {
+      console.warn(
+        `Warning: Error occurred in extractAssistantMessage: ${e.message}`
+      );
+      return null;
+    }
+    throw e;
   }
-  return [];
 }
 
 export const config = {
@@ -141,7 +171,7 @@ export const config = {
       {
         attribute: "inference_endpoint",
         accessor: function ({ instance }) {
-          return extractInferenceEndpoint(instance);
+          return extractGeminiEndpoint(instance);
         },
       },
     ],
@@ -193,8 +223,8 @@ export const config = {
         },
         {
           attribute: "response",
-          accessor: function (args) {
-            return extractAssistantMessage(args);
+          accessor: function ({ response, exception, args }) {
+            return extractInferenceOutput({ response, exception, args });
           },
         },
       ],
@@ -205,7 +235,7 @@ export const config = {
         {
           _comment: "this is metadata usage from LLM",
           accessor: function ({ response, instance }) {
-            return updateSpanFromLlmResponse(response, instance);
+            return getMetadataUsage(response, instance);
           },
         },
       ],
