@@ -1,11 +1,10 @@
-import { setupMonocle } from '../../dist';
+const { setupMonocle } = require('../../dist');
 setupMonocle("openai.app");
 
-import { 
-  SageMakerRuntimeClient, 
-  InvokeEndpointCommand 
-} from "@aws-sdk/client-sagemaker-runtime";
-
+const {
+  SageMakerRuntimeClient,
+  InvokeEndpointCommand
+} = require("@aws-sdk/client-sagemaker-runtime");
 
 async function invokeSageMakerEndpoint(
   client,
@@ -62,31 +61,39 @@ async function invokeSageMakerEndpoint(
   }
 }
 
+
+async function main() {
+  try {
+    const validClient = new SageMakerRuntimeClient({ region: "us-east-1" });
+    const invalidClient = new SageMakerRuntimeClient({
+      region: "us-east-1",
+      credentials: {
+        accessKeyId: "INVALID_KEY",
+        secretAccessKey: "INVALID_SECRET",
+      },
+    });
+
+    await invokeSageMakerEndpoint(validClient);
+    await invokeSageMakerEndpoint(invalidClient);
+  } catch (e) {
+    console.error("Error during langchainInvoke:", e);
+  }
+}
+
 if (require.main === module) {
-  // If this file is run directly, invoke the function
   (async () => {
     try {
-      const validClient = new SageMakerRuntimeClient({ region: "us-east-1" });
-      const invalidClient = new SageMakerRuntimeClient({
-        region: "us-east-1",
-        credentials: {
-          accessKeyId: "INVALID_KEY",
-          secretAccessKey: "INVALID_SECRET",
-        },
-      });
-
-      await invokeSageMakerEndpoint(validClient);
-      await invokeSageMakerEndpoint(invalidClient);
+      await main();
     } catch (e) {
-      console.error("Error during langchainInvoke:", e);
+      console.error("Error during processing:", e);
     }
-
     // Wait 5 seconds then exit
     setTimeout(() => {
-      console.log("Exiting after 10 seconds...");
+      console.log("Exiting after 5 seconds...");
       process.exit(0); // force clean exit
     }, 5_000);
   })();
 }
 
-export { invokeSageMakerEndpoint as main };
+
+module.exports = { main: main };

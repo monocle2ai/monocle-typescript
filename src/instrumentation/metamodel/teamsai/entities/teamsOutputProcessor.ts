@@ -1,5 +1,5 @@
 import { consoleLog } from "../../../../common/logging";
-import {  MonocleSpanException } from "../../utils";
+import { MonocleSpanException } from "../../utils";
 
 // def get_status_code(arguments):
 //     if arguments["exception"] is not None:

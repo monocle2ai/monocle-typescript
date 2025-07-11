@@ -1,12 +1,12 @@
-import { setupMonocle, startTrace } from '../../dist';
+
+const { setupMonocle, startTrace } = require("../../dist");
 
 setupMonocle("bedrock-opensearch.app");
 
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { Client } from '@opensearch-project/opensearch';
-import { AwsSigv4Signer } from '@opensearch-project/opensearch/aws';
-import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
-import { KnnVectorMethod } from '@opensearch-project/opensearch/api/_types/_common.mapping.js';
+const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
+const { Client } = require("@opensearch-project/opensearch");
+const { AwsSigv4Signer } = require("@opensearch-project/opensearch/aws");
+const { fromNodeProviderChain } = require("@aws-sdk/credential-providers");
 
 
 // Configuration
@@ -103,19 +103,19 @@ async function createKnnIndexIfNotExists() {
         mappings: {
           properties: {
             embedding: {
-              type: 'knn_vector' as const,
+              type: 'knn_vector',
               dimension: EMBEDDING_DIMENSION,
               method: {
                 name: 'hnsw',
                 space_type: 'cosinesimil',
                 engine: 'nmslib'
-              } as KnnVectorMethod
+              }
             },
             text: { 
-              type: 'text' as const 
+              type: 'text'
             },
             id: { 
-              type: 'keyword' as const 
+              type: 'keyword'
             }
           }
         }
@@ -271,7 +271,7 @@ const wrappedRunWorkflow = () => {
   })
 };
 
-export {
-  wrappedRunWorkflow as main,
+module.exports = {
+  main: wrappedRunWorkflow,
 };
 

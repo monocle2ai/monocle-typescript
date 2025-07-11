@@ -1,12 +1,9 @@
-import { setupMonocle } from '../../src'
-setupMonocle("sagemaker.app");
-
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, beforeEach, afterEach, it, expect, vi } from 'vitest';
 import { sortSpans, cleanSpan } from './utils/span-comparison';
 
-describe('SageMaker Invoke Endpoint Sample', () => {
+describe('Gemini Sample', () => {
     const consoleSpy = vi.spyOn(console, 'log');
     const capturedLogs: any[] = [];
 
@@ -28,7 +25,7 @@ describe('SageMaker Invoke Endpoint Sample', () => {
 
     it('should generate all expected spans', async () => {
         // Load expected NDJSON data
-        const ndjsonPath = join(__dirname, '../examples/sagemakerInvokeEndpoint.ndjson');
+        const ndjsonPath = join(__dirname, '../examples/geminiChat.ndjson');
         const ndjsonContent = readFileSync(ndjsonPath, 'utf-8');
         const expectedSpans = ndjsonContent
             .split('\n')
@@ -36,7 +33,7 @@ describe('SageMaker Invoke Endpoint Sample', () => {
             .map(line => JSON.parse(line));
 
         // Run the sample code
-        await (await import('../examples/sagemakerInvokeEndpoint')).main();
+        await (await import('../examples/geminiChat.js')).main();
 
         // Wait for async operations to complete
         await new Promise(resolve => setTimeout(resolve, 5000));

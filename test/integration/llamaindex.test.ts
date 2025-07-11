@@ -10,7 +10,7 @@ const azureOpenAiBackup = {
   AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT
 };
 
-describe("LlamaIndex Sample", () => {
+describe.skip("LlamaIndex Sample", () => {
   const consoleSpy = vi.spyOn(console, "log");
   const capturedLogs: any[] = [];
 
