@@ -1,6 +1,5 @@
-import { NonFrameworkSpanHandler } from "../../common/spanHandler";
-import { config as inferenceConfig } from "./entities/inference.js";
-import { config as retrievalConfig } from "./entities/retrieval.js";
+import { config as inferenceConfig, OpenAISpanHandler } from "./entities/inference";
+import { config as retrievalConfig } from "./entities/retrieval";
 
 export const config = [
     {
@@ -9,7 +8,7 @@ export const config = [
         method: "create",
         spanName: "openai_chat",
         output_processor: [inferenceConfig],
-        spanHandler: new NonFrameworkSpanHandler()
+        spanHandler: new OpenAISpanHandler()
     },
     {
         package: "openai/resources/embeddings",
@@ -17,7 +16,7 @@ export const config = [
         method: "create",
         spanName: "openai_embeddings",
         output_processor: [retrievalConfig],
-        spanHandler: new NonFrameworkSpanHandler()
+        spanHandler: new OpenAISpanHandler()
     },
     {
         package: "openai/resources/responses/responses",
@@ -25,7 +24,15 @@ export const config = [
         method: "create",
         spanName: "openai_responses",
         output_processor: [inferenceConfig],
-        spanHandler: new NonFrameworkSpanHandler(),
+        spanHandler: new OpenAISpanHandler(),
+    },
+    {
+        package: "openai/resources/responses/responses",
+        object: "Responses",
+        method: "stream",
+        spanName: "openai_responses_stream",
+        output_processor: [inferenceConfig],
+        spanHandler: new OpenAISpanHandler(),
     }
 
 ];

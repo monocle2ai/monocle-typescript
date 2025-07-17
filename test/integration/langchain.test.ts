@@ -34,10 +34,10 @@ describe('Langchain Sample', () => {
             .map(line => JSON.parse(line));
 
         // Run the sample code
-        await (await import('../examples/langchainSampleWithMonocle')).langchainInvoke("What is coffee?");
+        await (await import('../examples/langchainSampleWithMonocle')).main();
 
         // Wait for async operations to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         const sortedExpectedSpans = sortSpans(expectedSpans);
         const sortedCapturedLogs = sortSpans(capturedLogs);

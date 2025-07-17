@@ -28,9 +28,9 @@ describe.skip("LangChain OpenSearch Integration", () => {
   test("OpenSearch RAG workflow with history-aware retriever", async () => {
     // OpenSearch endpoint and credentials
     const endpoint = process.env.OPENSEARCH_ENDPOINT;
-    const httpAuth = {
-      username: process.env.OPENSEARCH_USERNAME,
-      password: process.env.OPENSEARCH_PASSWORD
+    const httpAuth  = {
+      username: process.env.OPENSEARCH_USERNAME as string,
+      password: process.env.OPENSEARCH_PASSWORD as string
     };
     const indexName = "gpt-index-demo";
 
@@ -104,7 +104,6 @@ describe.skip("LangChain OpenSearch Integration", () => {
       .pipe(promptTemplate)
       .pipe(llm)
       .pipe(new StringOutputParser());
-    console.log(ragChain);
 
     const qaSystemPrompt = `You are an assistant for question-answering tasks. 
        Use the following pieces of retrieved context to answer the question. 
@@ -135,7 +134,6 @@ describe.skip("LangChain OpenSearch Integration", () => {
       input: question,
       chat_history: chatHistory
     });
-    console.log(result);
 
     // Verify spans
     const spans = customExporter.getCapturedSpans();

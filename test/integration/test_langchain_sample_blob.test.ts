@@ -122,7 +122,6 @@ describe("Langchain RAG Integration Tests", () => {
       chat_history: chatHistory
     });
 
-    console.log(aiMsg1["answer"]);
 
     // Validate telemetry spans
     const spans = customExporter.getCapturedSpans();
@@ -262,7 +261,6 @@ describe("Langchain RAG Integration Tests", () => {
 
     // Final RAG step
     const response = await processQuestion(query, q_a_pairs);
-    console.log(response);
 
     // Validate telemetry spans
     const spans = customExporter.getCapturedSpans();

@@ -1,4 +1,4 @@
-import { extractAssistantMessage, getLlmMetadata } from "../../utils.js"
+import { extractAssistantMessage, getExceptionMessage, getLlmMetadata, getStatus, getStatusCode } from "../../utils"
 
 export const config = {
     "type": "inference",
@@ -70,10 +70,25 @@ export const config = {
                 {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
-                    "accessor": function ({ response }) {
+                    "accessor": function ({ response, exception }) {
+                        if (exception){
+                            return getExceptionMessage({ exception });
+                        }
                         return [extractAssistantMessage(response)]
                     }
-                }
+                },
+                {
+                    "attribute": "status",
+                    "accessor": (args) => {
+                        return getStatus(args);
+                    }
+                },
+                {
+                    "attribute": "status_code",
+                    "accessor": (args) => {
+                        return getStatusCode(args);
+                    }
+                },
             ]
         },
         {

@@ -7,8 +7,10 @@ import { config as bedrockPackages } from "../metamodel/bedrock/methods";
 import { config as openSearchPackages } from "../metamodel/opensearch/methods";
 import { config as vercelAiPackages } from "../metamodel/vercelAI/methods";
 import { config as anthropicPackages } from "../metamodel/anthropic/methods";
+import { config as geminiPackages } from "../metamodel/gemini/methods";
+import { MethodConfig } from "./constants";
 
-export const combinedPackages = [
+export const combinedPackages: MethodConfig[] = [
   ...langchainPackages,
   ...llamaindexPackages,
   ...openaiPackages,
@@ -17,6 +19,6 @@ export const combinedPackages = [
   ...openSearchPackages,
   ...vercelAiPackages,
   ...teamsaiPackages,
-  ...anthropicPackages
-
+  ...anthropicPackages,
+  ...geminiPackages
 ];

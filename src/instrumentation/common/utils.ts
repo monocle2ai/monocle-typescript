@@ -1,11 +1,67 @@
 import * as path from 'path';
-import * as fs from 'fs'
+import * as fs from 'fs';
 import { context as context_api, propagation, Context, Tracer } from "@opentelemetry/api";
 import { RandomIdGenerator } from "@opentelemetry/sdk-trace-node";
 import { MONOCLE_SCOPE_NAME_PREFIX, SCOPE_CONFIG_PATH, SCOPE_METHOD_FILE } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
 import { Span } from './opentelemetryUtils';
+
+
+const NODE_PACKAGES = [
+    'anthropic-ai',
+    'aws-sdk',
+    'langchain',
+    'llamaindex',
+    'openai',
+    'opensearch-project',
+    'microsoft',
+    'ai'
+];
+
+export function getSourcePath(): string {
+    try {
+        const stack = new Error().stack;
+        const stackLines = stack?.split('\n') || [];
+        
+        // Find the first non-internal call in the stack
+        let callerLine = stackLines.reverse().find(line => {
+            return line.includes('at') && 
+                   !line.includes('node:internal') && 
+                   !line.includes('node_modules') &&
+                   !line.includes('getPatchedMain') &&
+                   !line.includes('getSourcePath') &&
+                   (line.includes('/test/') || line.includes('/src/'));
+        });
+
+        // If no application code found, look for important library functions
+        if (!callerLine) {
+            callerLine = stackLines.find(line => {                
+                // Check for important packages
+                const hasImportantPackage = NODE_PACKAGES.some(pkg => 
+                    line.includes(`node_modules/${pkg}`) ||
+                    line.includes(`node_modules/@${pkg}/`)
+                );
+
+                return line.includes('at') && hasImportantPackage;
+            });
+        }
+
+        if (callerLine) {
+            // Extract file path from the stack trace
+            const match = callerLine.match(/\((.+?):(\d+):\d+\)/) || 
+                         callerLine.match(/at\s+(.+?):(\d+):\d+/);
+            if (match && match[1] && match[2]) {
+                const [_, fullPath, lineNumber] = match;
+                return `${fullPath}:${lineNumber}` || 'unknown_source';
+            }
+        }
+        return 'unknown_source';
+    } catch (error) {
+        console.warn('Error getting source path:', error);
+        return 'unknown_source';
+    }
+}
 
 let _instrumentor = null
 export function setInstrumentor(instrumentor: any) {
@@ -137,7 +193,8 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
         const contextWithWorkflow = attachWorkflowType();
         return context_api.with(contextWithWorkflow, () => {
             return tracer.startActiveSpan("workflow", (span: Span) => {
-                DefaultSpanHandler.setMonocleAttributes(span);
+                const sourcePath = getSourcePath();
+                DefaultSpanHandler.setMonocleAttributes(span, sourcePath);
                 DefaultSpanHandler.setWorkflowAttributes({ span, wrappedPackage: null });
                 // Mark that we're about to call the function
                 isFnCalled = true;

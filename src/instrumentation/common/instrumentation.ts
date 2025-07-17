@@ -1,5 +1,6 @@
 import { registerModule } from "./esmModule"
 
+
 import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
@@ -11,7 +12,7 @@ import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { combinedPackages } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { getPatchedMain, getPatchedScopeMain, getPatchedMainList } from "./wrapper";
-import { AWS_CONSTANTS } from './constants';
+import { AWS_CONSTANTS, MethodConfig } from './constants';
 import * as path from 'path';
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
@@ -55,13 +56,63 @@ class MonocleInstrumentation extends InstrumentationBase {
             const module = new InstrumentationNodeModuleDefinition(
                 elements[0].package,
                 ['*'],
+                // patch
                 this._getOnPatchMain(elements).bind(this),
+                // unpatch
+                this._unPatch(elements).bind(this),
             );
             modules.push(module);
         }
 
+        //  openai => chatcompletion.ts => Completion => create
+
         consoleLog(`Initialized ${modules.length} modules for instrumentation`);
         return modules;
+    }
+
+    _unPatch(elements: MethodConfig[]): (exports: any, moduleVersion?: string) => void {
+        return (exports, _moduleVersion) => {
+            try {
+                if (elements.length === 1) {
+                    const element = elements[0];
+                    if (typeof exports === "function") {
+                        this._unwrap(
+                            exports.prototype,
+                            element.method
+                        );
+                    }
+                    if (!element.object) {
+                        this._unwrap(exports, element.method);
+                    }
+                    else {
+                        this._unwrap(
+                            exports[element.object].prototype,
+                            element.method
+                        );
+                    }
+                } else {
+                    if (typeof exports === "function") {
+                        this._unwrap(
+                            exports.prototype,
+                            elements[0].method
+                        );
+                    }
+                    else {
+                        this._unwrap(
+                            exports[elements[0].object].prototype,
+                            elements[0].method
+                        );
+                    }
+                }
+            } catch (e) {
+                consoleLog('Error in _unPatch', {
+                    package: elements[0].package,
+                    elements: elements.length,
+                    error: e.message,
+                    stack: e.stack
+                });
+            }
+        };
     }
 
     enable() {
@@ -145,7 +196,7 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     // Helper method to group packages by name
     _groupPackagesByName(packages) {
-        const groups = {};
+        const groups: Record<string, any[]> = {};
 
         for (const pkg of packages) {
             const key = `${pkg.package}_${pkg.object}_${pkg.method}`;
@@ -158,7 +209,7 @@ class MonocleInstrumentation extends InstrumentationBase {
         return groups;
     }
 
-    _getOnPatchMain(elements) {
+    _getOnPatchMain(elements: MethodConfig[]): (moduleExports: any, moduleVersion?: string) => any {
         return (moduleExports) => {
             try {
                 // Handle single or multiple elements
@@ -217,11 +268,11 @@ class MonocleInstrumentation extends InstrumentationBase {
             }
         }
     }
-
-    _patchMainMethodName(element) {
+    // make sure original and return function have same signature
+    _patchMainMethodName(element: MethodConfig): (original: Function) => Function {
         const tracer = this.tracer
-        if (element.scopeName) {
-            return getPatchedScopeMain({ tracer, ...element })
+        if (element.scopeName || element.scopeValues) {
+            return getPatchedScopeMain({ ...element })
         }
         return getPatchedMain({ tracer, ...element })
     }
@@ -299,7 +350,7 @@ function addSpanProcessors(monocleProcessors: SpanProcessor[] = [], exporter_lis
         isLambda: Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)
     });
     const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
-    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5;
+    const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5000;
 
     const exporters:string = exporter_list || process.env.MONOCLE_EXPORTER ;
     if (!exporters &&

@@ -1,5 +1,5 @@
 import { NonFrameworkSpanHandler } from "../../common/spanHandler";
-import { config as inferenceConfig } from "./entities/inference.js";
+import { config as inferenceConfig } from "./entities/inference";
 
 export const config = [
   {

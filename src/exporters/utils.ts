@@ -20,6 +20,7 @@ export interface SpanExport {
   end_time: string;
   status: {
     status_code: string;
+    description?: string;
   };
   attributes: Record<string, any>;
   events: Array<{
@@ -63,7 +64,8 @@ export function exportInfo(span: Span) {
     start_time: convertTimestamp(hrTimeToTimeStamp(span.startTime)),
     end_time: convertTimestamp(hrTimeToTimeStamp(span.endTime)),
     status: {
-      "status_code": "UNSET"
+      status_code: span.status.code === 2 ? "ERROR" : "OK",
+      description: span.status.message || "",
     },
     attributes: span.attributes,
     events: span.events,

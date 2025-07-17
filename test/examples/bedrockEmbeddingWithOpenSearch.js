@@ -1,14 +1,12 @@
+
 const { setupMonocle, startTrace } = require("../../dist");
+
 setupMonocle("bedrock-opensearch.app");
 
-const {
-  BedrockRuntimeClient,
-  InvokeModelCommand
-} = require("@aws-sdk/client-bedrock-runtime");
-const { Client } = require('@opensearch-project/opensearch');
-const { AwsSigv4Signer } = require('@opensearch-project/opensearch/aws');
-const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
-
+const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-bedrock-runtime");
+const { Client } = require("@opensearch-project/opensearch");
+const { AwsSigv4Signer } = require("@opensearch-project/opensearch/aws");
+const { fromNodeProviderChain } = require("@aws-sdk/credential-providers");
 
 
 // Configuration
@@ -105,16 +103,20 @@ async function createKnnIndexIfNotExists() {
         mappings: {
           properties: {
             embedding: {
-              type: "knn_vector",
+              type: 'knn_vector',
               dimension: EMBEDDING_DIMENSION,
               method: {
-                name: "hnsw",
-                space_type: "cosinesimil",
-                engine: "nmslib"
+                name: 'hnsw',
+                space_type: 'cosinesimil',
+                engine: 'nmslib'
               }
             },
-            text: { type: "text" },
-            id: { type: "keyword" }
+            text: { 
+              type: 'text'
+            },
+            id: { 
+              type: 'keyword'
+            }
           }
         }
       };
@@ -251,19 +253,18 @@ if (require.main === module) {
   startTrace(() => {
     const val = runWorkflow()
 
-      val.then(result => console.log("Workflow completed successfully"))
+      val.then(() => console.log("Workflow completed successfully"))
       .catch(error => console.error("Workflow failed:", error));
       
     return val
   })
-
 }
 
 const wrappedRunWorkflow = () => {
   return startTrace(() => {
     const val = runWorkflow()
 
-      val.then(result => console.log("Workflow completed successfully"))
+      val.then(() => console.log("Workflow completed successfully"))
       .catch(error => console.error("Workflow failed:", error));
       
     return val

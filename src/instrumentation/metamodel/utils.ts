@@ -4,6 +4,13 @@ export interface ACCESSOR_ARGS {
   response: any 
 }
 
+export class MonocleSpanException extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MonocleSpanException";
+  }
+}
+
 export function extractMessages(args) {
   /**
    * Extract system and user messages
@@ -224,4 +231,75 @@ export function extractTeamsAiInfo(
         acc && acc[part] !== undefined ? acc[part] : defaultValue,
       obj
     );
+}
+
+export function getStatus(args) {
+  if (args.exception) {
+      return args?.exception?.status || "error";
+  }
+  else if (getStatusCode(args) === "success" || getStatusCode(args) === "completed") {
+      return "success";
+  }
+  else {
+      return "error";
+  }
+}
+
+export function getStatusCode(args) {
+  if (args.exception) {
+      return getExceptionStatusCode(args);
+  }
+  else if (args.response && args.response.status) {
+      return args.response.status;
+  }
+  else {
+      return "success";
+  }
+}
+
+export function getExceptionStatusCode(args) {
+  if (args.exception && args.exception.code) {
+      return args.exception.code;
+  }
+  else {
+      return "error";
+  }
+}
+
+export function getExceptionMessage(args) {
+  if (args.exception) {
+    if (args.exception.message) {
+      return args.exception.message;
+    }
+    else {
+      return args.exception.toString();
+    }
+  }
+  else {
+    return "";
+  }
+}
+
+export function extractGeminiEndpoint(instance) {
+  if (instance && instance.apiClient && instance.apiClient.clientOptions) {
+    const clientOptions = instance.apiClient.clientOptions;
+    return (
+      clientOptions?.httpOptions?.baseUrl ||
+      "https://generativelanguage.googleapis.com"
+    );
+  }
+  return "https://generativelanguage.googleapis.com";
+}
+
+export function resolveFromAlias(my_map, alias) {
+  const params = my_map[0];
+  if (params && typeof params === "object") {
+    const aliases = Array.isArray(alias) ? alias : [alias];
+    for (const i of aliases) {
+      if (i in params && params[i] != null) {
+        return params[i];
+      }
+    }
+  }
+  return null;
 }

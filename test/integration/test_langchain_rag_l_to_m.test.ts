@@ -92,7 +92,6 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
     );
 
     const retriever = vectorstore.asRetriever();
-    console.log(`retriever tags: ${JSON.stringify(retriever.tags)}`);
 
     // Create the decomposition prompt
     const decompositionPrompt = ChatPromptTemplate.fromTemplate(`
@@ -157,7 +156,6 @@ describe("Langchain RAG Least-to-Most Integration Tests", () => {
 
     // Final RAG step
     const response = await processQuestion(query, q_a_pairs);
-    console.log(response);
 
     // Validate telemetry spans
     const spans = customExporter.getCapturedSpans();
