@@ -8,6 +8,7 @@ import { config as openSearchPackages } from "../metamodel/opensearch/methods";
 import { config as vercelAiPackages } from "../metamodel/vercelAI/methods";
 import { config as anthropicPackages } from "../metamodel/anthropic/methods";
 import { config as geminiPackages } from "../metamodel/gemini/methods";
+import { config as langgraphPackages } from "../metamodel/langgraph/methods";
 import { MethodConfig } from "./constants";
 
 export const combinedPackages: MethodConfig[] = [
@@ -20,5 +21,6 @@ export const combinedPackages: MethodConfig[] = [
   ...vercelAiPackages,
   ...teamsaiPackages,
   ...anthropicPackages,
-  ...geminiPackages
+  ...geminiPackages,
+  ...langgraphPackages
 ];
