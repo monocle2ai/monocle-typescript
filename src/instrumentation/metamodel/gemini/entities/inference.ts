@@ -164,7 +164,13 @@ export const config = {
       {
         _comment: "provider type, inference_endpoint",
         attribute: "type",
-        accessor: function () {
+        accessor: function ({ instance }) {
+          if (instance && instance.apiClient && instance.apiClient.clientOptions) {
+            const clientOptions = instance.apiClient.clientOptions;
+            if (clientOptions.vertexai === true || clientOptions.project) {
+              return "inference.vertexai";
+            }
+          }
           return "inference.gemini";
         },
       },
