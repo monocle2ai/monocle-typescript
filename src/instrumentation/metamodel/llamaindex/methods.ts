@@ -1,5 +1,6 @@
 import { config as retrievalConfig } from "./entities/retrieval";
 import { config as inferenceConfig } from "./entities/inference";
+import { config as agentConfig } from "./entities/agent";
 
 export const config = [
     {
@@ -25,4 +26,13 @@ export const config = [
            inferenceConfig
         ]
     },
+    {
+        "package": "@llamaindex/workflow",
+        "object": "AgentWorkflow",
+        "method": "run",
+        "spanName": "llamaindex.multi_agent",
+        "output_processor": [
+            agentConfig
+        ]
+    }
 ]
