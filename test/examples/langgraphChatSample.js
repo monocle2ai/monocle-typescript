@@ -1,15 +1,13 @@
 const { setupMonocle } = require("../../dist");
-setupMonocle("llamaindex.agent");
+setupMonocle("langgraph.agent");
 
-const { openai } = require("@llamaindex/openai");
-const { agent } = require("@llamaindex/workflow");
-const { FunctionTool } = require("@llamaindex/core/tools");
-const { Settings } = require("@llamaindex/core/global");
+const { createReactAgent } = require("@langchain/langgraph/prebuilt");
+const { tool } = require("@langchain/core/tools");
+const { ChatOpenAI } = require("@langchain/openai");
 
-async function llamaIndexAgentChat() {
-  Settings.llm = openai({ model: "gpt-4" });
-  const getCoffeeMenu = FunctionTool.from(
-    async (_) => {
+async function langGraphChat() {
+  const getCoffeeMenu = tool(
+    async () => {
       return [
         "espresso: A strong and bold coffee shot.",
         "latte: A smooth coffee with steamed milk.",
@@ -23,18 +21,18 @@ async function llamaIndexAgentChat() {
       description: "Returns the available coffee menu.",
       parameters: {
         type: "object",
-        properties: {}, // no input parameters
+        properties: {},
         required: []
       }
     }
   );
 
-  const orderCoffee = FunctionTool.from(
+  
+  const orderCoffee = tool(
     async ({ order }) => {
       const coffeeMenu = ["espresso", "latte", "cappuccino", "americano", "mocha"];
-      const normalizedOrder = order.toLowerCase();
-      if (coffeeMenu.includes(normalizedOrder)) {
-        return `Your ${normalizedOrder} is being prepared. Enjoy your coffee!`;
+      if (coffeeMenu.includes(order)) {
+        return `Your ${order} is being prepared. Enjoy your coffee!`;
       }
       return "Sorry, we don’t have that coffee option. Please choose from the menu.";
     },
@@ -54,18 +52,17 @@ async function llamaIndexAgentChat() {
     }
   );
 
-  const getCoffeeDetails = FunctionTool.from(
+  const getCoffeeDetails = tool(
     async ({ coffeeName }) => {
       const menu = {
-        espresso: "A strong and bold coffee shot.",
-        latte: "A smooth coffee with steamed milk.",
-        cappuccino: "A rich coffee with frothy milk foam.",
-        americano: "Espresso with added hot water for a milder taste.",
-        mocha: "A chocolate-flavored coffee with whipped cream."
+        "espresso": "A strong and bold coffee shot.",
+        "latte": "A smooth coffee with steamed milk.",
+        "cappuccino": "A rich coffee with frothy milk foam.",
+        "americano": "Espresso with added hot water for a milder taste.",
+        "mocha": "A chocolate-flavored coffee with whipped cream."
       };
 
-      const normalized = coffeeName.toLowerCase();
-      return menu[normalized] ?? "Sorry, we don’t have details for that coffee.";
+      return menu[coffeeName] ?? "Sorry, we don’t have details for that coffee.";
     },
     {
       name: "getCoffeeDetails",
@@ -83,21 +80,35 @@ async function llamaIndexAgentChat() {
     }
   );
 
-  const coffeeAgent = agent({
-    tools: [getCoffeeMenu, orderCoffee, getCoffeeDetails],
-    // llm: openai({ model: "gpt-4" }),
-    verbose: false,
+
+  const model = new ChatOpenAI({
+    modelName: "gpt-4",
+    temperature: 0,
   });
 
-  const response = await coffeeAgent.run("order 3 Americano coffee and get details about it");
-  console.log(response.data);
+  const agent = createReactAgent({
+    llm: model,
+    tools: [getCoffeeMenu, orderCoffee, getCoffeeDetails],
+    verbose: true,
+  });
+
+  // Call the agent
+  try {
+    const result = await agent.invoke({
+      messages: [{ role: "user", content: "show available coffee option" }],
+    });
+
+    console.log("Response:", result);
+  } catch (error) {
+    console.error("Error during LangGraph chat:", error);
+  }
 }
 
 async function main() {
   try {
-    await llamaIndexAgentChat();
+    await langGraphChat();
   } catch (e) {
-    console.error("Error during llamaIndex processing:", e);
+    console.error("Error during LangGraph processing:", e);
   }
 }
 
