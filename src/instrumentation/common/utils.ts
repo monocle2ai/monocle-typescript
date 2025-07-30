@@ -16,7 +16,8 @@ const NODE_PACKAGES = [
     'openai',
     'opensearch-project',
     'microsoft',
-    'ai'
+    'ai',
+    'next',
 ];
 
 export function getSourcePath(): string {
