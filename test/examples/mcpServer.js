@@ -14,7 +14,6 @@ const cors = require('cors');
 const SERVER_PORT = 3000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 
-// Create an MCP server with implementation details (copied from test-new-mcp.js)
 const getServer = () => {
     const server = new McpServer({
         name: 'json-response-streamable-http-server',
