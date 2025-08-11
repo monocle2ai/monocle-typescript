@@ -64,6 +64,7 @@
     "@langchain/aws": "^0.1.9",
     "@langchain/community": "^0.3.42",
     "@langchain/core": "^0.3.50",
+    "@langchain/langgraph": "^0.3.8",
     "@langchain/google-genai": "^0.2.14",
     "@langchain/openai": "^0.5.8",
     "@opensearch-project/opensearch": "^3.5.1",
