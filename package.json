@@ -53,6 +53,7 @@
     "require-in-the-middle": "^7.5.2"
   },
   "devDependencies": {
+    "@a2a-js/sdk": "^0.3.1",
     "@anthropic-ai/sdk": "^0.39.0",
     "@aws-sdk/client-bedrock-runtime": "^3.785.0",
     "@aws-sdk/client-opensearch": "^3.782.0",
@@ -64,14 +65,15 @@
     "@langchain/aws": "^0.1.9",
     "@langchain/community": "^0.3.42",
     "@langchain/core": "^0.3.50",
-    "@langchain/langgraph": "^0.3.8",
     "@langchain/google-genai": "^0.2.14",
+    "@langchain/langgraph": "^0.3.8",
     "@langchain/openai": "^0.5.8",
     "@opensearch-project/opensearch": "^3.5.1",
     "@types/node": "^22.14.0",
     "@typescript-eslint/parser": "^8.29.1",
     "@vitest/coverage-v8": "^3.1.1",
     "aws-sdk": "^2.1692.0",
+    "cors": "^2.8.5",
     "eslint": "^9.24.0",
     "eslint-config-prettier": "^10.1.2",
     "express": "^5.1.0",
@@ -86,6 +88,7 @@
     "tsc-multi": "^1.1.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.29.1",
+    "uuid": "^11.1.0",
     "vitest": "^3.1.1"
   }
 }
