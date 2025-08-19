@@ -85,3 +85,9 @@ export const service_name_map = {
     [GITHUB_CODESPACE_SERVICE_NAME]: GITHUB_CODESPACE_IDENTIFIER_ENV_NAME,
     [VERCEL_SERVICE_NAME]: VERCEL_ENV_NAME,
 }
+
+
+export const AGENT_PREFIX_KEY = Symbol("monocle.agent.prefix")
+export const INFERENCE_AGENT_DELEGATION = "delegation"
+export const INFERENCE_TOOL_CALL = "tool_call"
+export const INFERENCE_COMMUNICATION = "turn"

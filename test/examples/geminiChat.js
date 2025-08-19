@@ -88,13 +88,13 @@ async function main() {
     await geminiChat(new GoogleGenAI({}));
     await geminiDirectGeneration(new GoogleGenAI({}));
     await geminiChatEmbedding(new GoogleGenAI({}));
-    await geminiChat(new GoogleGenAI({ apiKey: "INVALID_KEY" }));
-    await geminiChatEmbedding(new GoogleGenAI({ apiKey: "INVALID_KEY" }));
+    // await geminiChat(new GoogleGenAI({ apiKey: "INVALID_KEY" }));
+    // await geminiChatEmbedding(new GoogleGenAI({ apiKey: "INVALID_KEY" }));
 
-    // for vertex AI
-    await geminiChat(new GoogleGenAI({vertexai:true,project:"fluent-radar-408119", location:"us-east5"}));
-    await geminiDirectGeneration(new GoogleGenAI({vertexai:true,project:"fluent-radar-408119", location:"us-east5"}));
-    await geminiChatEmbedding(new GoogleGenAI({vertexai:true,project:"fluent-radar-408119", location:"us-east5"}));
+    // // for vertex AI
+    // await geminiChat(new GoogleGenAI({vertexai:true,project:"fluent-radar-408119", location:"us-east5"}));
+    // await geminiDirectGeneration(new GoogleGenAI({vertexai:true,project:"fluent-radar-408119", location:"us-east5"}));
+    // await geminiChatEmbedding(new GoogleGenAI({vertexai:true,project:"fluent-radar-408119", location:"us-east5"}));
 
   } catch (e) {
     console.error("Error during gemini chat:", e);
