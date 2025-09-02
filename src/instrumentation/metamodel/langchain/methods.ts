@@ -1,6 +1,5 @@
 import { config as inferenceConfig } from "./entities/inference";
 import { config as retrievalConfig } from "./entities/retrieval";
-import { config as toolConfig } from "./entities/tool";
 
 export const config = [
     {
@@ -48,14 +47,5 @@ export const config = [
         "method": "format",
         "spanName": "langchain.prompt_template.format",
         "spanType": "workflow"
-    },
-    {
-        "package": "@langchain/core/tools",
-        "object": "DynamicTool",
-        "method": "invoke",
-        "spanName": "langchain.tool",
-        "output_processor": [
-            toolConfig
-        ]
     }
 ]

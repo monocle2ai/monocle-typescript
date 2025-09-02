@@ -1,11 +1,5 @@
 import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils";
 import { extractAssistantMessage, getExceptionMessage, getLlmMetadata, getStatus, getStatusCode } from "../../utils";
-import { context } from '@opentelemetry/api';
-const AGENT_PREFIX_KEY = Symbol("monocle.agent.prefix")
-
-const INFERENCE_AGENT_DELEGATION = "delegation"
-const INFERENCE_TOOL_CALL = "tool_call"
-const INFERENCE_COMMUNICATION = "turn"
 
 export const config = {
   "type": "inference",
@@ -14,7 +8,7 @@ export const config = {
       {
         "_comment": "provider type, name, deployment, inference_endpoint",
         "attribute": "type",
-        "accessor": function ({instance}) {
+        "accessor": function ({ instance }) {
           return detectSdkType(instance);
         }
       },
@@ -122,89 +116,6 @@ export const config = {
             return getLlmMetadata({ response, instance })
           }
         },
-        {
-          "_comment": "finish reason from Anthropic response",
-          "attribute": "finish_reason",
-          "accessor":function ({ args }) {
-            try {
-                // Arguments may be a dict with 'result' or just the response object
-                const response = (typeof args === 'object' && args !== null && 'result' in args) 
-                  ? args.result 
-                  : args;
-
-                if (response !== null && response !== undefined && 'stop_reason' in response) {
-                  return response.stop_reason;
-                }
-              } catch (e) {
-                console.warn("Warning: Error occurred in extract_finish_reason:", e);
-                return null;
-              }
-              return null;
-            }
-        },
-        // {
-        //   "_comment": "finish type mapped from finish reason",
-        //   "attribute": "finish_type",
-        //   "accessor": function ({ instance, response }) {
-        //     return getLlmMetadata({ response, instance })
-        //   }
-        // },
-        {
-          "attribute": "inference_sub_type",
-          "accessor":  function ({ args , response}) {
-            try {
-              console.log(response)
-              const status = getStatusCode(args);
-              if (status === 'success' || status === 'completed') {                
-                // Check if stop_reason indicates tool use
-                if (response && 'stop_reason' in response && response.stop_reason === "tool_use") {
-                  // Check if this is agent delegation by looking at tool names
-                  if (response.content && Array.isArray(response.content)) {
-                    const agentPrefix = context.active().getValue(AGENT_PREFIX_KEY);
-                    for (const contentBlock of response.content) {
-                      if (contentBlock.type === "tool_use" && contentBlock.name) {
-                        const toolName = contentBlock.name;
-                        if (agentPrefix && toolName.startsWith(agentPrefix)) {
-                          return INFERENCE_AGENT_DELEGATION;
-                        }
-                      }
-                    }
-                    // If we found tool use but no agent delegation, it's a regular tool call
-                    return INFERENCE_TOOL_CALL;
-                  }
-                }
-                
-                // Fallback: check the extracted message for tool content
-                const assistantMessage = extractAssistantMessage(args);
-                if (assistantMessage) {
-                  try {
-                    const message = JSON.parse(assistantMessage);
-                    if (message && typeof message === 'object') {
-                      const assistantContent = message.assistant || "";
-                      if (assistantContent) {
-                        const agentPrefix = context.active().getValue(AGENT_PREFIX_KEY);
-                        if (agentPrefix && assistantContent.includes(agentPrefix)) {
-                          return INFERENCE_AGENT_DELEGATION;
-                        }
-                      }
-                    }
-                  } catch (error) {
-                    // If JSON parsing fails, fall back to string analysis
-                    const agentPrefix = context.active().getValue(AGENT_PREFIX_KEY);
-                    if (agentPrefix && assistantMessage.includes(agentPrefix)) {
-                      return INFERENCE_AGENT_DELEGATION;
-                    }
-                  }
-                }
-              }
-              
-              return INFERENCE_COMMUNICATION;
-            } catch (e) {
-              console.warn("Warning: Error occurred in agent_inference_type:", e);
-              return INFERENCE_COMMUNICATION;
-            }
-          }
-        }
       ]
     },
   ]

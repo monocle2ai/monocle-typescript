@@ -1,4 +1,4 @@
-import { AGENT_PREFIX_KEY, INFERENCE_AGENT_DELEGATION, INFERENCE_COMMUNICATION, INFERENCE_TOOL_CALL } from "../../../common/constants";
+import { AGENT_PREFIX_KEY, INFERENCE_AGENT_DELEGATION, INFERENCE_COMMUNICATION, INFERENCE_TOOL_CALL, SPAN_TYPES } from "../../../common/constants";
 import { mapLangchainFinishReasonToFinishType } from "../../finishType";
 import {
   extractAssistantMessage,
@@ -10,31 +10,69 @@ import {
 import { context } from "@opentelemetry/api";
 
 
-function extractFinishReason(args){
+function extractInputMessages(args) {
+  // Extract system and user messages
   try {
-      if (
-        args?.response_metadata?.finish_reason
-      ) {
-        return args.response_metadata.finish_reason;
-      }
-    } catch (e) {
-      console.warn(
-        "Warning: Error occurred in extract_finish_reason:",
-        e
-      );
-      return "";
+    const messages = [];
+    if (args && args[0] && typeof args[0].text === 'string') {
+      return [args[0].text];
     }
+    if (args && args.length > 0) {
+
+      for (const msg of args[0]) {
+        if (msg && typeof msg.content === 'string' && msg.constructor.name) {
+          messages.push({ [msg.constructor.name]: msg.content });
+        }
+      }
+
+    }
+    return messages.map(d => JSON.stringify(d));
+  } catch (e) {
+    return [];
+  }
+}
+
+function extractOutputResponse(response) {
+  try {
+    const messages = [];
+    if (response && response.tool_calls && response.tool_calls.length > 0) {
+      messages.push({ [response.constructor.name]: response.tool_calls[0] });
+    }
+    return messages.map(d => JSON.stringify(d));
+  } catch (e) {
+    console.warn(
+      "Warning: Error occurred in extract_output_response:",
+      e
+    );
+  }
+  return [];
+}
+
+function extractFinishReason(args) {
+  try {
+    if (
+      args?.response_metadata?.finish_reason
+    ) {
+      return args.response_metadata.finish_reason;
+    }
+  } catch (e) {
+    console.warn(
+      "Warning: Error occurred in extract_finish_reason:",
+      e
+    );
     return "";
+  }
+  return "";
 }
 
 export const config = {
-  type: "inference",
-  attributes: [
+  "type": SPAN_TYPES.INFERENCE_FRAMEWORK,
+  "attributes": [
     [
       {
-        _comment: "provider type ,name , deployment , inference_endpoint",
-        attribute: "type",
-        accessor: function ({ instance }) {
+        "_comment": "provider type ,name , deployment , inference_endpoint",
+        "attribute": "type",
+        "accessor": function ({ instance }) {
           if (
             instance?.constructor?.name
               ?.toLowerCase()
@@ -51,8 +89,8 @@ export const config = {
         },
       },
       {
-        attribute: "deployment",
-        accessor: function ({ instance }) {
+        "attribute": "deployment",
+        "accessor": function ({ instance }) {
           return (
             instance.engine ||
             instance.deployment ||
@@ -63,8 +101,8 @@ export const config = {
         },
       },
       {
-        attribute: "inference_endpoint",
-        accessor: function ({ instance }) {
+        "attribute": "inference_endpoint",
+        "accessor": function ({ instance }) {
           return (
             instance.azure_endpoint ||
             instance.api_base ||
@@ -104,9 +142,8 @@ export const config = {
           attribute: "input",
           accessor: function ({
             args,
-            // instance
           }) {
-            return [args[0].value || args[0] || ""];
+            return extractInputMessages(args);
           },
         },
       ],
@@ -121,7 +158,13 @@ export const config = {
             if (exception) {
               return getExceptionMessage({ exception });
             }
-            return [extractAssistantMessage(response)];
+            const result = extractAssistantMessage(response)
+            if (result.length > 0) {
+              return result;
+            }
+            else {
+              return extractOutputResponse(response);
+            }
           },
         },
         {
@@ -150,37 +193,39 @@ export const config = {
         {
           "_comment": "finish reason from LLM response",
           "attribute": "finish_reason",
-          "accessor": function({args}) {
+          "accessor": function ({ args }) {
             return extractFinishReason(args);
           }
         },
         {
-            "_comment": "finish type mapped from finish reason",
-            "attribute": "finish_type",
-            "accessor": function ({ response }) {
-                const finishReason = extractFinishReason(response);
-                return mapLangchainFinishReasonToFinishType(finishReason);
-            }
+          "_comment": "finish type mapped from finish reason",
+          "attribute": "finish_type",
+          "accessor": function ({ response }) {
+            const finishReason = extractFinishReason(response);
+            return mapLangchainFinishReasonToFinishType(finishReason);
+          }
         },
         {
           "attribute": "inference_sub_type",
-          "accessor": function ({ args }) {
+          "accessor": function ({ response }) {
             try {
-                const agentPrefix = context.active().getValue(AGENT_PREFIX_KEY);
-                if (agentPrefix) {
-                    if (args.result && 'tool_calls' in args.result && args.result.tool_calls) {
-                        const toolCall = args.result.tool_calls.length > 0 ? args.result.tool_calls[0] : null;
-                        if (toolCall && 'name' in toolCall && toolCall.name.startsWith(agentPrefix)) {
-                            return INFERENCE_AGENT_DELEGATION;
-                        } else {
-                            return INFERENCE_TOOL_CALL;
-                    }
+              let currentContext = context.active();
+              const agentPrefix = currentContext.getValue(AGENT_PREFIX_KEY);
+              if (agentPrefix) {
+                const prefixString = typeof agentPrefix === 'symbol' ? agentPrefix.description : agentPrefix;
+                if (response && 'tool_calls' in response && response.tool_calls) {
+                  const toolCall = response.tool_calls.length > 0 ? response.tool_calls[0] : null;
+                  if (toolCall && 'name' in toolCall && prefixString && toolCall.name.startsWith(prefixString)) {
+                    return INFERENCE_AGENT_DELEGATION;
+                  } else {
+                    return INFERENCE_TOOL_CALL;
+                  }
                 }
-                }
-                return INFERENCE_COMMUNICATION;
+              }
+              return INFERENCE_COMMUNICATION;
             } catch (e) {
-                console.warn("Warning: Error occurred in agent_inference_type:", e);
-                return null;
+              console.warn("Warning: Error occurred in agent_inference_type:", e);
+              return null;
             }
           },
         },
