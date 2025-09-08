@@ -28,3 +28,6 @@ yarn-error.log*
 
 # OS
 .DS_Store
+
+.monocle/
+monocle_trace**.json
