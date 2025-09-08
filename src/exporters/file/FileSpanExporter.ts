@@ -69,7 +69,7 @@ class FileSpanExporter {
         consoleLog('writing spans to file:', filePath);
 
         try {
-            consoleLog('try to write spans to file:', filePath,  isRootSpan);
+            consoleLog('try to write spans to file:', filePath, isRootSpan);
             writeFileSync(filePath, body, 'utf8');
             consoleLog('successfully wrote spans to file:', filePath);
             if (typeof done === 'function') {

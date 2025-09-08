@@ -12,7 +12,7 @@ function extractFinishReason(response: any): string | null {
         if (response && response.choices && response.choices[0] && response.choices[0].finish_reason) {
             return response.choices[0].finish_reason;
         }
-        
+
         // Handle new responses.create() format
         if (response && response.status) {
             // Map status to equivalent finish_reason
@@ -27,7 +27,7 @@ function extractFinishReason(response: any): string | null {
                     return response.status; // Return the status as-is
             }
         }
-        
+
         // Handle streaming responses where individual chunks might have status
         if (response && response.output && Array.isArray(response.output) && response.output[0] && response.output[0].status) {
             switch (response.output[0].status) {
@@ -220,10 +220,19 @@ export const config = {
                             // Handle responses.create() format
                             if (args[0].input !== undefined) {
                                 const inputs = [];
-                                if (args[0].instructions) {
-                                    inputs.push(`{'instructions': '${args[0].instructions}'}`);
+                                if (args[0].input && Array.isArray(args[0].input)) {
+                                    for (const inp of args[0].input) {
+                                        if (inp.role && inp.content) {
+                                            inputs.push(`{'${inp.role}': '${inp.content}'} `);
+                                        }
+                                    }
                                 }
-                                inputs.push(`{'input': '${args[0].input}'}`);
+                                else {
+                                    if (args[0].instructions) {
+                                        inputs.push(`{'instructions': '${args[0].instructions}'}`);
+                                    }
+                                    inputs.push(`{'input': '${JSON.stringify(args[0].input)}'}`);
+                                }
                                 return inputs;
                             }
 
@@ -254,7 +263,7 @@ export const config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response, exception }) {
-                        if (exception){
+                        if (exception) {
                             return getExceptionMessage({ exception });
                         }
                         if (response?.output_text !== undefined) {
@@ -363,7 +372,7 @@ export class OpenAISpanHandler extends NonFrameworkSpanHandler {
                 parentSpan: null,
             });
         }
-        else{
+        else {
             super.processSpan({
                 span,
                 instance,
@@ -377,7 +386,7 @@ export class OpenAISpanHandler extends NonFrameworkSpanHandler {
             });
         }
 
-        if(this.checkActiveWorkflowType()) {
+        if (this.checkActiveWorkflowType()) {
             span.setAttribute("span.type", "inference.modelapi");
         }
 

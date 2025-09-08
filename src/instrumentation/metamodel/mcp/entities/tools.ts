@@ -90,6 +90,9 @@ export const config = {
                         try {
                             // For handleRequest method: args[2] contains the JSON-RPC request
                             if (args && args.length >= 3 && args[2]) {
+                                if (args[0] && args[0].arguments) {
+                                    return JSON.stringify(args[0].arguments);
+                                }
                                 return JSON.stringify(args[2]);
                             }
 
