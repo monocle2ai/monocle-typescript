@@ -12,7 +12,7 @@ interface FileSpanExporterConfig {
 }
 
 class FileSpanExporter {
-    DEFAULT_OUT_PATH:string = "." + join(".monocle");
+    DEFAULT_OUT_PATH:string = join(".monocle");
     outPath: string;
     file_prefix: string;
     private taskProcessor?: ExportTaskProcessor;
