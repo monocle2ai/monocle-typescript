@@ -60,7 +60,7 @@ export function exportInfo(span: Span) {
       trace_state: span.spanContext().traceState,
     },
     kind: span.kind,
-    parent_id: span?.parentSpanContext?.spanId || "None",
+    parent_id: span?.parentSpanContext?.spanId || null,
     start_time: convertTimestamp(hrTimeToTimeStamp(span.startTime)),
     end_time: convertTimestamp(hrTimeToTimeStamp(span.endTime)),
     status: {
