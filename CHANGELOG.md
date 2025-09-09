@@ -2,6 +2,19 @@
 
 All notable changes to Monocle TypeScript will be documented in this file.
 
+## 0.3.0 (2025-09-09)
+
+### Features
+
+- **Agent Support**
+  - Added instrumentation for LlamaIndex agents [#78](https://github.com/monocle2ai/monocle-typescript/pull/78)
+  - Added instrumentation for LangGraph agents
+
+### Bug Fixes
+
+- Fixed default .monocle path configuration [#83](https://github.com/monocle2ai/monocle-typescript/pull/83)
+- Set ./.monocle as default trace export path for file exporter [#82](https://github.com/monocle2ai/monocle-typescript/pull/82)
+
 ## 0.1.2 (2025-04-02)
 
 ### Features
