@@ -1,4 +1,4 @@
-import { writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { ExportResultCode } from '@opentelemetry/core';
 import { exportInfo } from '../utils';
@@ -12,12 +12,18 @@ interface FileSpanExporterConfig {
 }
 
 class FileSpanExporter {
+    DEFAULT_OUT_PATH:string = join(".monocle");
     outPath: string;
     file_prefix: string;
     private taskProcessor?: ExportTaskProcessor;
 
     constructor({ outPath = "", file_prefix = "", taskProcessor }: FileSpanExporterConfig) {
-        this.outPath = outPath || process.env.MONOCLE_FILE_OUT_PATH || "./";
+        this.outPath = outPath || process.env.MONOCLE_FILE_OUT_PATH || this.DEFAULT_OUT_PATH;
+        // if the outPath does not exist, create it
+        if (!existsSync(this.outPath)) {
+            mkdirSync(this.outPath, { recursive: true });
+        }
+
         this.file_prefix = file_prefix || process.env.MONOCLE_FILE_PREFIX || "monocle_trace__";
         this.taskProcessor = taskProcessor;
         if (this.taskProcessor) {
