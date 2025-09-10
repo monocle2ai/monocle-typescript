@@ -30,7 +30,9 @@ export interface MethodConfig {
 }
 export interface WrapperArguments extends MethodConfig {
     tracer: Tracer, 
-    spanHandler?: SpanHandler
+    spanHandler?: SpanHandler,
+    instance?: any,
+    currentContext?: any
 }
 
 
@@ -85,3 +87,53 @@ export const service_name_map = {
     [GITHUB_CODESPACE_SERVICE_NAME]: GITHUB_CODESPACE_IDENTIFIER_ENV_NAME,
     [VERCEL_SERVICE_NAME]: VERCEL_ENV_NAME,
 }
+
+export const LANGGRAPH_AGENT_NAME_KEY = Symbol("agent.langgraph");
+export const AGENT_PREFIX_KEY = Symbol("monocle.agent.prefix")
+export const DELEGATION_NAME_PREFIX = Symbol("transfer_to_")
+export const INFERENCE_AGENT_DELEGATION = "delegation"
+export const INFERENCE_TOOL_CALL = "tool_call"
+export const INFERENCE_COMMUNICATION = "turn"
+
+export const SPAN_TYPES = {
+    GENERIC: "generic",
+    AGENTIC_DELEGATION: "agentic.delegation",
+    AGENTIC_TOOL_INVOCATION: "agentic.tool.invocation",
+    AGENTIC_INVOCATION: "agentic.invocation",
+    AGENTIC_MCP_INVOCATION: "agentic.mcp.invocation",
+    AGENTIC_REQUEST: "agentic.request",
+
+    HTTP_PROCESS: "http.process",
+    HTTP_SEND: "http.send",
+
+    RETRIEVAL: "retrieval",
+    INFERENCE: "inference",
+    INFERENCE_FRAMEWORK: "inference.framework"
+} as const;
+
+export type SpanType = typeof SPAN_TYPES[keyof typeof SPAN_TYPES];
+
+export const SPAN_SUBTYPE_PLANNING = "planning";
+export const SPAN_SUBTYPE_ROUTING = "routing";
+export const SPAN_SUBTYPE_CONTENT_PROCESSING = "content_processing";
+export const SPAN_SUBTYPE_CONTENT_GENERATION = "content_generation";
+export const SPAN_SUBTYPE_COMMUNICATION = "communication";
+export const SPAN_SUBTYPE_TRANSFORMATIONS = "transformations";
+export const SPAN_SUBTYPE_DOMAIN_SPECIFIC = "domain_specific";
+export const SPAN_SUBTYPE_GENERIC = "generic";
+
+
+export const AGENT_REQUEST_SPAN_NAME = "agentic.request"
+
+export const SPAN_SUBTYPES = {
+    PLANNING: SPAN_SUBTYPE_PLANNING,
+    ROUTING: SPAN_SUBTYPE_ROUTING,
+    CONTENT_PROCESSING: SPAN_SUBTYPE_CONTENT_PROCESSING,
+    CONTENT_GENERATION: SPAN_SUBTYPE_CONTENT_GENERATION,
+    COMMUNICATION: SPAN_SUBTYPE_COMMUNICATION,
+    TRANSFORMATIONS: SPAN_SUBTYPE_TRANSFORMATIONS,
+    DOMAIN_SPECIFIC: SPAN_SUBTYPE_DOMAIN_SPECIFIC,
+    GENERIC: SPAN_SUBTYPE_GENERIC
+} as const;
+
+export type SpanSubtype = typeof SPAN_SUBTYPES[keyof typeof SPAN_SUBTYPES];

@@ -55,7 +55,7 @@ export interface SpanHandler {
         parentSpan?: Span;
     }): void;
 
-    preTracing(element: WrapperArguments): void;
+    preTracing(element: WrapperArguments, currentContext?: any, args?: any): any;
 }
 
 export function isRootSpan(span: Span) {
@@ -74,10 +74,10 @@ const setSpanStatus = function (span) {
 };
 const WORKFLOW_TYPE_MAP = {
     "llamaindex": "workflow.llamaindex",
-    "langchain": "workflow.langchain",
+    // "langchain": "workflow.langchain",
     "haystack": "workflow.haystack",
     "@microsoft/teams-ai": "workflow.teams_ai",
-    "langgraph": "workflow.langgraph",
+    // "langgraph": "workflow.langgraph",
 
 }
 
@@ -118,8 +118,8 @@ export class DefaultSpanHandler implements SpanHandler {
         return false;
     }
 
-    preTracing(_: WrapperArguments): void {
-
+    preTracing(_: WrapperArguments, currentContext: any, _thisArg: any): any {
+        return currentContext;
     }
 
     setDefaultMonocleAttributes({
@@ -280,6 +280,9 @@ export class DefaultSpanHandler implements SpanHandler {
         }
         else {
             span.setAttribute("span.type", outputProcessor?.type || "generic");
+        }
+        if (outputProcessor?.subtype) {
+            span.setAttribute("span.subtype", outputProcessor.subtype);
         }
         if (spanIndex > 1) {
             span.setAttribute("entity.count", spanIndex - 1);

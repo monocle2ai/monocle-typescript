@@ -1,8 +1,52 @@
 import { context } from "@opentelemetry/api";
-import { WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "../../../common/constants";
+import { INFERENCE_COMMUNICATION, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "../../../common/constants";
 import { NonFrameworkSpanHandler } from "../../../common/spanHandler";
 import { Span } from "../../../common/opentelemetryUtils";
 import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
+import { mapOpenaiFinishReasonToFinishType } from "../../finishType";
+
+
+function extractFinishReason(response: any): string | null {
+    try {
+        // Handle traditional chat.completions.create() format
+        if (response && response.choices && response.choices[0] && response.choices[0].finish_reason) {
+            return response.choices[0].finish_reason;
+        }
+        
+        // Handle new responses.create() format
+        if (response && response.status) {
+            // Map status to equivalent finish_reason
+            switch (response.status) {
+                case "completed":
+                    return "stop";
+                case "incomplete":
+                    return "length"; // Likely truncated due to token limit
+                case "failed":
+                    return "error";
+                default:
+                    return response.status; // Return the status as-is
+            }
+        }
+        
+        // Handle streaming responses where individual chunks might have status
+        if (response && response.output && Array.isArray(response.output) && response.output[0] && response.output[0].status) {
+            switch (response.output[0].status) {
+                case "completed":
+                    return "stop";
+                case "incomplete":
+                    return "length";
+                case "failed":
+                    return "error";
+                default:
+                    return response.output[0].status;
+            }
+        }
+    } catch (e) {
+        console.warn("Warning: Error occurred in extractFinishReason:", e);
+        return null;
+    }
+    return null;
+}
 
 function processStream({ element, returnValue, spanProcessor }) {
     let waitingForFirstToken = true;
@@ -244,12 +288,33 @@ export const config = {
                     "accessor": function ({ response }) {
                         if (response?.usage !== undefined) {
                             return {
-                                "prompt_tokens": response.usage?.input_tokens,
-                                "completion_tokens": response.usage?.output_tokens,
-                                "total_tokens": response.usage?.total_tokens,
+                                "prompt_tokens": response.usage?.input_tokens || response.usage?.prompt_tokens,
+                                "completion_tokens": response.usage?.output_tokens || response.usage?.completion_tokens,
+                                "total_tokens": response.usage?.total_tokens || response.usage?.total_tokens,
                             }
                         }
                         return null;
+                    }
+                },
+                {
+                    "_comment": "finish reason from OpenAI response",
+                    "attribute": "finish_reason",
+                    "accessor": function ({ response }) {
+                        return extractFinishReason(response);
+                    }
+                },
+                {
+                    "_comment": "finish type mapped from finish reason",
+                    "attribute": "finish_type",
+                    "accessor": function ({ response }) {
+                        const finishReason = extractFinishReason(response);
+                        return mapOpenaiFinishReasonToFinishType(finishReason);
+                    }
+                },
+                {
+                    "attribute": "inference_sub_type",
+                    "accessor": function () {
+                        return INFERENCE_COMMUNICATION || "";
                     }
                 }
             ]

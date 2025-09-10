@@ -196,7 +196,7 @@ export function getLlmMetadata({ response, instance }) {
             return metaDict;
         }
 
-        const tokenUsage = response.raw?.usage || response.response_metadata?.tokenUsage;
+        const tokenUsage = response.raw?.usage || response.response_metadata?.tokenUsage || response.response_metadata?.usage;
 
     if (tokenUsage) {
       const temperature = (instance as any)?.temperature;
@@ -212,6 +212,12 @@ export function getLlmMetadata({ response, instance }) {
       }
             if ('total_tokens' in tokenUsage || 'totalTokens' in tokenUsage) {
                 metaDict['total_tokens'] = tokenUsage.total_tokens || tokenUsage.totalTokens;
+      }     
+            if ('input_tokens' in tokenUsage || 'inputTokens' in tokenUsage) {
+                metaDict['input_tokens'] = tokenUsage.input_tokens || tokenUsage.inputTokens;
+      }     
+            if ('output_tokens' in tokenUsage || 'outputTokens' in tokenUsage) {
+                metaDict['output_tokens'] = tokenUsage.output_tokens || tokenUsage.outputTokens;
       }
     }
   }

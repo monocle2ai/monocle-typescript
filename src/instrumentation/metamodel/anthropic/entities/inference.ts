@@ -8,7 +8,7 @@ export const config = {
       {
         "_comment": "provider type, name, deployment, inference_endpoint",
         "attribute": "type",
-        "accessor": function ({instance}) {
+        "accessor": function ({ instance }) {
           return detectSdkType(instance);
         }
       },
@@ -24,7 +24,12 @@ export const config = {
           return instance.engine || instance.deployment || instance.deployment_name || instance.deployment_id || instance.azure_deployment
         }
       },
-
+      {
+        "attribute": "provider_name",
+        "accessor": function ({ instance }) {
+          return instance.provider_name || "unknown_provider";
+        }
+      },
     ],
     [
       {
@@ -110,7 +115,7 @@ export const config = {
           "accessor": function ({ instance, response }) {
             return getLlmMetadata({ response, instance })
           }
-        }
+        },
       ]
     },
   ]
