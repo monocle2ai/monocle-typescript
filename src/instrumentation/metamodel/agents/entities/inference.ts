@@ -23,7 +23,7 @@ export const AGENT = {
             },
             {
                 "_comment": "name of the agent",
-                "attribute": "tool",
+                "attribute": "name",
                 "accessor": function ({ args }) {
                     if (args && args.length > 0) {
                         return args[0]?.name || ROOT_AGENT_NAME;
@@ -72,7 +72,7 @@ export const AGENT = {
                     "_comment": "this is response from Agent",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        return JSON.stringify(response.state._modelResponses[0].output[0].content[0].text) || "";
+                        return JSON.stringify(response.state.modelResponses().output[0].content[0].text) || "";
                     }
                 },
                 {
@@ -83,9 +83,9 @@ export const AGENT = {
                             "accessor": function ({ response }) {
                                 try {
                                     const metadata = {
-                                        "inputTokens": response.state._modelResponses[0].usage.inputTokens,
-                                        "outputTokens": response.state._modelResponses[0].usage.outputTokens,
-                                        "totalTokens": response.state._modelResponses[0].usage.totalTokens
+                                        "inputTokens": response.state.modelResponses().usage.inputTokens,
+                                        "outputTokens": response.state.modelResponses().usage.outputTokens,
+                                        "totalTokens": response.state.modelResponses().usage.totalTokens
                                     }
                                     return JSON.stringify(metadata) || "";
                                 }
@@ -125,7 +125,7 @@ export const AGENT_REQUEST = {
                     "_comment": "this is Agent input",
                     "attribute": "input",
                     "accessor": function ({ args }) {
-                        return JSON.stringify(args.state._modelResponses[0].output[0].content[0].text) || "";
+                        return JSON.stringify(args[1]) || "";
                     },
                 }
             ]
@@ -137,7 +137,7 @@ export const AGENT_REQUEST = {
                     "_comment": "this is response from Agent",
                     "attribute": "response",
                     "accessor": function ({ response }) {
-                        return JSON.stringify(response.state._modelResponses[0].output[0].content[0].text) || "";
+                        return JSON.stringify(response.finalOutput) || "";
 
                     },
 
@@ -181,28 +181,11 @@ export const TOOLS = {
             {
                 "_comment": "name of the agent",
                 "attribute": "name",
-                "accessor": function ({ instance }) {
-                    // FIX this
+                "accessor": function () {
+                    let currentContext = context.active();
+                    const from_agent = currentContext.getValue(AGENTS_AGENT_NAME_KEY_SYMBOL);
+                    return from_agent || "";
 
-                    if (instance?.graph?.name) {
-                        return instance.graph.name;
-                    }
-
-                    if (instance?.agent?.name) {
-                        return instance.agent.name;
-                    }
-
-                    if (instance?.runnable?.name) {
-                        return instance.runnable.name;
-                    }
-
-                    if (instance?.constructor?.name &&
-                        instance.constructor.name !== 'Object' &&
-                        instance.constructor.name !== 'Function') {
-                        return instance.constructor.name;
-                    }
-
-                    return "";
                 }
             },
             {
@@ -276,9 +259,11 @@ export const AGENT_DELEGATION = {
             {
                 "_comment": "name of the agent calle",
                 "attribute": "to_agent",
-                "accessor": function (instance) {
-                    const tool = instance.instance.name
-                    return tool || "";
+                "accessor": function ({ args, instance }) {
+                    if (args && args.length > 0) {
+                        return args[0]?.name || args[0]?.agent?.name || "";
+                    }
+                    return instance?.name || "";
                 },
             }
         ],

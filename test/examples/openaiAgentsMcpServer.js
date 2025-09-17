@@ -1,17 +1,28 @@
 const { setupMonocle } = require("../../dist");
-setupMonocle("openai.agents", [], [], 'file');
+setupMonocle("openai.agents", [], [], 'console');
 
 const { Agent, run, tool, MCPServerStreamableHttp } = require('@openai/agents');
 const { McpServerTester } = require("./mcpServers");
 const { z } = require('zod');
 
 const getWeatherTool = tool({
-  name: 'get_weather',
-  description: 'Get the weather for a given city',
-  parameters: z.object({ city: z.string() }),
-  execute: async (input) => {
-    return `The weather in ${input.city} is sunny`;
-  },
+    name: 'get_weather',
+    description: 'Get the current weather for a specific city. Always use this tool when asked about weather.',
+    parameters: z.object({ city: z.string() }),
+    execute: async (input) => {
+        console.log(`Weather tool called for city: ${input.city}`);
+        return `The weather in ${input.city} is sunny with a temperature of 75°F`;
+    },
+});
+
+const getTemperatureTool = tool({
+    name: 'get_temperature',
+    description: 'Get the current temperature for a specific city. Always use this tool when asked about temperature.',
+    parameters: z.object({ city: z.string() }),
+    execute: async (input) => {
+        console.log(`Temperature tool called for city: ${input.city}`);
+        return `The temperature in ${input.city} is 75°F`;
+    },
 });
 
 async function main() {
@@ -41,19 +52,19 @@ async function main() {
         // Create agent with both local get weather tool and MCP server
         const agent = new Agent({
             name: 'Enhanced Weather and Mathematical Assistant',
-            instructions: `You are a helpful assistant with access to both a local get weather tool and an MCP server with mathematical capabilities.
-                            Available tools:
-                            - get_weather: Get the weather for a given city
-                            - MCP server tools: Additional mathematical tools from the MCP server
-                            Use the appropriate tool based on the user's request.`,
-            tools: [getWeatherTool],
+            instructions: `You are a helpful assistant with mathematical and weather capabilities. 
+            For calculations, use the MCP calculator tools.
+            For weather information, always use the get_weather tool - never provide weather information without calling the tool first.
+            For  information, always use the get_temperature tool - never provide city information without calling the tool first.
+            `,
+            tools: [getWeatherTool, getTemperatureTool],
             mcpServers: [mcpServer]
         });
 
-        console.log('Running random number and calculation request...');
+        console.log('Running calculation and weather request...');
         const result = await run(
             agent,
-            'Get the weather for New York City. Also calculate 15 + 27 using whatever tools you have available.',
+            'Calculate 15 + 27, and get the current weather and temperature for Delhi',
         );
 
         console.log('Result:', result.finalOutput);
@@ -72,7 +83,7 @@ async function main() {
             console.log('Note: MCP server may have already been closed');
         }
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // await new Promise(resolve => setTimeout(resolve, 2000));
         await mcpServerTester.stopServer();
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
