@@ -1,5 +1,5 @@
-const { setupMonocle } = require("../../dist");
-setupMonocle("mcp");
+// const { setupMonocle } = require("../../dist");
+// setupMonocle("mcp");
 
 const fetch = require('node-fetch');
 const express = require('express');

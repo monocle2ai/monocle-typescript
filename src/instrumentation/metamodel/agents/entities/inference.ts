@@ -1,8 +1,6 @@
 import { context } from "@opentelemetry/api";
 import { AGENT_REQUEST_SPAN_NAME, SPAN_SUBTYPES, SPAN_TYPES } from "../../../common/constants";
-import { extractAssistantMessage, getExceptionMessage } from "../../utils";
 
-// const DELEGATION_NAME_PREFIX = "transfer_to_"
 const ROOT_AGENT_NAME = "AgentsSDK"
 const AGENTS_AGENT_NAME_KEY = "agent.openai_agents"
 export const AGENTS_AGENT_NAME_KEY_SYMBOL = Symbol("agent.openai_agents");
@@ -206,7 +204,7 @@ export const TOOLS = {
                     "attribute": "Inputs",
                     "accessor": function ({ args }) {
                         if (args && args[0]) {
-                            return [JSON.stringify(args[0].args)];
+                            return [JSON.stringify(args[0])];
                         }
                         return [""];
                     }
@@ -219,13 +217,7 @@ export const TOOLS = {
                 {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
-                    "accessor": function ({ response, exception }) {
-                        if (exception) {
-                            return getExceptionMessage({ exception });
-                        }
-                        if (response) {
-                            return extractAssistantMessage(response);
-                        }
+                    "accessor": function ({ response }) {
                         return JSON.stringify(response || "");
                     }
                 }

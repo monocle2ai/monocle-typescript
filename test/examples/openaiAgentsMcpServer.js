@@ -51,12 +51,8 @@ async function main() {
 
         // Create agent with both local get weather tool and MCP server
         const agent = new Agent({
-            name: 'Enhanced Weather and Mathematical Assistant',
-            instructions: `You are a helpful assistant with mathematical and weather capabilities. 
-            For calculations, use the MCP calculator tools.
-            For weather information, always use the get_weather tool - never provide weather information without calling the tool first.
-            For  information, always use the get_temperature tool - never provide city information without calling the tool first.
-            `,
+            name: 'Enhanced Weather Assistant',
+            instructions: `You are a helpful assistant with weather and temperature capabilities.`,
             tools: [getWeatherTool, getTemperatureTool],
             mcpServers: [mcpServer]
         });
@@ -64,7 +60,7 @@ async function main() {
         console.log('Running calculation and weather request...');
         const result = await run(
             agent,
-            'Calculate 15 + 27, and get the current weather and temperature for Delhi',
+            'Get the current weather and temperature for Delhi, and calculate 15 + 27 multiplied by 3',
         );
 
         console.log('Result:', result.finalOutput);

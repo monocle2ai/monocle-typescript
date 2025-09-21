@@ -274,6 +274,25 @@ class MonocleInstrumentation extends InstrumentationBase {
         if (element.scopeName || element.scopeValues) {
             return getPatchedScopeMain({ ...element })
         }
+        // Check if element has a custom wrapper_method
+        if ((element as any).wrapperMethod && typeof (element as any).wrapperMethod === 'function') {
+            return (original: Function) => {
+                return function (this: any, ...args: any[]) {
+                    const { NonFrameworkSpanHandler } = require('./spanHandler');
+                    const spanHandler = (element as any).spanHandler || new NonFrameworkSpanHandler();
+
+                    return (element as any).wrapperMethod(
+                        tracer,
+                        spanHandler,
+                        element,
+                        original,
+                        this,
+                        '',
+                        args
+                    );
+                };
+            };
+        }
         return getPatchedMain({ tracer, ...element })
     }
 }
@@ -295,7 +314,7 @@ const setupMonocle = (
         const resource = resourceFromAttributes({
             SERVICE_NAME: workflowName
         });
-        
+
         const contextManager = new AsyncHooksContextManager();
         contextManager.enable();
         context.setGlobalContextManager(contextManager);
@@ -343,7 +362,7 @@ const setupMonocle = (
     }
 }
 
-function addSpanProcessors(monocleProcessors: SpanProcessor[] = [], exporter_list:string = null) {
+function addSpanProcessors(monocleProcessors: SpanProcessor[] = [], exporter_list: string = null) {
     consoleLog('Adding span processors, environment:', {
         MONOCLE_EXPORTER_DELAY: process.env.MONOCLE_EXPORTER_DELAY,
         MONOCLE_EXPORTER: process.env.MONOCLE_EXPORTER,
@@ -352,7 +371,7 @@ function addSpanProcessors(monocleProcessors: SpanProcessor[] = [], exporter_lis
     const parsedDelay = parseInt(process.env.MONOCLE_EXPORTER_DELAY);
     const scheduledDelayMillis = !isNaN(parsedDelay) && parsedDelay >= 0 ? parsedDelay : 5000;
 
-    const exporters:string = exporter_list || process.env.MONOCLE_EXPORTER ;
+    const exporters: string = exporter_list || process.env.MONOCLE_EXPORTER;
     if (!exporters &&
         Object.prototype.hasOwnProperty.call(process.env, AWS_CONSTANTS.AWS_LAMBDA_FUNCTION_NAME)) {
         consoleLog(`addSpanProcessors| Using AWS S3 span exporter and Console span exporter`);
