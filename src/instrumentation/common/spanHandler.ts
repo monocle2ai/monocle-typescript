@@ -75,10 +75,10 @@ const setSpanStatus = function (span) {
 };
 const WORKFLOW_TYPE_MAP = {
     "llamaindex": "workflow.llamaindex",
-    // "langchain": "workflow.langchain",
+    "langchain": "workflow.langchain",
     "haystack": "workflow.haystack",
     "@microsoft/teams-ai": "workflow.teams_ai",
-    // "langgraph": "workflow.langgraph",
+    "langgraph": "workflow.langgraph",
 
 }
 
