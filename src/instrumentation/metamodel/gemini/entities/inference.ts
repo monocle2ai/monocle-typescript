@@ -1,9 +1,25 @@
+import { mapGeminiFinishReasonToFinishType } from "../../finishType";
 import {
   extractGeminiEndpoint,
   getStatus,
   getStatusCode,
   resolveFromAlias,
 } from "../../utils";
+
+
+function extractFinishReason(response: any): string | null {
+    try {
+        // Handle traditional chat.completions.create() format
+        if (response && response.candidates && response.candidates[0] && response.candidates[0].finishReason) {
+            return response.candidates[0].finishReason;
+        }
+    } catch (e) {
+        console.warn("Warning: Error occurred in extractFinishReason:", e);
+        return null;
+    }
+    return null;
+}
+
 
 function getMetadataUsage(response, _instance) {
   try {
@@ -244,6 +260,21 @@ export const config = {
             return getMetadataUsage(response, instance);
           },
         },
+        {
+            "_comment": "finish reason from OpenAI response",
+            "attribute": "finish_reason",
+            "accessor": function ({ response }) {
+                return extractFinishReason(response);
+            }
+        },
+        {
+            "_comment": "finish type mapped from finish reason",
+            "attribute": "finish_type",
+            "accessor": function ({ response }) {
+                const finishReason = extractFinishReason(response);
+                return mapGeminiFinishReasonToFinishType(finishReason);
+            }
+        }
       ],
     },
   ],

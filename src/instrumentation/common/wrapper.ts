@@ -135,7 +135,7 @@ function processSpanWithTracing(
         currentContext = attachWorkflowType(element);
     }
     if (skipSpan) {
-        spanHandler.preTracing(element);
+        currentContext = spanHandler.preTracing(element, currentContext, thisArg);
         return original.apply(thisArg, args);
     }
     else {
@@ -143,7 +143,10 @@ function processSpanWithTracing(
         const shouldAddWorkflowSpan = currentContext.getValue(ADD_NEW_WORKFLOW_SYMBOL) === true;
         currentContext = currentContext.setValue(ADD_NEW_WORKFLOW_SYMBOL, false);
         return context.with(currentContext, () => {
-            return handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan, sourcePath });
+            currentContext = spanHandler.preTracing(element, currentContext, thisArg);
+            return context.with(currentContext, () => {
+                return handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan, sourcePath });
+            });
         });
     }
 
