@@ -195,11 +195,11 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                     if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
                         // Return the promise chain to ensure proper propagation
                         returnValue = returnValue.then((result: any) => {
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args, sourcePath, exception: ex, parentSpan });
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
                             return result;
                         }).catch((error: any) => {
                             span.setStatus({ code: 2, message: error?.message || "Error occurred" });
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args, sourcePath, exception: error || ex, parentSpan });
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args, sourcePath, exception: error || ex, parentSpan, currentContext });
                             if (span.isRecording()) {
                                 span.end()
                             }
@@ -208,7 +208,7 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                         });
                     }
                     else {
-                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args, sourcePath, exception: ex, parentSpan });
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
                     }
                 }
             }
@@ -226,13 +226,13 @@ function getSpanName(element: WrapperArguments): string {
     return element.spanName || (element.package || '' + element.object || '' + element.method || '');
 }
 
-function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath, exception, parentSpan }: { instance: () => any, spanHandler: SpanHandler, span: Span, returnValue: any, element: WrapperArguments, args: any, sourcePath: string, exception: any, parentSpan: Span | null }) {
+function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath, exception, parentSpan, currentContext }: { instance: () => any, spanHandler: SpanHandler, span: Span, returnValue: any, element: WrapperArguments, args: any, sourcePath: string, exception: any, parentSpan: Span | null, currentContext: any }) {
 
     // if to_wrap.get("output_processor") and to_wrap.get("output_processor").get("response_processor"):
     // # Process the stream
     // to_wrap.get("output_processor").get("response_processor")(to_wrap, return_value, post_process_span_internal)
     const spanProcessor = ({ finalReturnValue }) => {
-        spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null, sourcePath: sourcePath, exception: exception });
+        spanHandler.postProcessSpan({ span, instance: instance, args: args, returnValue, outputProcessor: null, sourcePath: sourcePath, exception: exception, currentContext });
         spanHandler.processSpan({ span, instance: instance, args: args, outputProcessor: element.output_processor, returnValue: finalReturnValue, wrappedPackage: element.package, exception, parentSpan });
         span.end();
     }

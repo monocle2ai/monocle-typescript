@@ -11,6 +11,7 @@ import { config as geminiPackages } from "../metamodel/gemini/methods";
 import { config as langgraphPackages } from "../metamodel/langgraph/methods";
 import { config as mcpPackages } from "../metamodel/mcp/methods";
 import { config as a2aPackages } from "../metamodel/a2a/methods";
+import { config as openaiAgentsPackages } from "../metamodel/agents/methods";
 import { MethodConfig } from "./constants";
 
 export const combinedPackages: MethodConfig[] = [
@@ -26,5 +27,6 @@ export const combinedPackages: MethodConfig[] = [
   ...geminiPackages,
   ...langgraphPackages,
   ...mcpPackages,
-  ...a2aPackages
+  ...a2aPackages,
+  ...openaiAgentsPackages
 ];

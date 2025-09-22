@@ -21,12 +21,13 @@ export interface SpanHandler {
         element: WrapperArguments;
     }): boolean;
 
-    postProcessSpan({ span, instance, args, returnValue, outputProcessor }: {
+    postProcessSpan({ span, instance, args, returnValue, outputProcessor, currentContext }: {
         span: Span;
         instance: any;
         args: IArguments;
         returnValue: any;
         outputProcessor: any;
+        currentContext?: any;
         sourcePath: string;
         exception?: any;
     }): void;
@@ -74,10 +75,10 @@ const setSpanStatus = function (span) {
 };
 const WORKFLOW_TYPE_MAP = {
     "llamaindex": "workflow.llamaindex",
-    // "langchain": "workflow.langchain",
+    "langchain": "workflow.langchain",
     "haystack": "workflow.haystack",
     "@microsoft/teams-ai": "workflow.teams_ai",
-    // "langgraph": "workflow.langgraph",
+    "langgraph": "workflow.langgraph",
 
 }
 
@@ -151,6 +152,7 @@ export class DefaultSpanHandler implements SpanHandler {
         returnValue: any;
         outputProcessor: any;
         exception?: any;
+        currentContext?: any;
     }) {
         if (!exception) {
             setSpanStatus(span);
