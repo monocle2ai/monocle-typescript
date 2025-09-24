@@ -354,7 +354,7 @@ async function testMessage() {
 
 // Main test runner
 async function runTests() {
-  console.log("🎬 Starting A2A Maths Agent Tests...");
+  console.log("Starting A2A Maths Agent Tests...");
   console.log("Agent URL: http://localhost:41242");
 
   try {
@@ -363,7 +363,7 @@ async function runTests() {
     const response = await fetch("http://localhost:41242/.well-known/agent.json");
     if (response.ok) {
       const agentCard = await response.json();
-      console.log("✅ Agent card retrieved successfully:");
+      console.log("Agent card retrieved successfully:");
       console.log(`  Name: ${agentCard.name}`);
       console.log(`  Version: ${agentCard.version}`);
       console.log(`  Skills: ${agentCard.skills?.length || 0}`);

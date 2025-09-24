@@ -31,7 +31,7 @@ async function main() {
     let mcpServer = null;
 
     try {
-        console.log('🚀 Starting MCP server...');
+        console.log('Starting MCP server...');
         await mcpServerTester.startServer();
 
         // Wait a moment for server to be ready

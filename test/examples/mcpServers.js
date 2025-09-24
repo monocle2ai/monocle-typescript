@@ -99,7 +99,7 @@ class McpServerTester {
         if (this.server) {
             return new Promise((resolve) => {
                 this.server.close(() => {
-                    console.log('✅ Server stopped');
+                    console.log('Server stopped');
                     resolve();
                 });
             });

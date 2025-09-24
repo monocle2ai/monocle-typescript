@@ -2,7 +2,7 @@ import {
     AGENT_PREFIX_KEY, DELEGATION_NAME_PREFIX, WrapperArguments,
 } from "../../common/constants";
 import { Span } from "../../common/opentelemetryUtils";
-import { NonFrameworkSpanHandler } from "../../common/spanHandler";
+import { DefaultSpanHandler } from "../../common/spanHandler";
 import { consoleLog } from "../../../common/logging";
 import { AGENTS_AGENT_NAME_KEY_SYMBOL } from "./entities/inference";
 import { Tracer } from "@opentelemetry/api";
@@ -17,7 +17,7 @@ function getAgentName(instance: any): string {
         "openai_agent";
 }
 
-export class AgentsSpanHandler extends NonFrameworkSpanHandler {
+export class AgentsSpanHandler extends DefaultSpanHandler {
     preTracing(_element: WrapperArguments, currentContext: any, thisArg?: any): any {
         try {
             const agentName = getAgentName(thisArg);
@@ -47,7 +47,7 @@ export class AgentsSpanHandler extends NonFrameworkSpanHandler {
 
 export function toolConstructorWrapper(
     tracer: Tracer,
-    _handler: NonFrameworkSpanHandler,
+    _handler: DefaultSpanHandler,
     element: any,
     wrapped: Function,
     instance: any,
@@ -100,7 +100,7 @@ export function toolConstructorWrapper(
 
 export function handoffConstructorWrapper(
     tracer: Tracer,
-    _handler: NonFrameworkSpanHandler,
+    _handler: DefaultSpanHandler,
     element: any,
     wrapped: Function,
     instance: any,

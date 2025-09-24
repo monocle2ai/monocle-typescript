@@ -3,7 +3,7 @@ import {
 } from "../../common/constants";
 import { setScopesBind } from "../../common/instrumentation";
 import { Span } from "../../common/opentelemetryUtils";
-import { isRootSpan, NonFrameworkSpanHandler } from "../../common/spanHandler";
+import { isRootSpan, DefaultSpanHandler } from "../../common/spanHandler";
 import { AGENT_DELEGATION, AGENT_REQUEST } from "./entities/inference";
 
 function getName(instance: any): string {
@@ -16,7 +16,7 @@ function getName(instance: any): string {
 const ROOT_AGENT_NAME = 'LangGraph'
 
 
-export class LangGraphAgentSpanHandler extends NonFrameworkSpanHandler {
+export class LangGraphAgentSpanHandler extends DefaultSpanHandler {
 
     preTracing(_: WrapperArguments, currentContext: any, thisArg?: any): any {
         currentContext = currentContext.setValue(LANGGRAPH_AGENT_NAME_KEY, getName(thisArg));
@@ -39,6 +39,7 @@ export class LangGraphAgentSpanHandler extends NonFrameworkSpanHandler {
         exception?: any;
         parentSpan?: Span;
     }) {
+        // For CompiledStateGraph with parent agent span, use AGENT_REQUEST processor
         if (getName(instance) === "CompiledStateGraph" && span.attributes["parent.agent.span"]) {
             const agentRequestProcessor = [AGENT_REQUEST]
             super.processSpan({
@@ -52,9 +53,22 @@ export class LangGraphAgentSpanHandler extends NonFrameworkSpanHandler {
                 parentSpan,
             });
         }
+        // For agents with names and parent spans, use the configured processor
         else if (instance.name && parentSpan && !isRootSpan(span)) {
             parentSpan.setAttribute("parent.agent.span", true);
-
+            super.processSpan({
+                span,
+                instance,
+                args,
+                returnValue,
+                outputProcessor,
+                wrappedPackage: wrappedPackage,
+                exception,
+                parentSpan,
+            });
+        }
+        // For all other LangGraph agent invocations, use the configured processor
+        else {
             super.processSpan({
                 span,
                 instance,
@@ -71,7 +85,7 @@ export class LangGraphAgentSpanHandler extends NonFrameworkSpanHandler {
 
 
 
-export class LangGraphToolSpanHandler extends NonFrameworkSpanHandler {
+export class LangGraphToolSpanHandler extends DefaultSpanHandler {
 
     processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage, exception, parentSpan }: {
         span: Span;
@@ -95,8 +109,8 @@ export class LangGraphToolSpanHandler extends NonFrameworkSpanHandler {
                 exception,
                 parentSpan,
             });
-        }
-        else {
+        } else {
+            // For all other tool invocations, use the configured processor
             super.processSpan({
                 span,
                 instance,

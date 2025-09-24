@@ -2,7 +2,7 @@ import {
     extractAssistantMessage,
     getExceptionMessage,
 } from "../../utils";
-import { AGENT_REQUEST_SPAN_NAME, DELEGATION_NAME_PREFIX, LANGGRAPH_AGENT_NAME_KEY, SPAN_SUBTYPES, SPAN_TYPES } from "../../../common/constants";
+import { DELEGATION_NAME_PREFIX, LANGGRAPH_AGENT_NAME_KEY, SPAN_SUBTYPES, SPAN_TYPES } from "../../../common/constants";
 import { context } from "@opentelemetry/api";
 
 export const AGENT = {
@@ -55,7 +55,7 @@ export const AGENT = {
             "attributes": [
                 {
                     "_comment": "this is Agent input",
-                    "attribute": "query",
+                    "attribute": "input",
                     "accessor": function ({ args }) {
                         let input = "";
                         if (args?.[0]?.messages && Array.isArray(args[0].messages)) {
@@ -73,7 +73,7 @@ export const AGENT = {
                                 input = JSON.stringify(messages);
                             }
                         }
-                        return input;
+                        return [input];
                     },
                 },
             ],
@@ -111,7 +111,7 @@ export const AGENT = {
 
 
 export const AGENT_REQUEST = {
-    "type": AGENT_REQUEST_SPAN_NAME,
+    "type": SPAN_TYPES.AGENTIC_REQUEST,
     "subtype": SPAN_SUBTYPES.PLANNING,
     "attributes": [
         [
@@ -135,7 +135,7 @@ export const AGENT_REQUEST = {
                         if (args?.[0]?.messages) {
                             const message = args[0].messages[0];
                             if (message?.["content"] && message?.["role"] && message["content"] == "user")
-                                return message["content"];
+                                return [message["content"]];
 
                         }
                         return "";
