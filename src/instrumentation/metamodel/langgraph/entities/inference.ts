@@ -55,7 +55,7 @@ export const AGENT = {
             "attributes": [
                 {
                     "_comment": "this is Agent input",
-                    "attribute": "query",
+                    "attribute": "input",
                     "accessor": function ({ args }) {
                         let input = "";
                         if (args?.[0]?.messages && Array.isArray(args[0].messages)) {

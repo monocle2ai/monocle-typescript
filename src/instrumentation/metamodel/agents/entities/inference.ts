@@ -55,7 +55,7 @@ export const AGENT = {
 
                 {
                     "_comment": "this is Agent input",
-                    "attribute": "query",
+                    "attribute": "input",
                     "accessor": function ({ args }: any): any {
                         return JSON.stringify(args[1]) || JSON.stringify(args);
 
