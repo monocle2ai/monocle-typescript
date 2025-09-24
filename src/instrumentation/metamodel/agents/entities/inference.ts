@@ -123,7 +123,7 @@ export const AGENT_REQUEST = {
                     "_comment": "this is Agent input",
                     "attribute": "input",
                     "accessor": function ({ args }) {
-                        return JSON.stringify(args[1]) || "";
+                        return [JSON.stringify(args[1])];
                     },
                 }
             ]
@@ -201,7 +201,7 @@ export const TOOLS = {
             "attributes": [
                 {
                     "_comment": "this is Tool input",
-                    "attribute": "Inputs",
+                    "attribute": "input",
                     "accessor": function ({ args }) {
                         if (args && args[0]) {
                             return [JSON.stringify(args[0])];

@@ -10,7 +10,7 @@ async function testMcpClient() {
 
     try {
         await mcpServer.startServer();
-        console.log(`✅ MCP Server started on port 3000`);
+        console.log(`MCP Server started on port 3000`);
 
         // Wait a bit for server to be ready
         await new Promise(resolve => setTimeout(resolve, 1000));

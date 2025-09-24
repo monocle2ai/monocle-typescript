@@ -1,5 +1,7 @@
+import { SPAN_TYPES } from "../../../common/constants";
+
 export const config = {
-    "type": "agentic.mcp.invocation",
+    "type": SPAN_TYPES.AGENTIC_MCP_INVOCATION,
     "attributes": [
         [
             {
@@ -91,24 +93,24 @@ export const config = {
                             // For handleRequest method: args[2] contains the JSON-RPC request
                             if (args && args.length >= 3 && args[2]) {
                                 if (args[0] && args[0].arguments) {
-                                    return JSON.stringify(args[0].arguments);
+                                    return [JSON.stringify(args[0].arguments)];
                                 }
-                                return JSON.stringify(args[2]);
+                                return [JSON.stringify(args[2])];
                             }
 
                             // For send method: args[0] contains the JSON-RPC message
                             if (args && args.length >= 1 && args[0]) {
                                 // Check if first arg is the JSON-RPC request/response
                                 if (args[0].jsonrpc || args[0].method || args[0].id) {
-                                    return JSON.stringify(args[0]);
+                                    return [JSON.stringify(args[0])];
                                 }
                             }
 
                             // Fallback to first argument or all arguments
-                            return JSON.stringify(args[0]) || JSON.stringify(args);
+                            return [JSON.stringify(args[0]) || JSON.stringify(args)];
                         } catch (e) {
                             console.warn(`Warning: Error extracting MCP input: ${e}`);
-                            return JSON.stringify(args);
+                            return [JSON.stringify(args)];
                         }
                     }
                 }
