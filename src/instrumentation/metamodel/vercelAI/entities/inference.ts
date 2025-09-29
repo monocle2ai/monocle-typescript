@@ -72,7 +72,7 @@ export const config = {
                       if(args[0] && typeof args[0].prompt === 'string') {
                           messages.push(`{ '${"prompt"}': '${args[0].prompt}' }`);
                       }
-                      return messages;
+                      return [messages.join(", ")];
                   }
               }
           ]
@@ -86,9 +86,9 @@ export const config = {
                   attribute: "response",
                   accessor: ({ response }: ACCESSOR_ARGS) => {
                       if(response.text){
-                          return [response.text];
+                          return response.text;
                       }
-                      return []
+                      return "";
                   }
               }
           ]

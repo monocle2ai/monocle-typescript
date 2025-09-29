@@ -16,7 +16,7 @@ const { A2AClient } = require("@a2a-js/sdk/client");
 
 // Define the agent card for the Math Solver Agent
 // This card describes the agent's capabilities, skills, and metadata
-// It will be served at the /agent.json endpoint
+// It will be served at the /agent-card.json endpoint
 // and can be used by clients to discover and interact with the agent.
 const mathAgentCard = {
   name: "Math Solver Agent",
@@ -236,7 +236,7 @@ const requestHandler = new DefaultRequestHandler(
 // Create Express app and add CORS middleware first
 // This allows the app to handle cross-origin requests
 // and enables it to be accessed from different origins, which is useful for testing.
-// The app will serve the agent card at the /.well-known/agent.json endpoint
+// The app will serve the agent card at the /.well-known/agent-card.json endpoint
 // and handle incoming A2A requests at the /a2a endpoint.
 console.log("[MathAgent] Setting up Express app...");
 const app = express();
@@ -259,7 +259,7 @@ try {
       `[MathAgent] Server using new framework started on http://localhost:${PORT}`
     );
     console.log(
-      `[MathAgent] Agent Card: http://localhost:${PORT}/.well-known/agent.json`
+      `[MathAgent] Agent Card: http://localhost:${PORT}/.well-known/agent-card.json`
     );
     console.log("[MathAgent] Press Ctrl+C to stop the server");
   });
@@ -274,16 +274,16 @@ try {
   console.error('[MathAgent] Failed to start server:', error);
 }
 
-// Create an A2AClient instance to interact with the agent
-// This client will be used in the test script to send messages and receive responses
-// It connects to the agent running on the specified URL and provides methods
-// to send messages, get task status, and stream responses.
-// The client will be used to test the agent's functionality by sending math problems
-const client = new A2AClient("http://localhost:41242");
-
-
 // Test: Basic message sending (blocking)
 async function testMessage() {
+
+  // Create an A2AClient instance to interact with the agent
+  // This client will be used in the test script to send messages and receive responses
+  // It connects to the agent running on the specified URL and provides methods
+  // to send messages, get task status, and stream responses.
+  // The client will be used to test the agent's functionality by sending math problems
+  const client = await A2AClient.fromCardUrl("http://localhost:41242/.well-known/agent-card.json");
+
   console.log("\n=== Test 1: Basic Message Sending ===");
   const messageId = uuidv4();
   let taskId;
@@ -360,7 +360,7 @@ async function runTests() {
   try {
     // First verify the agent is running
     console.log("\n=== Verifying Agent Card ===");
-    const response = await fetch("http://localhost:41242/.well-known/agent.json");
+    const response = await fetch("http://localhost:41242/.well-known/agent-card.json");
     if (response.ok) {
       const agentCard = await response.json();
       console.log("Agent card retrieved successfully:");
@@ -369,7 +369,8 @@ async function runTests() {
       console.log(`  Skills: ${agentCard.skills?.length || 0}`);
     } else {
       console.error("Failed to retrieve agent card");
-      return;
+      process.exit(0);
+      // return;
     }
 
     // Run all tests

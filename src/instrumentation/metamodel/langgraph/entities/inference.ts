@@ -57,23 +57,16 @@ export const AGENT = {
                     "_comment": "this is Agent input",
                     "attribute": "input",
                     "accessor": function ({ args }) {
-                        let input = "";
                         if (args?.[0]?.messages && Array.isArray(args[0].messages)) {
                             const messages = args[0].messages;
-                            const userMessages = messages.filter(
-                                (msg) =>
-                                    msg.content &&
-                                    (msg.role === "user" ||
-                                        msg.role === "human" ||
-                                        msg.constructor?.name === "HumanMessage")
-                            );
-                            if (userMessages.length > 0) {
-                                input = userMessages.map((msg) => msg.content).join("; ");
-                            } else {
-                                input = JSON.stringify(messages);
-                            }
+                            return messages.map(msg => {
+                                const role = msg.role || msg.constructor?.name || "unknown";
+                                return JSON.stringify({
+                                    [role]: msg.content
+                                });
+                            });
                         }
-                        return [input];
+                        return [];
                     },
                 },
             ],

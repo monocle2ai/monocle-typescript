@@ -9,8 +9,7 @@ export const config = {
                 attribute: "name",
                 accessor: function ({ args, instance }) {
                     // pick last part from the url instance._client.baseURL
-                    if(instance._client.baseURL && !instance._client.baseURL.includes("openai.com"))
-                    {
+                    if (instance._client.baseURL && !instance._client.baseURL.includes("openai.com")) {
                         return instance._client.baseURL.split("/").pop()
                     }
                     return args[0].model
@@ -20,11 +19,10 @@ export const config = {
                 attribute: "type",
                 accessor: function ({ args, instance }) {
                     // pick last part from the url instance._client.baseURL
-                    if(instance._client.baseURL && !instance._client.baseURL.includes("openai.com"))
-                        {
-                            return "model.embedding." + instance._client.baseURL.split("/").pop()
-                        }
-                        return "model.embedding." + args[0].model
+                    if (instance._client.baseURL && !instance._client.baseURL.includes("openai.com")) {
+                        return "model.embedding." + instance._client.baseURL.split("/").pop()
+                    }
+                    return "model.embedding." + args[0].model
                 }
             }
         ]
@@ -39,7 +37,7 @@ export const config = {
                     accessor: function ({
                         args
                     }) {
-                        return args[0].input
+                        return Array.isArray(args[0].input) ? args[0].input : [args[0].input]
                     }
                 }
             ]
@@ -51,7 +49,7 @@ export const config = {
                     _comment: "this is response from LLM",
                     attribute: "response",
                     accessor: function ({ response, exception }) {
-                        if (exception){
+                        if (exception) {
                             return getExceptionMessage({ exception });
                         }
                         if (response && response.data && response.data[0] && response.data[0].embedding) {

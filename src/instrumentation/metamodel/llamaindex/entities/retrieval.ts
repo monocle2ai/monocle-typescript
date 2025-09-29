@@ -54,9 +54,9 @@ export const config = {
                         // instance 
                     }) {
                         if(typeof args[0] === "string") {
-                            return args[0]
+                            return [args[0]]
                         }
-                        return ""
+                        return []
                     }
                 }
             ]
