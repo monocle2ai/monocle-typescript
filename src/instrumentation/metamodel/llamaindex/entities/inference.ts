@@ -1,4 +1,4 @@
-import { extractMessages, extractAssistantMessage, getLlmMetadata, getStatus, getStatusCode, getExceptionMessage } from "../../utils"   
+import { extractMessages, extractAssistantMessage, getLlmMetadata, getStatus, getStatusCode, getExceptionMessage } from "../../utils"
 
 export const config = {
     "type": "inference",
@@ -60,12 +60,17 @@ export const config = {
                         args,
                         // instance 
                     }) {
+                        if (args && args[0] && args[0]?.messages) {
+                            return args[0].messages.map(msg => JSON.stringify({
+                                [msg.role || "unknown"]: msg.content
+                            }));
+                        }
                         const response = extractMessages(args)
                         const retValue: string[] = []
-                        if(response && response[1]){
+                        if (response && response[1]) {
                             retValue.push(response[1])
                         }
-                        if(response && response[0]){
+                        if (response && response[0]) {
                             retValue.push(response[0])
                         }
                         return retValue
@@ -81,10 +86,10 @@ export const config = {
                     "_comment": "this is response from LLM",
                     "attribute": "response",
                     "accessor": function ({ response, exception }) {
-                        if (exception){
+                        if (exception) {
                             return getExceptionMessage({ exception });
                         }
-                        return [extractAssistantMessage(response)]
+                        return extractAssistantMessage(response)
                     }
                 },
                 {
@@ -108,7 +113,7 @@ export const config = {
                 {
                     "_comment": "this is response metadata from LLM",
                     "accessor": function ({ instance, response }) {
-                        return getLlmMetadata({response, instance})
+                        return getLlmMetadata({ response, instance })
                     }
                 }
             ]

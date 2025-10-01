@@ -59,12 +59,12 @@ export const config = {
           attribute: "input",
           accessor: function ({ args }) {
             if (args?.[0]?.message) {
-              return args[0].message;
+              return [args[0].message];
             }
             if (typeof args?.[0] === "string") {
-              return args[0];
+              return [args[0]];
             }
-            return JSON.stringify(args?.[0] || "");
+            return [JSON.stringify(args?.[0] || "")];
           },
         },
       ],

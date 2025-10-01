@@ -17,6 +17,9 @@ function extractInputMessages(args) {
     if (args && args[0] && typeof args[0].text === 'string') {
       return [args[0].text];
     }
+    if (args && args[0] && typeof args[0] === 'string') {
+      return [args[0]];
+    }
     if (args && args.length > 0) {
 
       for (const msg of args[0]) {
@@ -34,18 +37,22 @@ function extractInputMessages(args) {
 
 function extractOutputResponse(response) {
   try {
-    const messages = [];
     if (response && response.tool_calls && response.tool_calls.length > 0) {
-      messages.push({ [response.constructor.name]: response.tool_calls[0] });
+      const toolCall = response.tool_calls[0];
+      if (toolCall.function) {
+        return `${toolCall.function.name}: (${toolCall.function.arguments})`;
+      } else if (toolCall.name) {
+        return `${toolCall.name}`;
+      }
     }
-    return messages.map(d => JSON.stringify(d));
+    return JSON.stringify(response);
   } catch (e) {
     console.warn(
       "Warning: Error occurred in extract_output_response:",
       e
     );
   }
-  return [];
+  return "";
 }
 
 function extractFinishReason(args) {
@@ -160,7 +167,7 @@ export const config = {
             }
             const result = extractAssistantMessage(response)
             if (result.length > 0) {
-              return result;
+              return JSON.stringify(result);
             }
             else {
               return extractOutputResponse(response);

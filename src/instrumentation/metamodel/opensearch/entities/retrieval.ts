@@ -56,24 +56,24 @@ export const config = {
                         if (args[0].body && args[0].body.query) {
                             // For search queries
                             if (args[0].body.query.match_all) {
-                                return "match_all query";
+                                return ["match_all query"];
                             } else if (args[0].body.query.knn) {
-                                return "knn similarity search";
+                                return ["knn similarity search"];
                             } else if (args[0].body.query.bool) {
-                                return "bool query";
+                                return ["bool query"];
                             } else if (args[0].body.query.match) {
                                 const field = Object.keys(args[0].body.query.match)[0];
-                                return `match query on field: ${field}`;
+                                return [`match query on field: ${field}`];
                             } else {
-                                return JSON.stringify(args[0].body.query);
+                                return [JSON.stringify(args[0].body.query)];
                             }
                         } else if (args[0].body && !args[0].body.query) {
                             // For document indexing operations
                             const docId = args[0].id || "unknown_id";
-                            return `indexing document: ${docId}`;
+                            return [`indexing document: ${docId}`];
                         }
 
-                        return JSON.stringify(args[0]);
+                        return [JSON.stringify(args[0])];
                     }
                 },
                 {

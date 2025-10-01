@@ -201,12 +201,12 @@ export const config = {
                 turnContext._activity &&
                 typeof turnContext._activity.text === "string"
               ) {
-                return turnContext._activity.text;
+                return [turnContext._activity.text];
               }
-              return "No input found";
+              return ["No input found"];
             } catch (error) {
               console.error("Error accessing input:", error);
-              return "Error retrieving input";
+              return ["Error retrieving input"];
             }
           }
         }

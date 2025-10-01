@@ -8,16 +8,16 @@ import {
 
 
 function extractFinishReason(response: any): string | null {
-    try {
-        // Handle traditional chat.completions.create() format
-        if (response && response.candidates && response.candidates[0] && response.candidates[0].finishReason) {
-            return response.candidates[0].finishReason;
-        }
-    } catch (e) {
-        console.warn("Warning: Error occurred in extractFinishReason:", e);
-        return null;
+  try {
+    // Handle traditional chat.completions.create() format
+    if (response && response.candidates && response.candidates[0] && response.candidates[0].finishReason) {
+      return response.candidates[0].finishReason;
     }
+  } catch (e) {
+    console.warn("Warning: Error occurred in extractFinishReason:", e);
     return null;
+  }
+  return null;
 }
 
 
@@ -54,43 +54,39 @@ function getMetadataUsage(response, _instance) {
 
 function extractMessages(args) {
   const params = args[0];
+  const messages = [];
 
   if (params && typeof params === "object") {
-    const messages = [];
-
     if (typeof params.contents === "string") {
-      messages.push(params.contents);
+      return [params.contents]
     } else if (Array.isArray(params.contents)) {
       for (const content of params.contents) {
         if (typeof content === "string") {
-          messages.push(content);
+          messages.push(JSON.stringify({ "user": content }));
         } else if (content && content.parts && Array.isArray(content.parts)) {
-          for (const part of content.parts) {
-            if (typeof part === "string") {
-              messages.push(part);
-            } else if (part && part.text) {
-              const role = content.role || "user";
-              messages.push(`{ '${role}': '${part.text}' }`);
-            }
+          const role = content.role || "unknown_role";
+          // For Gemini's parts structure, combine all text parts under one role
+          const combinedText = content.parts
+            .map(part => typeof part === "string" ? part : part?.text || "")
+            .filter(text => text)
+            .join(" ");
+          if (combinedText) {
+            messages.push(JSON.stringify({ [role]: combinedText }));
           }
         }
       }
-    } else if (
-      params.contents &&
-      params.contents.parts &&
-      Array.isArray(params.contents.parts)
-    ) {
-      for (const part of params.contents.parts) {
-        if (typeof part === "string") {
-          messages.push(part);
-        } else if (part && part.text) {
-          messages.push(part.text);
-        }
+    } else if (params.contents && params.contents.parts && Array.isArray(params.contents.parts)) {
+      const role = params.contents.role || "unknown_role";
+      const combinedText = params.contents.parts
+        .map(part => typeof part === "string" ? part : part?.text || "")
+        .filter(text => text)
+        .join(" ");
+      if (combinedText) {
+        messages.push(JSON.stringify({ [role]: combinedText }));
       }
     }
-    return messages;
   }
-  return [];
+  return messages;
 }
 
 function extractInferenceOutput(result) {
@@ -117,22 +113,15 @@ function extractInferenceOutput(result) {
     }
 
     const status = getStatusCode(result);
-    const messages: any[] = [];
-    let role = "model";
-
-    // Check if result has candidates with role information
-    if (result?.candidates?.length > 0 && result.candidates[0]?.content?.role) {
-      role = result.candidates[0].content.role;
-    }
 
     if (status === "success") {
       let extractedText = "";
 
       // Try multiple paths to extract text from Gemini response
-      if (result?.text && result.text.length > 0) {
-        extractedText = result.text;
-      } else if (result?.candidates?.length > 0) {
-        const candidate = result.candidates[0];
+      if (result?.response?.text && result?.response.text.length > 0) {
+        extractedText = result.response.text;
+      } else if (result?.response?.candidates?.length > 0) {
+        const candidate = result.response.candidates[0];
 
         // Check for text directly in candidate
         if (candidate.content?.parts?.length > 0) {
@@ -153,15 +142,12 @@ function extractInferenceOutput(result) {
       }
 
       if (extractedText && extractedText.length > 0) {
-        const messageObj = {};
-        messageObj[role] = extractedText;
-        messages.push(messageObj);
+        return extractedText;
       }
     } else if (result?.error) {
       return result.error;
     }
-
-    return messages.length > 0 ? JSON.stringify(messages[0]) : "";
+    return "";
   } catch (e) {
     if (e instanceof TypeError || e.name === "TypeError") {
       console.warn(
@@ -261,19 +247,19 @@ export const config = {
           },
         },
         {
-            "_comment": "finish reason from OpenAI response",
-            "attribute": "finish_reason",
-            "accessor": function ({ response }) {
-                return extractFinishReason(response);
-            }
+          "_comment": "finish reason from OpenAI response",
+          "attribute": "finish_reason",
+          "accessor": function ({ response }) {
+            return extractFinishReason(response);
+          }
         },
         {
-            "_comment": "finish type mapped from finish reason",
-            "attribute": "finish_type",
-            "accessor": function ({ response }) {
-                const finishReason = extractFinishReason(response);
-                return mapGeminiFinishReasonToFinishType(finishReason);
-            }
+          "_comment": "finish type mapped from finish reason",
+          "attribute": "finish_type",
+          "accessor": function ({ response }) {
+            const finishReason = extractFinishReason(response);
+            return mapGeminiFinishReasonToFinishType(finishReason);
+          }
         }
       ],
     },

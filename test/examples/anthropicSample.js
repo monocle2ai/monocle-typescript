@@ -1,7 +1,7 @@
-import { setupMonocle } from "../../dist";
+const { setupMonocle } = require("../../dist");
 setupMonocle("anthropic.app");
 
-import { Anthropic } from "@anthropic-ai/sdk";
+const { Anthropic } = require("@anthropic-ai/sdk");
 
 const apiKey = process.env.ANTHROPIC_API_KEY || "your-api-key";
 
@@ -80,4 +80,4 @@ if (require.main === module) {
   })();
 }
 
-export { main };
+// export { main };

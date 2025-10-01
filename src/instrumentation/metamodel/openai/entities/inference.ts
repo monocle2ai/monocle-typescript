@@ -267,11 +267,11 @@ export const config = {
                             return getExceptionMessage({ exception });
                         }
                         if (response?.output_text !== undefined) {
-                            return [response.output_text];
+                            return response.output_text || "";
                         }
 
                         // Handle original chat.completions.create() format
-                        return response?.choices?.[0]?.message?.content ? [response.choices?.[0].message.content] : []
+                        return response?.choices?.[0]?.message?.content ? response.choices?.[0].message.content : "";
                     }
                 },
                 {
