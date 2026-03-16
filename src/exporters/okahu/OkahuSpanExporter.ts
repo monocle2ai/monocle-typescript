@@ -142,7 +142,7 @@ export class OkahuSpanExporter implements SpanExporter {
       }
       consoleLog(
         `OkahuSpanExporter| Trace ${traceId} successfully deleted from Okahu.
-        Data: ${JSON.stringify(result.data)}
+          Data: ${JSON.stringify(result.data)}
         `,
       );
       return true;
