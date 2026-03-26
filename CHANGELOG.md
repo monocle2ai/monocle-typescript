@@ -1,6 +1,8 @@
 # Changelog
 
 All notable changes to Monocle TypeScript will be documented in this file.
+## 0.3.1 (2026-03-25)
+- Okahu eval exporter support
 
 ## 0.3.0 (2025-09-09)
 
