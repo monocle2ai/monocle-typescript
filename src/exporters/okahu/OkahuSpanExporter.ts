@@ -13,6 +13,7 @@ interface OkahuSpanExporterConfig {
     endpoint?: string;
     timeout?: number;
     taskProcessor?: ExportTaskProcessor;
+    evaluate?: boolean;
 }
 
 export class OkahuSpanExporter implements SpanExporter {
@@ -21,6 +22,7 @@ export class OkahuSpanExporter implements SpanExporter {
     private client: AxiosInstance;
     private _closed: boolean = false;
     private taskProcessor?: ExportTaskProcessor;
+    private evaluate: boolean;
 
     constructor(config: OkahuSpanExporterConfig = {}) {
         const apiKey = process.env.OKAHU_API_KEY;
@@ -28,7 +30,11 @@ export class OkahuSpanExporter implements SpanExporter {
             throw new Error("OKAHU_API_KEY not set.");
         }
 
+        this.evaluate = config.evaluate || false;
         this.endpoint = config.endpoint || process.env.OKAHU_INGESTION_ENDPOINT || OKAHU_PROD_INGEST_ENDPOINT;
+        if (this.evaluate) {
+          this.endpoint = this.endpoint.replace("/trace/ingest", "/eval/ingest");
+        }
         this.timeout = config.timeout || 15000;
         this.taskProcessor = config.taskProcessor;
         if(this.taskProcessor) {
@@ -100,6 +106,58 @@ export class OkahuSpanExporter implements SpanExporter {
                 resultCallback({ code: ExportResultCode.FAILED });
             }
         }
+    }
+
+    async deleteTrace(
+      traceId: string,
+      ingestEndpoint?: string,
+    ): Promise<boolean> {
+      if (this._closed) {
+        consoleLog("OkahuSpanExporter| Exporter is closed. Cannot delete trace.");
+        return false;
+      }
+
+      if (!traceId) {
+        throw new Error("traceId is required.");
+      }
+
+      const ingest =
+        ingestEndpoint ||
+        process.env.OKAHU_INGESTION_ENDPOINT ||
+        OKAHU_PROD_INGEST_ENDPOINT;
+      const deleteUrl = ingest
+        .replace(/\/+$/, "")
+        .replace("/trace/ingest", "/trace_eval/delete");
+
+      try {
+        const result = await this.client.delete(deleteUrl, {
+          params: { trace_id: traceId },
+        });
+
+        if (!REQUESTS_SUCCESS_STATUS_CODES.includes(result.status)) {
+          console.error(
+            `OkahuSpanExporter| Delete trace failed - Status: ${result.status}, Response: ${JSON.stringify(result.data)}`,
+          );
+          return false;
+        }
+        consoleLog(
+          `OkahuSpanExporter| Trace ${traceId} successfully deleted from Okahu.
+            Data: ${JSON.stringify(result.data)}
+          `,
+        );
+        return true;
+      } catch (error) {
+        console.error(
+          `OkahuSpanExporter| Failed to delete trace ${traceId}:`,
+          error.message,
+        );
+        if (error.response) {
+          console.error(
+            `OkahuSpanExporter| Status Code: ${error.response.status}, Response: ${JSON.stringify(error.response.data)}`,
+          );
+        }
+        return false;
+      }
     }
 
     shutdown(): Promise<void> {
