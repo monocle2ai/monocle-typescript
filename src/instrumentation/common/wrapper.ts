@@ -1,7 +1,7 @@
 import { context, Tracer, trace } from "@opentelemetry/api";
 import { getSourcePath, setScopesInternal } from "./utils";
 import { attachWorkflowType, DefaultSpanHandler, isRootSpan, SpanHandler } from "./spanHandler";
-import { ADD_NEW_WORKFLOW_SYMBOL, MethodConfig, WrapperArguments } from "./constants";
+import { ADD_NEW_WORKFLOW_SYMBOL, MethodConfig, MONOCLE_ACTIVE_SPAN_KEY, WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { Span } from "./opentelemetryUtils";
 
@@ -154,72 +154,145 @@ function processSpanWithTracing(
 
 function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan, sourcePath }: { currentContext: any, tracer: Tracer, element: WrapperArguments, spanHandler: SpanHandler, thisArg: () => any, args: any, original: Function, shouldAddWorkflowSpan: boolean, sourcePath: string }) {
     let returnValue: any;
+    let ex: any = null;
 
-    let ex = null;
-    let parentSpan: Span = trace.getActiveSpan() as Span;
-    const ret_val = tracer.startActiveSpan(
-        getSpanName(element),
-        (span: Span) => {
-            const endSpan = () => {
-                span.end();
-            };
-            if (isRootSpan(span) || shouldAddWorkflowSpan) {
-                spanHandler.setWorkflowProperties({ span, instance: thisArg, args: args, element });
-                returnValue = handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan: false, sourcePath });
-                span.updateName("workflow");
-                if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
-                    // Return the promise chain to ensure proper propagation
-                    returnValue = returnValue.then((result: any) => {
+    // Prefer the Monocle-tracked parent over whatever happens to be on OTel's
+    // standard active-span slot. External libs (ADK) install no-op spans there
+    // and bind them as active for inner async generators; reading from our
+    // private key keeps the parent chain intact across those layers. When the
+    // key is absent (every existing framework), this reduces to the previous
+    // behavior (use whatever's active).
+    const monocleParent = (currentContext && typeof currentContext.getValue === 'function')
+        ? currentContext.getValue(MONOCLE_ACTIVE_SPAN_KEY) as Span | undefined
+        : undefined;
+    const startContext = monocleParent
+        ? trace.setSpan(currentContext, monocleParent)
+        : currentContext;
+    const parentSpan: Span = (monocleParent || trace.getActiveSpan()) as Span;
+
+    const spanCallback = (span: Span) => {
+        const endSpan = () => { span.end(); };
+
+        if (isRootSpan(span) || shouldAddWorkflowSpan) {
+            spanHandler.setWorkflowProperties({ span, instance: thisArg, args: args, element });
+            returnValue = handleSpanProcess({ currentContext, tracer, element, spanHandler, thisArg, args, original, shouldAddWorkflowSpan: false, sourcePath });
+            span.updateName("workflow");
+            const innerIsAsyncIterable = returnValue !== null
+                && typeof returnValue === 'object'
+                && typeof returnValue.then !== "function"
+                && typeof returnValue[Symbol.asyncIterator] === 'function';
+
+            if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                returnValue = returnValue.then((result: any) => {
+                    endSpan();
+                    return result;
+                }).catch((error: any) => {
+                    endSpan();
+                    throw error;
+                });
+            }
+            else if (innerIsAsyncIterable) {
+                // Inner span returned an AsyncGenerator; defer ending the
+                // workflow span until the consumer finishes iterating.
+                const innerIterable = returnValue;
+                returnValue = (async function* monocleWorkflowIteratorWrapper() {
+                    try {
+                        for await (const item of innerIterable) {
+                            yield item;
+                        }
+                    } finally {
                         endSpan();
+                    }
+                })();
+            }
+            else {
+                endSpan();
+            }
+        }
+        else {
+            try {
+                returnValue = original.apply(thisArg, args);
+            }
+            catch (error) {
+                ex = error;
+                consoleLog(`Error in span processing: ${error}`);
+                throw error;
+            }
+            finally {
+                const isAsyncIterable = returnValue !== null
+                    && typeof returnValue === 'object'
+                    && typeof returnValue.then !== "function"
+                    && typeof returnValue[Symbol.asyncIterator] === 'function';
+
+                if (isAsyncIterable) {
+                    // The original returned an AsyncGenerator (e.g. ADK runAsync).
+                    // Wrap it so:
+                    //   1. the span ends only when iteration completes, and
+                    //   2. each .next() runs under our span context — both on
+                    //      the standard OTel active-span slot AND on our
+                    //      private MONOCLE_ACTIVE_SPAN_KEY. ADK overrides the
+                    //      former with no-op spans inside its own generators,
+                    //      but doesn't know about our key, so nested wrapped
+                    //      calls still resolve to the correct parent.
+                    const originalIterable = returnValue;
+                    const collectedItems: any[] = [];
+                    const spanContext = trace
+                        .setSpan(context.active(), span)
+                        .setValue(MONOCLE_ACTIVE_SPAN_KEY, span);
+                    returnValue = (async function* monocleAsyncIteratorWrapper() {
+                        const iterator = originalIterable[Symbol.asyncIterator]
+                            ? originalIterable[Symbol.asyncIterator]()
+                            : originalIterable;
+                        try {
+                            while (true) {
+                                const result: IteratorResult<any> = await context.with(
+                                    spanContext,
+                                    () => iterator.next(),
+                                );
+                                if (result.done) break;
+                                collectedItems.push(result.value);
+                                yield result.value;
+                            }
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: { events: collectedItems, type: 'async_generator' }, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
+                        } catch (error: any) {
+                            span.setStatus({ code: 2, message: error?.message || "Error occurred" });
+                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: { events: collectedItems, type: 'async_generator', error }, element, args: args, sourcePath, exception: error || ex, parentSpan, currentContext });
+                            if (span.isRecording()) {
+                                span.end();
+                            }
+                            throw error;
+                        }
+                    })();
+                }
+                else if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
+                    returnValue = returnValue.then((result: any) => {
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
                         return result;
                     }).catch((error: any) => {
-                        endSpan();
+                        span.setStatus({ code: 2, message: error?.message || "Error occurred" });
+                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args, sourcePath, exception: error || ex, parentSpan, currentContext });
+                        if (span.isRecording()) {
+                            span.end();
+                        }
                         throw error;
                     });
                 }
                 else {
-                    endSpan();
+                    postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
                 }
             }
-            else {
-                try {
-                    returnValue = original.apply(thisArg, args);
-                }
-                catch (error) {
-                    ex = error;
-                    // span.setStatus({ code: 2, message: error?.message || "Error occurred" });
-                    consoleLog(`Error in span processing: ${error}`);
-                    throw error;
-                }
-                finally {
-                    if (typeof returnValue === 'object' && returnValue !== null && typeof returnValue.then === "function") {
-                        // Return the promise chain to ensure proper propagation
-                        returnValue = returnValue.then((result: any) => {
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: result, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
-                            return result;
-                        }).catch((error: any) => {
-                            span.setStatus({ code: 2, message: error?.message || "Error occurred" });
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: error, element, args: args, sourcePath, exception: error || ex, parentSpan, currentContext });
-                            if (span.isRecording()) {
-                                span.end()
-                            }
-
-                            throw error;
-                        });
-                    }
-                    else {
-                        postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
-                    }
-                }
-            }
-
-            spanHandler.setDefaultMonocleAttributes({ span: span, instance: thisArg, args: args, element: element, sourcePath: sourcePath });
-
-            return returnValue;
         }
-    );
 
-    return ret_val;
+        spanHandler.setDefaultMonocleAttributes({ span: span, instance: thisArg, args: args, element: element, sourcePath: sourcePath });
+        return returnValue;
+    };
+
+    const startSpan = () => tracer.startActiveSpan(getSpanName(element), spanCallback);
+    // Only override the active context when we actually have a Monocle parent
+    // to inject. Otherwise let the existing OTel active context (set by an
+    // outer startActiveSpan, etc.) flow through unchanged — preserving the
+    // behavior every other framework relies on.
+    return monocleParent ? context.with(startContext, startSpan) : startSpan();
 }
 
 function getSpanName(element: WrapperArguments): string {

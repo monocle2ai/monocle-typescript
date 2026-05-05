@@ -1,6 +1,13 @@
 import { Tracer } from "@opentelemetry/api";
 import { SpanHandler } from "./spanHandler";
 
+// Tracks the currently-active Monocle span on a context key that's private to
+// us. External libraries (e.g. ADK) install their own no-op spans on the
+// standard OTel active-span slot via `trace.setSpan` + `context.bind`, which
+// would otherwise pollute the parent chain. Our wrappers consult this key to
+// pick the correct parent regardless of what's on the OTel active-span slot.
+export const MONOCLE_ACTIVE_SPAN_KEY = Symbol("monocle.active_span");
+
 const AWS_CONSTANTS = {
     AWS_LAMBDA_FUNCTION_NAME: 'AWS_LAMBDA_FUNCTION_NAME',
 }
@@ -89,6 +96,7 @@ export const service_name_map = {
 }
 
 export const LANGGRAPH_AGENT_NAME_KEY = Symbol("agent.langgraph");
+export const ADK_AGENT_NAME_KEY = Symbol("agent.adk");
 export const AGENT_PREFIX_KEY = Symbol("monocle.agent.prefix")
 export const DELEGATION_NAME_PREFIX = Symbol("transfer_to_")
 export const INFERENCE_AGENT_DELEGATION = "delegation"

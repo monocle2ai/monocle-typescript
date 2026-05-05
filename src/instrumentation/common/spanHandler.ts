@@ -83,6 +83,7 @@ const WORKFLOW_TYPE_MAP = {
     "@microsoft/teams-ai": "workflow.teams_ai",
     "teams.ai": "workflow.teams_ai",
     "llama_index": "workflow.llamaindex",
+    "@google/adk": "workflow.adk",
 }
 
 function getWorkflowName(span: Span) {
