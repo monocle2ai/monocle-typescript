@@ -37,21 +37,6 @@ function extractFinalResponseFromEvents(returnValue: any): string {
     return "";
 }
 
-function extractUsageFromEvents(returnValue: any): Record<string, number> | null {
-    if (!returnValue || returnValue.type !== "async_generator") return null;
-    const events = returnValue.events || [];
-    let prompt = 0, completion = 0, total = 0, found = false;
-    for (const event of events) {
-        const usage = event?.usageMetadata;
-        if (!usage) continue;
-        found = true;
-        prompt += usage.promptTokenCount || 0;
-        completion += usage.candidatesTokenCount || 0;
-        total += usage.totalTokenCount || 0;
-    }
-    return found ? { prompt_tokens: prompt, completion_tokens: completion, total_tokens: total } : null;
-}
-
 function extractAgentToolNames(instance: any): string[] {
     if (!Array.isArray(instance?.tools)) return [];
     return instance.tools
@@ -137,17 +122,8 @@ export const AGENT = {
                 },
             ],
         },
-        {
-            "name": "metadata",
-            "attributes": [
-                {
-                    "_comment": "aggregated token usage across model events",
-                    "accessor": function ({ response }: any) {
-                        return extractUsageFromEvents(response);
-                    },
-                },
-            ],
-        },
+        // Token usage intentionally omitted: this is an agentic span, not an
+        // inference span. Token counts live on the underlying gemini.* spans.
     ],
 };
 
@@ -205,17 +181,9 @@ export const AGENT_REQUEST = {
                 },
             ],
         },
-        {
-            "name": "metadata",
-            "attributes": [
-                {
-                    "_comment": "aggregated token usage across model events",
-                    "accessor": function ({ response }: any) {
-                        return extractUsageFromEvents(response);
-                    },
-                },
-            ],
-        },
+        // Token usage intentionally omitted: this is an agentic request span,
+        // not an inference span. Token counts live on the underlying gemini.*
+        // spans.
     ],
 };
 
