@@ -1,5 +1,5 @@
 import { MethodConfig } from "../../common/constants";
-import { AGENT, AGENT_DELEGATION, AGENT_REQUEST } from "./entities/inference";
+import { AGENT, AGENT_REQUEST } from "./entities/inference";
 import { TOOL } from "./entities/tools";
 import { ADKAgentSpanHandler, ADKRunnerSpanHandler, ADKToolSpanHandler } from "./adkProcessor";
 
@@ -10,6 +10,10 @@ const ADK_PACKAGE = "@google/adk";
 // Wrapping the base classes (`BaseAgent`, `Runner`) propagates through the
 // prototype chain to every concrete subclass (`LlmAgent`, `LoopAgent`,
 // `SequentialAgent`, `InMemoryRunner`, etc.).
+
+// We deliberately do NOT instrument AgentTool.runAsync. as delegation span is surfaced as `from_agent` / `from_agent_span_id`
+// attributes on the child agent's invocation span, rather than as a separate
+// `agentic.delegation` span.
 export const config: MethodConfig[] = [
     {
         package: ADK_PACKAGE,
@@ -42,13 +46,5 @@ export const config: MethodConfig[] = [
         spanName: "adk.tool",
         spanHandler: new ADKToolSpanHandler(),
         output_processor: [TOOL],
-    } as unknown as MethodConfig,
-    {
-        package: ADK_PACKAGE,
-        object: "AgentTool",
-        method: "runAsync",
-        spanName: "adk.agent_as_tool",
-        spanHandler: new ADKToolSpanHandler(),
-        output_processor: [AGENT_DELEGATION],
     } as unknown as MethodConfig,
 ];

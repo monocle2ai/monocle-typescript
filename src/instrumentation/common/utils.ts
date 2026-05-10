@@ -91,7 +91,7 @@ export function setScopesInternal<A extends unknown[], F extends (...args: A) =>
     return context_api.with(updated_baggage_context, fn, thisArg, ...args);
 }
 
-function updateBaggageContextWithScopes(baggage_context: Context, scopes: Record<string, string>) {
+export function updateBaggageContextWithScopes(baggage_context: Context, scopes: Record<string, string | null>) {
     if (baggage_context === null) {
         baggage_context = context_api.active();
     }
@@ -108,6 +108,16 @@ function updateBaggageContextWithScopes(baggage_context: Context, scopes: Record
     }
     const updated_baggage_context = propagation.setBaggage(baggage_context, baggage);
     return updated_baggage_context;
+}
+
+// Returns the value already set on a Monocle scope key in the given context, or
+// undefined if absent. Lets handlers avoid overwriting an inherited scope
+// (e.g. a child agent invocation must not clobber its parent's session id).
+export function getScopeFromContext(baggage_context: Context, scope_name: string): string | undefined {
+    const baggage = propagation.getBaggage(baggage_context);
+    if (!baggage) return undefined;
+    const entry = baggage.getEntry(`${MONOCLE_SCOPE_NAME_PREFIX}${scope_name}`);
+    return entry?.value;
 }
 
 export function setScopesBindInternal(

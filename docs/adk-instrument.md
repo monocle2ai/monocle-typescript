@@ -5,7 +5,7 @@ Monocle auto-instruments [`@google/adk`](https://www.npmjs.com/package/@google/a
 ## How it works
 
 1. `setupMonocle()` registers `import-in-the-middle` / `require-in-the-middle` loader hooks against the top-level `@google/adk` package.
-2. When user code first imports `@google/adk`, Monocle uses Shimmer to wrap five method prototypes on the publicly re-exported classes (`Runner`, `BaseAgent`, `FunctionTool`, `AgentTool`).
+2. When user code first imports `@google/adk`, Monocle uses Shimmer to wrap four method prototypes on the publicly re-exported classes (`Runner`, `BaseAgent`, `FunctionTool`). Delegation is captured as attributes on the child agent's invocation span (`from_agent`, `from_agent_span_id`) — matching Python monocle's behavior — rather than as a separate `agentic.delegation` span.
 3. Each wrapped call enters `wrapper.ts` → opens an OTel span → invokes the original method → on completion, an `output_processor` schema reads `{instance, args, response}` to populate `entity.N.*` attributes and `data.input` / `data.output` events.
 4. Methods that return `AsyncGenerator` (`Runner.run*`, `BaseAgent.runAsync`) are wrapped in a passthrough generator: yielded events are collected, and the span ends when iteration completes — not when the generator object is returned. Each `iterator.next()` runs inside `context.with(spanContext, …)` so that nested wrapped calls (e.g. `Runner.runEphemeral` → `Runner.runAsync` → `BaseAgent.runAsync`) inherit the correct active span and produce a single trace with proper `parent_id` chain.
 5. ADK installs **no-op spans** on the standard OTel active-span slot at every layer (`tracer.startSpan('invocation' / 'invoke_agent X' / 'call_llm')`) and binds them via `context.bind` for the inner generator. To prevent these from polluting the parent chain, Monocle stamps its active span on a private context key (`MONOCLE_ACTIVE_SPAN_KEY`). When a wrapped method starts, it consults this key first; if set, it uses that span as parent. Frameworks that don't go through the AsyncGenerator binding (langchain, openai, anthropic, …) never set the key and fall through to the standard OTel active span — zero behavior change.
@@ -20,7 +20,6 @@ Wrapping at the *base class* propagates through the prototype chain, so `LlmAgen
 | `Runner.runEphemeral` | `adk.runner.run_ephemeral` | `agentic.request` | `AGENT_REQUEST` |
 | `BaseAgent.runAsync` | `adk.agent.run` | `agentic.invocation` | `AGENT` |
 | `FunctionTool.runAsync` | `adk.tool` | `agentic.tool.invocation` | `TOOL` |
-| `AgentTool.runAsync` | `adk.agent_as_tool` | `agentic.delegation` | `AGENT_DELEGATION` |
 
 The Gemini model call is instrumented separately via the pre-existing `@google/genai` hook — no extra config needed.
 
@@ -67,7 +66,7 @@ src/instrumentation/metamodel/adk/
 ├── methods.ts                # 5 hook entries on @google/adk
 ├── adkProcessor.ts           # ADKAgentSpanHandler / ADKRunnerSpanHandler / ADKToolSpanHandler
 └── entities/
-    ├── inference.ts          # AGENT, AGENT_REQUEST, AGENT_DELEGATION schemas
+    ├── inference.ts          # AGENT, AGENT_REQUEST schemas
     └── tools.ts              # TOOL schema
 ```
 

@@ -56,7 +56,7 @@ export interface SpanHandler {
         parentSpan?: Span;
     }): void;
 
-    preTracing(element: WrapperArguments, currentContext?: any, args?: any): any;
+    preTracing(element: WrapperArguments, currentContext?: any, thisArg?: any, callArgs?: any): any;
 }
 
 export function isRootSpan(span: Span) {
@@ -164,7 +164,7 @@ export class DefaultSpanHandler implements SpanHandler {
 
     }
 
-    processSpan({ span, instance, args, returnValue, outputProcessor, exception }: {
+    processSpan({ span, instance, args, returnValue, outputProcessor, exception, parentSpan }: {
         span: Span;
         instance: any;
         args: IArguments;
@@ -200,7 +200,7 @@ export class DefaultSpanHandler implements SpanHandler {
                             if (attribute && accessor) {
                                 const attributeName = `entity.${spanIndex}.${attribute}`;
                                 try {
-                                    const accessor_args = { instance: instance, args: args, output: returnValue };
+                                    const accessor_args = { instance: instance, args: args, output: returnValue, parentSpan: parentSpan };
                                     if (typeof accessor === 'function') {
                                         const result = accessor(accessor_args);
                                         if (result) {

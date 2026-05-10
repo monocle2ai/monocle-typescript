@@ -44,9 +44,34 @@ function extractAgentToolNames(instance: any): string[] {
         .filter((n: string) => n);
 }
 
+// Reads the parent agent's name off the InvocationContext that ADK threads
+// through `BaseAgent.runAsync(parentContext)`. When the parent and current
+// agent are the same (i.e. this is a top-level invocation, not a delegation),
+// returns undefined so the attribute is omitted — matching Python monocle's
+// behavior.
+function extractFromAgent(args: any[], instance: any): string | undefined {
+    const parent = args?.[0]?.agent?.name;
+    if (!parent) return undefined;
+    const self = instance?.name;
+    if (self && parent === self) return undefined;
+    return parent;
+}
+
+function extractFromAgentSpanId(parentSpan: any): string | undefined {
+    try {
+        const ctx = parentSpan?.spanContext?.();
+        return ctx?.spanId || undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export const AGENT = {
     "type": SPAN_TYPES.AGENTIC_INVOCATION,
-    "subtype": SPAN_SUBTYPES.ROUTING,
+    // content_processing matches Python monocle's AGENT schema. ROUTING is
+    // reserved for orchestrator agents (Sequential/Loop/Parallel) — see
+    // Python's AGENT_ORCHESTRATOR.
+    "subtype": SPAN_SUBTYPES.CONTENT_PROCESSING,
     "attributes": [
         [
             {
@@ -76,6 +101,29 @@ export const AGENT = {
                 "accessor": function ({ instance }: any) {
                     const names = extractAgentToolNames(instance);
                     return names.length > 0 ? names : undefined;
+                },
+            },
+            {
+                "_comment": "name of the agent that delegated to this one (omitted on top-level invocations)",
+                "attribute": "from_agent",
+                "accessor": function ({ args, instance }: any) {
+                    return extractFromAgent(args, instance);
+                },
+            },
+            {
+                "_comment": "name of the agent receiving the delegation (this agent); paired with from_agent",
+                "attribute": "to_agent",
+                "accessor": function ({ args, instance }: any) {
+                    if (!extractFromAgent(args, instance)) return undefined;
+                    return instance?.name || undefined;
+                },
+            },
+            {
+                "_comment": "span_id of the delegating agent's invocation",
+                "attribute": "from_agent_span_id",
+                "accessor": function ({ args, instance, parentSpan }: any) {
+                    if (!extractFromAgent(args, instance)) return undefined;
+                    return extractFromAgentSpanId(parentSpan);
                 },
             },
         ],
@@ -187,61 +235,3 @@ export const AGENT_REQUEST = {
     ],
 };
 
-export const AGENT_DELEGATION = {
-    "type": SPAN_TYPES.AGENTIC_DELEGATION,
-    "subtype": SPAN_SUBTYPES.ROUTING,
-    "attributes": [
-        [
-            {
-                "_comment": "agent type",
-                "attribute": "type",
-                "accessor": function () {
-                    return ADK_AGENT_TYPE;
-                },
-            },
-            {
-                "_comment": "name of the agent invoking the delegation",
-                "attribute": "from_agent",
-                "accessor": function ({ args }: any) {
-                    return args?.[0]?.toolContext?.invocationContext?.agent?.name || "";
-                },
-            },
-            {
-                "_comment": "name of the agent being delegated to",
-                "attribute": "to_agent",
-                "accessor": function ({ instance }: any) {
-                    return instance?.agent?.name || "";
-                },
-            },
-        ],
-    ],
-    "events": [
-        {
-            "name": "data.input",
-            "attributes": [
-                {
-                    "_comment": "delegation arguments passed to the sub-agent",
-                    "attribute": "input",
-                    "accessor": function ({ args }: any) {
-                        const toolArgs = args?.[0]?.args;
-                        return toolArgs ? [JSON.stringify(toolArgs)] : [];
-                    },
-                },
-            ],
-        },
-        {
-            "name": "data.output",
-            "attributes": [
-                {
-                    "_comment": "result returned by the delegated agent",
-                    "attribute": "response",
-                    "accessor": function ({ response, exception }: any) {
-                        if (exception) return getExceptionMessage({ exception });
-                        if (response === undefined || response === null) return "";
-                        return typeof response === "string" ? response : JSON.stringify(response);
-                    },
-                },
-            ],
-        },
-    ],
-};
