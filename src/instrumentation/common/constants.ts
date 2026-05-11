@@ -129,6 +129,7 @@ export const SPAN_SUBTYPE_COMMUNICATION = "communication";
 export const SPAN_SUBTYPE_TRANSFORMATIONS = "transformations";
 export const SPAN_SUBTYPE_DOMAIN_SPECIFIC = "domain_specific";
 export const SPAN_SUBTYPE_GENERIC = "generic";
+export const SPAN_SUBTYPE_TURN = "turn";
 
 
 export const AGENT_REQUEST_SPAN_NAME = "agentic.request"
@@ -141,7 +142,8 @@ export const SPAN_SUBTYPES = {
     COMMUNICATION: SPAN_SUBTYPE_COMMUNICATION,
     TRANSFORMATIONS: SPAN_SUBTYPE_TRANSFORMATIONS,
     DOMAIN_SPECIFIC: SPAN_SUBTYPE_DOMAIN_SPECIFIC,
-    GENERIC: SPAN_SUBTYPE_GENERIC
+    GENERIC: SPAN_SUBTYPE_GENERIC,
+    TURN: SPAN_SUBTYPE_TURN
 } as const;
 
 export type SpanSubtype = typeof SPAN_SUBTYPES[keyof typeof SPAN_SUBTYPES];

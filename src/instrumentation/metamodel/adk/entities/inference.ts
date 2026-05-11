@@ -176,8 +176,8 @@ export const AGENT = {
 };
 
 export const AGENT_REQUEST = {
-    "type": SPAN_TYPES.AGENTIC_REQUEST,
-    "subtype": SPAN_SUBTYPES.PLANNING,
+    "type": "agentic.turn",
+    "subtype": SPAN_SUBTYPES.TURN,
     "attributes": [
         [
             {
