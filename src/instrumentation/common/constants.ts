@@ -97,6 +97,10 @@ export const service_name_map = {
 
 export const LANGGRAPH_AGENT_NAME_KEY = Symbol("agent.langgraph");
 export const ADK_AGENT_NAME_KEY = Symbol("agent.adk");
+// Marks "an ADK turn span is already open in this trace tree" so nested
+// Runner wrappers (e.g. Runner.runEphemeral → Runner.runAsync internally, or
+// AgentTool's inner Runner) skip creating a duplicate agentic.turn span.
+export const ADK_TURN_SPAN_ACTIVE_KEY = Symbol("monocle.adk.turn_span_active");
 export const AGENT_PREFIX_KEY = Symbol("monocle.agent.prefix")
 export const DELEGATION_NAME_PREFIX = Symbol("transfer_to_")
 export const INFERENCE_AGENT_DELEGATION = "delegation"

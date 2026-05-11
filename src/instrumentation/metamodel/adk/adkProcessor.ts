@@ -1,4 +1,5 @@
-import { ADK_AGENT_NAME_KEY, WrapperArguments } from "../../common/constants";
+import { context } from "@opentelemetry/api";
+import { ADK_AGENT_NAME_KEY, ADK_TURN_SPAN_ACTIVE_KEY, WrapperArguments } from "../../common/constants";
 import { DefaultSpanHandler } from "../../common/spanHandler";
 import { getScopeFromContext, updateBaggageContextWithScopes } from "../../common/utils";
 
@@ -30,9 +31,23 @@ export class ADKAgentSpanHandler extends DefaultSpanHandler {
 export class ADKToolSpanHandler extends DefaultSpanHandler {}
 
 export class ADKRunnerSpanHandler extends DefaultSpanHandler {
+    // Suppress duplicate agentic.turn spans. The outermost runner call (whether
+    // it's runEphemeral, a direct runAsync, or AgentTool's internal runAsync)
+    // creates the turn span and stamps ADK_TURN_SPAN_ACTIVE_KEY on the context;
+    // any nested runner wrapper sees the key and bails out before opening its
+    // own span. The original method still runs normally — only span creation
+    // is skipped.
+    skipSpan(): boolean {
+        return context.active().getValue(ADK_TURN_SPAN_ACTIVE_KEY) === true;
+    }
+
     preTracing(_: WrapperArguments, currentContext: any, thisArg?: any, callArgs?: any): any {
         const rootAgentName = thisArg?.agent?.name || thisArg?.appName || "adk_runner";
         currentContext = currentContext.setValue(ADK_AGENT_NAME_KEY, rootAgentName);
+        // Mark the turn-span slot occupied so nested runner wrappers skip
+        // their span creation. Set on the returned context so it propagates
+        // through OTel's context.with frames into the inner generator.
+        currentContext = currentContext.setValue(ADK_TURN_SPAN_ACTIVE_KEY, true);
 
         const params = callArgs?.[0] || {};
         const scopes: Record<string, string | null> = {};

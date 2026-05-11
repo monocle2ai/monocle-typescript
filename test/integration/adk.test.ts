@@ -104,23 +104,25 @@ describe('ADK instrumentation', () => {
 
         const workflow = capturedSpans.find((s) => s?.name === 'workflow');
         const ephemeral = capturedSpans.find((s) => s?.name === 'adk.runner.run_ephemeral');
-        const runAsync = capturedSpans.find((s) => s?.name === 'adk.runner.run_async');
+        const innerRunAsync = capturedSpans.find((s) => s?.name === 'adk.runner.run_async');
         const agent = capturedSpans.find((s) => s?.name === 'adk.agent.run');
 
         expect(workflow, 'workflow span').toBeDefined();
         expect(ephemeral, 'adk.runner.run_ephemeral span').toBeDefined();
-        expect(runAsync, 'adk.runner.run_async span').toBeDefined();
         expect(agent, 'adk.agent.run span').toBeDefined();
 
-        // All spans share one trace_id
+        // Only one runner span per turn — the inner runAsync that
+        // runEphemeral delegates to must be suppressed by the
+        // ADK_TURN_SPAN_ACTIVE_KEY skipSpan gate.
+        expect(innerRunAsync, 'inner adk.runner.run_async span should be deduped').toBeUndefined();
+
+        // All emitted spans share one trace_id
         const traceId = workflow.context.trace_id;
         expect(ephemeral.context.trace_id).toBe(traceId);
-        expect(runAsync.context.trace_id).toBe(traceId);
         expect(agent.context.trace_id).toBe(traceId);
 
-        // Parent chain: agent -> runAsync -> ephemeral -> workflow -> root
-        expect(agent.parent_id).toBe(runAsync.context.span_id);
-        expect(runAsync.parent_id).toBe(ephemeral.context.span_id);
+        // Parent chain: agent -> ephemeral -> workflow -> root
+        expect(agent.parent_id).toBe(ephemeral.context.span_id);
         expect(ephemeral.parent_id).toBe(workflow.context.span_id);
         expect(workflow.parent_id == null).toBe(true);
     }, 30000);
