@@ -262,10 +262,19 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                                 collectedItems.push(result.value);
                                 yield result.value;
                             }
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: { events: collectedItems, type: 'async_generator' }, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
+                            // Run schema accessors inside spanContext so they
+                            // can read context keys set in preTracing (e.g.
+                            // ADK's FROM_AGENT_KEY). The while-loop's
+                            // context.with frame has already popped by this
+                            // point.
+                            context.with(spanContext, () => {
+                                postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: { events: collectedItems, type: 'async_generator' }, element, args: args, sourcePath, exception: ex, parentSpan, currentContext });
+                            });
                         } catch (error: any) {
                             span.setStatus({ code: 2, message: error?.message || "Error occurred" });
-                            postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: { events: collectedItems, type: 'async_generator', error }, element, args: args, sourcePath, exception: error || ex, parentSpan, currentContext });
+                            context.with(spanContext, () => {
+                                postProcessSpanData({ instance: thisArg, spanHandler, span, returnValue: { events: collectedItems, type: 'async_generator', error }, element, args: args, sourcePath, exception: error || ex, parentSpan, currentContext });
+                            });
                             if (span.isRecording()) {
                                 span.end();
                             }

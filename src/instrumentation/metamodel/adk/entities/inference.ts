@@ -1,4 +1,5 @@
-import { SPAN_SUBTYPES, SPAN_TYPES } from "../../../common/constants";
+import { context } from "@opentelemetry/api";
+import { FROM_AGENT_KEY, FROM_AGENT_SPAN_ID_KEY, SPAN_SUBTYPES, SPAN_TYPES } from "../../../common/constants";
 import { getExceptionMessage } from "../../utils";
 
 const ADK_AGENT_TYPE = "agent.adk";
@@ -44,26 +45,20 @@ function extractAgentToolNames(instance: any): string[] {
         .filter((n: string) => n);
 }
 
-// Reads the parent agent's name off the InvocationContext that ADK threads
-// through `BaseAgent.runAsync(parentContext)`. When the parent and current
-// agent are the same (i.e. this is a top-level invocation, not a delegation),
-// returns undefined so the attribute is omitted — matching Python monocle's
-// behavior.
-function extractFromAgent(args: any[], instance: any): string | undefined {
-    const parent = args?.[0]?.agent?.name;
-    if (!parent) return undefined;
-    const self = instance?.name;
-    if (self && parent === self) return undefined;
-    return parent;
+// Reads delegation info that ADKAgentSpanHandler.preTracing stamped on the
+// OTel context. Returns undefined for top-level invocations (no key set),
+// so the attribute is omitted — matching Python monocle's behavior.
+//
+// We can't derive this from args because ADK rebuilds the InvocationContext
+// at every layer with `agent: this`, so args[0].agent.name === self.name in
+// both top-level AND delegation cases. The delegator's identity lives on a
+// private context key, stamped by the previous agent's wrapper.
+function readFromAgent(): string | undefined {
+    return context.active().getValue(FROM_AGENT_KEY) as string | undefined;
 }
 
-function extractFromAgentSpanId(parentSpan: any): string | undefined {
-    try {
-        const ctx = parentSpan?.spanContext?.();
-        return ctx?.spanId || undefined;
-    } catch {
-        return undefined;
-    }
+function readFromAgentSpanId(): string | undefined {
+    return context.active().getValue(FROM_AGENT_SPAN_ID_KEY) as string | undefined;
 }
 
 export const AGENT = {
@@ -106,24 +101,24 @@ export const AGENT = {
             {
                 "_comment": "name of the agent that delegated to this one (omitted on top-level invocations)",
                 "attribute": "from_agent",
-                "accessor": function ({ args, instance }: any) {
-                    return extractFromAgent(args, instance);
+                "accessor": function () {
+                    return readFromAgent();
                 },
             },
             {
                 "_comment": "name of the agent receiving the delegation (this agent); paired with from_agent",
                 "attribute": "to_agent",
-                "accessor": function ({ args, instance }: any) {
-                    if (!extractFromAgent(args, instance)) return undefined;
+                "accessor": function ({ instance }: any) {
+                    if (!readFromAgent()) return undefined;
                     return instance?.name || undefined;
                 },
             },
             {
                 "_comment": "span_id of the delegating agent's invocation",
                 "attribute": "from_agent_span_id",
-                "accessor": function ({ args, instance, parentSpan }: any) {
-                    if (!extractFromAgent(args, instance)) return undefined;
-                    return extractFromAgentSpanId(parentSpan);
+                "accessor": function () {
+                    if (!readFromAgent()) return undefined;
+                    return readFromAgentSpanId();
                 },
             },
         ],

@@ -126,4 +126,27 @@ describe('ADK instrumentation', () => {
         expect(ephemeral.parent_id).toBe(workflow.context.span_id);
         expect(workflow.parent_id == null).toBe(true);
     }, 30000);
+
+    it('delegated sub-agent span carries from_agent / to_agent / from_agent_span_id', async () => {
+        const sample = require('../examples/adkDelegationSample.js');
+        await sample.main();
+        await new Promise((r) => setTimeout(r, 6000));
+
+        const agentSpans = capturedSpans.filter((s) => s?.name === 'adk.agent.run');
+        const supervisor = agentSpans.find((s) => s.attributes['entity.1.name'] === 'adk_supervisor_agent');
+        const sub = agentSpans.find((s) => s.attributes['entity.1.name'] === 'adk_sub_agent');
+
+        expect(supervisor, 'supervisor span').toBeDefined();
+        expect(sub, 'sub-agent span').toBeDefined();
+
+        // Top-level supervisor → no delegation attrs.
+        expect(supervisor.attributes['entity.1.from_agent']).toBeUndefined();
+        expect(supervisor.attributes['entity.1.to_agent']).toBeUndefined();
+        expect(supervisor.attributes['entity.1.from_agent_span_id']).toBeUndefined();
+
+        // Delegated sub-agent → carries the trio.
+        expect(sub.attributes['entity.1.from_agent']).toBe('adk_supervisor_agent');
+        expect(sub.attributes['entity.1.to_agent']).toBe('adk_sub_agent');
+        expect(sub.attributes['entity.1.from_agent_span_id']).toBe(supervisor.context.span_id);
+    }, 30000);
 });

@@ -1,5 +1,12 @@
 import { context } from "@opentelemetry/api";
-import { ADK_AGENT_NAME_KEY, ADK_TURN_SPAN_ACTIVE_KEY, WrapperArguments } from "../../common/constants";
+import {
+    ADK_AGENT_NAME_KEY,
+    ADK_TURN_SPAN_ACTIVE_KEY,
+    FROM_AGENT_KEY,
+    FROM_AGENT_SPAN_ID_KEY,
+    MONOCLE_ACTIVE_SPAN_KEY,
+    WrapperArguments,
+} from "../../common/constants";
 import { DefaultSpanHandler } from "../../common/spanHandler";
 import { getScopeFromContext, updateBaggageContextWithScopes } from "../../common/utils";
 
@@ -17,7 +24,23 @@ function getAgentName(thisArg: any): string {
 
 export class ADKAgentSpanHandler extends DefaultSpanHandler {
     preTracing(_: WrapperArguments, currentContext: any, thisArg?: any): any {
-        currentContext = currentContext.setValue(ADK_AGENT_NAME_KEY, getAgentName(thisArg));
+        const self = getAgentName(thisArg);
+        // The previous agent on the context is the *delegator*. If it differs
+        // from us, we're a delegated sub-agent; stamp the from_agent /
+        // from_agent_span_id keys so the AGENT schema accessors can emit
+        // them as entity attributes. Read BEFORE we overwrite the active
+        // agent name with our own below.
+        const prevAgent = currentContext.getValue(ADK_AGENT_NAME_KEY) as string | undefined;
+        if (prevAgent && prevAgent !== self) {
+            currentContext = currentContext.setValue(FROM_AGENT_KEY, prevAgent);
+            const prevSpan: any = currentContext.getValue(MONOCLE_ACTIVE_SPAN_KEY);
+            const prevSpanId = prevSpan?.spanContext?.()?.spanId;
+            if (prevSpanId) {
+                currentContext = currentContext.setValue(FROM_AGENT_SPAN_ID_KEY, prevSpanId);
+            }
+        }
+        // Claim ourselves as the active agent for any descendants.
+        currentContext = currentContext.setValue(ADK_AGENT_NAME_KEY, self);
         // Each agent invocation gets its own invocation id. Always overwrite
         // (a parent's invocation scope is for the parent; this child agent
         // run is a separate invocation).
@@ -41,9 +64,13 @@ export class ADKRunnerSpanHandler extends DefaultSpanHandler {
         return context.active().getValue(ADK_TURN_SPAN_ACTIVE_KEY) === true;
     }
 
-    preTracing(_: WrapperArguments, currentContext: any, thisArg?: any, callArgs?: any): any {
-        const rootAgentName = thisArg?.agent?.name || thisArg?.appName || "adk_runner";
-        currentContext = currentContext.setValue(ADK_AGENT_NAME_KEY, rootAgentName);
+    preTracing(_: WrapperArguments, currentContext: any, _thisArg?: any, callArgs?: any): any {
+        // ADK_AGENT_NAME_KEY is intentionally NOT set here. That key tracks
+        // the most-recently-active *agent invocation*, owned exclusively by
+        // ADKAgentSpanHandler. If the runner also wrote to it, the first
+        // agent.run wrapper underneath would mistake the runner's stamp for
+        // a delegator and emit a spurious from_agent on the root agent.
+        //
         // Mark the turn-span slot occupied so nested runner wrappers skip
         // their span creation. Set on the returned context so it propagates
         // through OTel's context.with frames into the inner generator.
