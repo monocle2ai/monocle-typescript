@@ -1,5 +1,5 @@
 import { context, Tracer, trace } from "@opentelemetry/api";
-import { getSourcePath, setScopesInternal } from "./utils";
+import { getSourcePath, isIsolateSpansEnabled, setScopesInternal } from "./utils";
 import { attachWorkflowType, DefaultSpanHandler, isRootSpan, SpanHandler } from "./spanHandler";
 import { ADD_NEW_WORKFLOW_SYMBOL, MethodConfig, MONOCLE_ACTIVE_SPAN_KEY, WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
@@ -162,7 +162,12 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
     // private key keeps the parent chain intact across those layers. When the
     // key is absent (every existing framework), this reduces to the previous
     // behavior (use whatever's active).
-    const monocleParent = (currentContext && typeof currentContext.getValue === 'function')
+    //
+    // Gated by MONOCLE_ISOLATE_SPANS (default "true"). When the user opts out
+    // (e.g. for debugging the interleaved Monocle+ADK tree), we skip the
+    // private-key lookup and let OTel's standard active-span chain through.
+    const isolateSpans = isIsolateSpansEnabled();
+    const monocleParent = (isolateSpans && currentContext && typeof currentContext.getValue === 'function')
         ? currentContext.getValue(MONOCLE_ACTIVE_SPAN_KEY) as Span | undefined
         : undefined;
     const startContext = monocleParent
@@ -236,9 +241,13 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
                     //      calls still resolve to the correct parent.
                     const originalIterable = returnValue;
                     const collectedItems: any[] = [];
-                    const spanContext = trace
-                        .setSpan(context.active(), span)
-                        .setValue(MONOCLE_ACTIVE_SPAN_KEY, span);
+                    // Always set the OTel active-span slot so context
+                    // propagates correctly across .next() boundaries. Only
+                    // stamp our private key when isolation is on (default).
+                    const baseSpanContext = trace.setSpan(context.active(), span);
+                    const spanContext = isolateSpans
+                        ? baseSpanContext.setValue(MONOCLE_ACTIVE_SPAN_KEY, span)
+                        : baseSpanContext;
                     returnValue = (async function* monocleAsyncIteratorWrapper() {
                         const iterator = originalIterable[Symbol.asyncIterator]
                             ? originalIterable[Symbol.asyncIterator]()

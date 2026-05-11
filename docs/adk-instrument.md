@@ -8,7 +8,8 @@ Monocle auto-instruments [`@google/adk`](https://www.npmjs.com/package/@google/a
 2. When user code first imports `@google/adk`, Monocle uses Shimmer to wrap four method prototypes on the publicly re-exported classes (`Runner`, `BaseAgent`, `FunctionTool`). Delegation is captured as attributes on the child agent's invocation span (`from_agent`, `from_agent_span_id`) — matching Python monocle's behavior — rather than as a separate `agentic.delegation` span.
 3. Each wrapped call enters `wrapper.ts` → opens an OTel span → invokes the original method → on completion, an `output_processor` schema reads `{instance, args, response}` to populate `entity.N.*` attributes and `data.input` / `data.output` events.
 4. Methods that return `AsyncGenerator` (`Runner.run*`, `BaseAgent.runAsync`) are wrapped in a passthrough generator: yielded events are collected, and the span ends when iteration completes — not when the generator object is returned. Each `iterator.next()` runs inside `context.with(spanContext, …)` so that nested wrapped calls (e.g. `Runner.runEphemeral` → `Runner.runAsync` → `BaseAgent.runAsync`) inherit the correct active span and produce a single trace with proper `parent_id` chain.
-5. ADK installs **no-op spans** on the standard OTel active-span slot at every layer (`tracer.startSpan('invocation' / 'invoke_agent X' / 'call_llm')`) and binds them via `context.bind` for the inner generator. To prevent these from polluting the parent chain, Monocle stamps its active span on a private context key (`MONOCLE_ACTIVE_SPAN_KEY`). When a wrapped method starts, it consults this key first; if set, it uses that span as parent. Frameworks that don't go through the AsyncGenerator binding (langchain, openai, anthropic, …) never set the key and fall through to the standard OTel active span — zero behavior change.
+5. ADK installs its own spans on the standard OTel active-span slot at every layer (`tracer.startSpan('invocation' / 'invoke_agent X' / 'call_llm')`) and binds them via `context.bind` for the inner generator. To prevent these from polluting Monocle's parent chain, Monocle stamps its active span on a private context key (`MONOCLE_ACTIVE_SPAN_KEY`). When a wrapped method starts, it consults this key first; if set, it uses that span as parent. Frameworks that don't go through the AsyncGenerator binding (langchain, openai, anthropic, …) never set the key and fall through to the standard OTel active span — zero behavior change.
+6. `setupMonocle()` also calls `trace.setGlobalTracerProvider(...)` so ADK's `trace.getTracer('gcp.vertex.agent')` resolves to Monocle's real tracer (instead of OTel's no-op fallback). The call is defensive — if another OTel consumer has already registered a global provider, Monocle leaves it alone. With the global wired, ADK's internal spans are real and would otherwise flow into your trace output; the `PatchedBatchSpanProcessor` drops anything missing the `monocle_apptrace.version` attribute before export so you only see Monocle-fingerprinted spans by default. Both behaviors are env-var-toggleable — see "Operating modes" below.
 
 Wrapping at the *base class* propagates through the prototype chain, so `LlmAgent` / `LoopAgent` / `SequentialAgent` / `InMemoryRunner` etc. are all covered by one hook each.
 
@@ -136,6 +137,39 @@ Configure the exporter via `MONOCLE_EXPORTER` (`console` | `file` | `okahu` | `s
 export MONOCLE_EXPORTER=console
 node dist/index.js "Book a flight from SFO to BOM"
 ```
+
+## Operating modes & env vars
+
+Two env vars control how Monocle handles ADK's internal spans and parent-chain construction. Both can live in your `.env` file (read lazily at span-creation / span-end time, so dotenv loading order doesn't matter for these).
+
+| Env var | Default | Effect |
+|---|---|---|
+| `MONOCLE_ISOLATE_SPANS` | `true` | When `true`, Monocle wrappers pick parents from a private context key, keeping the parent chain pointing exclusively at Monocle spans regardless of what ADK installs on the OTel active-span slot. Set to `false` to use OTel's natural active-span chain (Monocle spans will then parent under whatever ADK most recently set as active). |
+| `MONOCLE_INCLUDE_ALL_SPANS` | `false` | When `false`, the span processor drops spans missing the `monocle_apptrace.version` attribute — i.e. anything that wasn't created by Monocle's wrappers (ADK's `invocation` / `invoke_agent X` / `call_llm` spans, or any other framework's internal OTel spans). Set to `true` to let everything through to your exporters. |
+
+### Three useful preset combos
+
+**Default — clean Monocle-only traces** (what you want 95% of the time):
+```env
+MONOCLE_ISOLATE_SPANS=true
+MONOCLE_INCLUDE_ALL_SPANS=false
+```
+
+**Debug ADK — see Monocle traces *plus* ADK's internal spans alongside:**
+```env
+MONOCLE_ISOLATE_SPANS=true
+MONOCLE_INCLUDE_ALL_SPANS=true
+```
+Monocle's parent chain stays tight (one tree of Monocle spans). ADK's spans appear as a parallel sub-tree under the same `trace_id`.
+
+**Deep debug — fully interleaved Monocle ↔ ADK chain:**
+```env
+MONOCLE_ISOLATE_SPANS=false
+MONOCLE_INCLUDE_ALL_SPANS=true
+```
+Monocle spans parent under whatever's currently on the OTel active-span slot — meaning Monocle spans interleave with ADK spans as one combined tree. Useful for "why is ADK calling X" investigations.
+
+**Avoid this combo** — `MONOCLE_ISOLATE_SPANS=false` + `MONOCLE_INCLUDE_ALL_SPANS=false`. Monocle spans would parent under ADK spans that the filter then drops, leaving dangling `parent_id` references in your output.
 
 ## Limitations / future work
 

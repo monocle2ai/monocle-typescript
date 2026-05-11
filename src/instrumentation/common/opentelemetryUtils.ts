@@ -1,12 +1,30 @@
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { consoleLog } from '../../common/logging';
 import { waitUntil } from "@vercel/functions";
-import { isVercelEnvironment } from "./utils";
-import { Span as APISpan } from '@opentelemetry/api';
+import { isVercelEnvironment, shouldIncludeNonMonocleSpans } from "./utils";
+import { Context, Span as APISpan } from '@opentelemetry/api';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import { MONOCLE_SDK_VERSION } from "./constants";
 
 // @ts-ignore: private field access required
 class PatchedBatchSpanProcessor extends BatchSpanProcessor {
+    // Mirrors Python monocle's skip_export: drop spans that weren't stamped
+    // by a Monocle wrapper (e.g. ADK's internal `invocation`, `invoke_agent X`,
+    // `call_llm` spans) so they don't clutter the trace output. Bypass with
+    // MONOCLE_INCLUDE_ALL_SPANS=true when full visibility is needed.
+    onStart(span: APISpan, parentContext: Context): void {
+        super.onStart(span as any, parentContext);
+    }
+
+    onEnd(span: ReadableSpan): void {
+        const isMonocleSpan = !!span.attributes?.[MONOCLE_SDK_VERSION];
+        if (!isMonocleSpan && !shouldIncludeNonMonocleSpans()) {
+            // Silently drop; do not queue this span for export.
+            return;
+        }
+        super.onEnd(span);
+    }
+
     // @ts-ignore: private field access required
     protected _maybeStartTimer1() {
         // @ts-ignore: private field access required

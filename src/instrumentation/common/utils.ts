@@ -256,6 +256,23 @@ export function isVercelEnvironment(): boolean {
 export function isAwsLambdaEnvironment(): boolean {
     return !!process.env.AWS_LAMBDA_RUNTIME_API && !isVercelEnvironment()
 }
+
+// Mirrors Python monocle's MONOCLE_ISOLATE_SPANS flag (default "true"). When
+// isolated, Monocle wrappers pick parents from MONOCLE_ACTIVE_SPAN_KEY instead
+// of the OTel active-span slot — keeping the parent chain pointing exclusively
+// at Monocle spans even when other tracing-aware libraries (e.g. ADK) scribble
+// on the standard slot. Set to "false" to merge into the OTel-natural chain.
+export function isIsolateSpansEnabled(): boolean {
+    return (process.env.MONOCLE_ISOLATE_SPANS ?? "true").toLowerCase() !== "false";
+}
+
+// Default-off opt-in: when "true", non-Monocle spans (e.g. ADK's internal
+// `invocation`, `invoke_agent X`, `call_llm` spans) are also exported. By
+// default the exporter pipeline drops anything missing the Monocle SDK
+// version attribute so traces stay clean.
+export function shouldIncludeNonMonocleSpans(): boolean {
+    return (process.env.MONOCLE_INCLUDE_ALL_SPANS ?? "false").toLowerCase() === "true";
+}
 export function extractInferenceEndpoint(instance: any): string | undefined {
     try {
         if (instance?.client) {
