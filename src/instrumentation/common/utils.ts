@@ -8,52 +8,55 @@ import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
 import { Span } from './opentelemetryUtils';
 
 
-const NODE_PACKAGES = [
-    'anthropic-ai',
-    'aws-sdk',
-    'langchain',
-    'llamaindex',
-    'openai',
-    'opensearch-project',
-    'microsoft',
-    'ai'
+// Frames in the call stack that belong to Monocle's own wrappers. When we
+// resolve the "source" of a span we want the *caller of the wrapped method*,
+// not our own machinery sitting between it and the original function. Listed
+// by function name (we don't minify the dist build, so names are stable). If a
+// future internal helper appears between patchMainMethodName and the real
+// caller, add it here.
+const MONOCLE_INTERNAL_FRAME_NAMES = [
+    'getSourcePath',
+    'patchMainMethodName',
+    'mainMethodName',
+    'processSpanWithTracing',
+    'handleSpanProcess',
+    'spanCallback',
+    'startSpan',
+    'monocleAsyncIteratorWrapper',
+    'monocleWorkflowIteratorWrapper',
+    'processMultipleElementsWithTracing',
+    'processElementsRecursively',
 ];
 
+// Returns "<file>:<line>" of the caller that invoked the wrapped method.
+// Mirrors Python monocle's `traceback.extract_stack()[-2]` semantics — the
+// span.source attribute identifies *who called the wrapped method*, not the
+// user's outer invocation point. Per-span values therefore differ across the
+// trace and tell you which piece of the SDK (or your app) dispatched each
+// span. Falls back to 'unknown_source' if no usable frame is found.
 export function getSourcePath(): string {
     try {
         const stack = new Error().stack;
-        const stackLines = stack?.split('\n') || [];
-        
-        // Find the first non-internal call in the stack
-        let callerLine = stackLines.reverse().find(line => {
-            return line.includes('at') && 
-                   !line.includes('node:internal') && 
-                   !line.includes('node_modules') &&
-                   !line.includes('getPatchedMain') &&
-                   !line.includes('getSourcePath') &&
-                   (line.includes('/test/') || line.includes('/src/'));
-        });
-
-        // If no application code found, look for important library functions
-        if (!callerLine) {
-            callerLine = stackLines.find(line => {                
-                // Check for important packages
-                const hasImportantPackage = NODE_PACKAGES.some(pkg => 
-                    line.includes(`node_modules/${pkg}`) ||
-                    line.includes(`node_modules/@${pkg}/`)
-                );
-
-                return line.includes('at') && hasImportantPackage;
-            });
-        }
-
-        if (callerLine) {
-            // Extract file path from the stack trace
-            const match = callerLine.match(/\((.+?):(\d+):\d+\)/) || 
-                         callerLine.match(/at\s+(.+?):(\d+):\d+/);
-            if (match && match[1] && match[2]) {
-                const [_, fullPath, lineNumber] = match;
-                return `${fullPath}:${lineNumber}` || 'unknown_source';
+        const lines = stack?.split('\n') ?? [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.includes(' at ')) continue;
+            // Skip Node-internal frames.
+            if (line.includes('node:internal')) continue;
+            // Skip Monocle's own wrapper/iterator frames.
+            const isInternal = MONOCLE_INTERNAL_FRAME_NAMES.some((name) =>
+                line.includes(` ${name} `) || line.includes(` ${name}(`) || line.includes(`.${name} `) || line.includes(`.${name}(`)
+            );
+            if (isInternal) continue;
+            // Path-based escape hatch for our compiled internals — narrower
+            // than "anywhere inside monocle-typescript" so test fixtures in
+            // this repo (which are legitimate callers in our integration
+            // tests) aren't mistakenly skipped.
+            if (line.includes('/monocle2ai/instrumentation/') ||
+                line.includes('/monocle-typescript/dist/instrumentation/')) continue;
+            const m = line.match(/\((.+?):(\d+):\d+\)/) || line.match(/at\s+(.+?):(\d+):\d+/);
+            if (m && m[1] && m[2]) {
+                return `${m[1]}:${m[2]}`;
             }
         }
         return 'unknown_source';

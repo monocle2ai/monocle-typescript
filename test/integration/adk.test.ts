@@ -127,6 +127,26 @@ describe('ADK instrumentation', () => {
         expect(workflow.parent_id == null).toBe(true);
     }, 30000);
 
+    it('span.source resolves to the immediate caller per-span (never unknown_source)', async () => {
+        const sample = require('../examples/adkRealAgentSample.js');
+        await sample.main();
+        await new Promise((r) => setTimeout(r, 6000));
+
+        const monocleSpans = capturedSpans.filter((s) => s?.attributes?.['monocle_apptrace.version']);
+        expect(monocleSpans.length).toBeGreaterThan(0);
+
+        for (const span of monocleSpans) {
+            const source = span.attributes['span.source'];
+            expect(source, `${span.name} missing span.source`).toBeTruthy();
+            expect(source, `${span.name} should not be unknown_source`).not.toBe('unknown_source');
+            // Must not point to Monocle's own internals — that would mean our
+            // skip filter failed and a wrapper frame leaked through as the
+            // "caller". Test fixture paths under /test/ are legit callers.
+            expect(source.includes('/monocle-typescript/dist/instrumentation/')).toBe(false);
+            expect(source.includes('/node_modules/monocle2ai/instrumentation/')).toBe(false);
+        }
+    }, 30000);
+
     it('delegated sub-agent span carries from_agent / to_agent / from_agent_span_id', async () => {
         const sample = require('../examples/adkDelegationSample.js');
         await sample.main();
