@@ -294,6 +294,98 @@ describe('DefaultSpanHandler', () => {
       expect(mockSpan.addEvent).toHaveBeenCalledWith('test-event', { test_key: 'test_value' });
     });
 
+    it('should set span.subtype from a static string value', () => {
+      const outputProcessor = [{
+        type: 'inference',
+        subtype: 'tool_call',
+        attributes: [],
+      }];
+
+      spanHandler.processSpan({
+        span: mockSpan,
+        instance: {},
+        args: {} as IArguments,
+        returnValue: {},
+        outputProcessor,
+        wrappedPackage: '',
+      });
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.subtype', 'tool_call');
+    });
+
+    it('should evaluate a callable subtype and set its return value', () => {
+      const subtypeFn = vi.fn().mockReturnValue('turn_end');
+      const outputProcessor = [{
+        type: 'inference',
+        subtype: subtypeFn,
+        attributes: [],
+      }];
+
+      const returnValue = { candidates: [{ finishReason: 'STOP' }] };
+      spanHandler.processSpan({
+        span: mockSpan,
+        instance: { name: 'test-instance' },
+        args: {} as IArguments,
+        returnValue,
+        outputProcessor,
+        wrappedPackage: '',
+      });
+
+      expect(subtypeFn).toHaveBeenCalledTimes(1);
+      const callArg = subtypeFn.mock.calls[0][0];
+      expect(callArg.instance).toEqual({ name: 'test-instance' });
+      expect(callArg.response).toBe(returnValue);
+      expect(callArg.output).toBe(returnValue);
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith('span.subtype', 'turn_end');
+    });
+
+    it('should NOT set span.subtype when the callable returns undefined', () => {
+      const subtypeFn = vi.fn().mockReturnValue(undefined);
+      const outputProcessor = [{
+        type: 'inference',
+        subtype: subtypeFn,
+        attributes: [],
+      }];
+
+      spanHandler.processSpan({
+        span: mockSpan,
+        instance: {},
+        args: {} as IArguments,
+        returnValue: {},
+        outputProcessor,
+        wrappedPackage: '',
+      });
+
+      expect(subtypeFn).toHaveBeenCalledTimes(1);
+      const subtypeCall = (mockSpan.setAttribute as ReturnType<typeof vi.fn>).mock.calls
+        .find((c: any[]) => c[0] === 'span.subtype');
+      expect(subtypeCall).toBeUndefined();
+    });
+
+    it('should NOT crash when the callable subtype throws — span just lacks the attribute', () => {
+      const subtypeFn = vi.fn(() => { throw new Error('boom'); });
+      const outputProcessor = [{
+        type: 'inference',
+        subtype: subtypeFn,
+        attributes: [],
+      }];
+
+      const consoleErr = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(() => spanHandler.processSpan({
+        span: mockSpan,
+        instance: {},
+        args: {} as IArguments,
+        returnValue: {},
+        outputProcessor,
+        wrappedPackage: '',
+      })).not.toThrow();
+
+      const subtypeCall = (mockSpan.setAttribute as ReturnType<typeof vi.fn>).mock.calls
+        .find((c: any[]) => c[0] === 'span.subtype');
+      expect(subtypeCall).toBeUndefined();
+      consoleErr.mockRestore();
+    });
+
     it('should process attributes when they are a nested array structure', () => {
       const mockAccessor = vi.fn().mockReturnValue('test-value');
       const outputProcessor = [{

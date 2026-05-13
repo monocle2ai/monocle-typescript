@@ -10,7 +10,9 @@ export enum FinishType {
     CONTENT_FILTER = "content_filter",
     ERROR = "error",
     REFUSAL = "refusal",
-    RATE_LIMITED = "rate_limited"
+    RATE_LIMITED = "rate_limited",
+    TOOL_CALL = "tool_call",
+    TOOL_CALL_ERROR = "tool_call_error"
 }
 
 // OpenAI finish reason mapping
@@ -35,6 +37,8 @@ export const ANTHROPIC_FINISH_REASON_MAPPING: Record<string, string> = {
 // Gemini finish reason mapping
 export const GEMINI_FINISH_REASON_MAPPING: Record<string, string | null> = {
     "STOP": FinishType.SUCCESS,
+    "FUNCTION_CALL": FinishType.TOOL_CALL,
+    "MALFORMED_FUNCTION_CALL": FinishType.TOOL_CALL_ERROR,
     "MAX_TOKENS": FinishType.TRUNCATED,
     "SAFETY": FinishType.CONTENT_FILTER,
     "RECITATION": FinishType.CONTENT_FILTER,

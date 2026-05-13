@@ -1,4 +1,5 @@
 import { mapGeminiFinishReasonToFinishType } from "../../finishType";
+import { INFERENCE_TOOL_CALL, INFERENCE_TURN_END } from "../../../common/constants";
 import {
   extractGeminiEndpoint,
   getStatus,
@@ -9,9 +10,20 @@ import {
 
 function extractFinishReason(response: any): string | null {
   try {
-    // Handle traditional chat.completions.create() format
-    if (response && response.candidates && response.candidates[0] && response.candidates[0].finishReason) {
-      return response.candidates[0].finishReason;
+    if (response && response.candidates && response.candidates[0]) {
+      const candidate = response.candidates[0];
+      // Tool-call detection takes priority: Gemini sets finishReason to
+      // "STOP" even when the model produced a functionCall part, so we
+      // synthesize "FUNCTION_CALL" when any part of the response is a
+      // function-call. That lets the finishReason → finishType mapping
+      // classify it correctly as a tool_call.
+      const parts = candidate.content?.parts;
+      if (Array.isArray(parts) && parts.some((p: any) => p?.functionCall)) {
+        return "FUNCTION_CALL";
+      }
+      if (candidate.finishReason) {
+        return candidate.finishReason;
+      }
     }
   } catch (e) {
     console.warn("Warning: Error occurred in extractFinishReason:", e);
@@ -159,8 +171,26 @@ function extractInferenceOutput(result) {
   }
 }
 
+// Classify an inference call as a tool-call dispatch or a normal end-of-turn
+// response, based on Gemini's finish reason. Used as a dynamic span.subtype
+// so traces can distinguish "the model wanted to call a tool" from "the
+// model produced its final answer for this turn" at a glance.
+function classifyInferenceSubtype(response: any): string {
+  try {
+    const finishReason = extractFinishReason(response);
+    const finishType = mapGeminiFinishReasonToFinishType(finishReason);
+    if (finishType === "tool_call") return INFERENCE_TOOL_CALL;
+  } catch (e) {
+    console.warn("Warning: Error occurred in classifyInferenceSubtype:", e);
+  }
+  return INFERENCE_TURN_END;
+}
+
 export const config = {
   type: "inference",
+  subtype: function ({ response, output }: any) {
+    return classifyInferenceSubtype(response ?? output);
+  },
   attributes: [
     [
       {

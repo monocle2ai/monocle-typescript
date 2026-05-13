@@ -94,6 +94,7 @@ export const DELEGATION_NAME_PREFIX = Symbol("transfer_to_")
 export const INFERENCE_AGENT_DELEGATION = "delegation"
 export const INFERENCE_TOOL_CALL = "tool_call"
 export const INFERENCE_COMMUNICATION = "turn"
+export const INFERENCE_TURN_END = "turn_end"
 
 export const SPAN_TYPES = {
     GENERIC: "generic",
