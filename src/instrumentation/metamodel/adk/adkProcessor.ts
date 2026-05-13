@@ -10,7 +10,6 @@ import {
 import { DefaultSpanHandler } from "../../common/spanHandler";
 import { getScopeFromContext, updateBaggageContextWithScopes } from "../../common/utils";
 
-// Scope names match Python monocle's contract so traces stay interoperable.
 //   agentic.session    — one user session (multiple turns share this)
 //   agentic.turn       — one user message → one runner.runAsync call
 //   agentic.invocation — one BaseAgent.runAsync activation
