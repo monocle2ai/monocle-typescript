@@ -8,7 +8,7 @@ import { MONOCLE_SDK_VERSION } from "./constants";
 
 // @ts-ignore: private field access required
 class PatchedBatchSpanProcessor extends BatchSpanProcessor {
-    // Mirrors Python monocle's skip_export: drop spans that weren't stamped
+    // drop spans that weren't stamped
     // by a Monocle wrapper (e.g. ADK's internal `invocation`, `invoke_agent X`,
     // `call_llm` spans) so they don't clutter the trace output. Bypass with
     // MONOCLE_INCLUDE_ALL_SPANS=true when full visibility is needed.

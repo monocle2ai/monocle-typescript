@@ -348,16 +348,7 @@ const setupMonocle = (
 
         monocleInstrumentation.setTracerProvider(tracerProvider);
 
-        // Attempt to register Monocle's tracer provider as the OTel global so
-        // other tracing-aware libraries (e.g. @google/adk, which calls
-        // `trace.getTracer('gcp.vertex.agent')` internally) resolve to a real
-        // recording tracer instead of OTel's no-op fallback. Mirrors Python
-        // monocle's behavior in apptrace/.../instrumentor.py:281.
-        //
-        // Defensive: setGlobalTracerProvider returns false when another OTel
-        // consumer (Sentry, Honeycomb, etc.) has already claimed the global
-        // slot. We respect that and skip registration in that case — don't
-        // stomp on the user's existing OTel setup.
+        // Attempt to register Monocle's tracer provider as the OTel global provider. If another provider is already registered, log a warning and skip registration to avoid conflicts.
         const registered = trace.setGlobalTracerProvider(tracerProvider);
         if (registered) {
             consoleLog('Monocle registered as the global tracer provider');

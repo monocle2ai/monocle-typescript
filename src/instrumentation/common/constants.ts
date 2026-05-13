@@ -1,11 +1,7 @@
 import { Tracer } from "@opentelemetry/api";
 import { SpanHandler } from "./spanHandler";
 
-// Tracks the currently-active Monocle span on a context key that's private to
-// us. External libraries (e.g. ADK) install their own no-op spans on the
-// standard OTel active-span slot via `trace.setSpan` + `context.bind`, which
-// would otherwise pollute the parent chain. Our wrappers consult this key to
-// pick the correct parent regardless of what's on the OTel active-span slot.
+// Tracks the currently-active Monocle span on a context key, we don't rely on the OTel context, as internal no-op spans overwrite them.
 export const MONOCLE_ACTIVE_SPAN_KEY = Symbol("monocle.active_span");
 
 const AWS_CONSTANTS = {

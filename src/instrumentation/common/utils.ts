@@ -8,11 +8,8 @@ import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
 import { Span } from './opentelemetryUtils';
 
 
-// Frames in the call stack that belong to Monocle's own wrappers. When we
-// resolve the "source" of a span we want the *caller of the wrapped method*,
-// not our own machinery sitting between it and the original function. Listed
-// by function name (we don't minify the dist build, so names are stable). If a
-// future internal helper appears between patchMainMethodName and the real
+// skip internal frames of monocle while building the span_source.
+// If a future internal helper appears between patchMainMethodName and the real
 // caller, add it here.
 const MONOCLE_INTERNAL_FRAME_NAMES = [
     'getSourcePath',
@@ -29,11 +26,7 @@ const MONOCLE_INTERNAL_FRAME_NAMES = [
 ];
 
 // Returns "<file>:<line>" of the caller that invoked the wrapped method.
-// Mirrors Python monocle's `traceback.extract_stack()[-2]` semantics — the
-// span.source attribute identifies *who called the wrapped method*, not the
-// user's outer invocation point. Per-span values therefore differ across the
-// trace and tell you which piece of the SDK (or your app) dispatched each
-// span. Falls back to 'unknown_source' if no usable frame is found.
+// Falls back to 'unknown_source' if no usable frame is found.
 export function getSourcePath(): string {
     try {
         const stack = new Error().stack;
@@ -260,8 +253,7 @@ export function isAwsLambdaEnvironment(): boolean {
     return !!process.env.AWS_LAMBDA_RUNTIME_API && !isVercelEnvironment()
 }
 
-// Mirrors Python monocle's MONOCLE_ISOLATE_SPANS flag (default "true"). When
-// isolated, Monocle wrappers pick parents from MONOCLE_ACTIVE_SPAN_KEY instead
+// Monocle wrappers pick parents from MONOCLE_ACTIVE_SPAN_KEY instead
 // of the OTel active-span slot — keeping the parent chain pointing exclusively
 // at Monocle spans even when other tracing-aware libraries (e.g. ADK) scribble
 // on the standard slot. Set to "false" to merge into the OTel-natural chain.
