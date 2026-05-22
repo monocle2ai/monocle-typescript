@@ -2,6 +2,7 @@
  * This module provides common finish reason mappings and finish type enums
  * for different AI providers (OpenAI, Anthropic, Gemini, LangChain, LlamaIndex, Azure AI Inference).
  */
+import { GEMINI_FUNCTION_CALL_FINISH_REASON } from "../common/constants";
 
 // Enum for standardized finish types across all AI providers
 export enum FinishType {
@@ -37,7 +38,7 @@ export const ANTHROPIC_FINISH_REASON_MAPPING: Record<string, string> = {
 // Gemini finish reason mapping
 export const GEMINI_FINISH_REASON_MAPPING: Record<string, string | null> = {
     "STOP": FinishType.SUCCESS,
-    "FUNCTION_CALL": FinishType.TOOL_CALL,
+    [GEMINI_FUNCTION_CALL_FINISH_REASON]: FinishType.TOOL_CALL,
     "MALFORMED_FUNCTION_CALL": FinishType.TOOL_CALL_ERROR,
     "MAX_TOKENS": FinishType.TRUNCATED,
     "SAFETY": FinishType.CONTENT_FILTER,

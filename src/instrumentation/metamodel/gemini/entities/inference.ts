@@ -1,5 +1,9 @@
 import { mapGeminiFinishReasonToFinishType } from "../../finishType";
-import { INFERENCE_TOOL_CALL, INFERENCE_TURN_END } from "../../../common/constants";
+import {
+  GEMINI_FUNCTION_CALL_FINISH_REASON,
+  INFERENCE_TOOL_CALL,
+  INFERENCE_TURN_END,
+} from "../../../common/constants";
 import {
   extractGeminiEndpoint,
   getStatus,
@@ -19,7 +23,7 @@ function extractFinishReason(response: any): string | null {
       // classify it correctly as a tool_call.
       const parts = candidate.content?.parts;
       if (Array.isArray(parts) && parts.some((p: any) => p?.functionCall)) {
-        return "FUNCTION_CALL";
+        return GEMINI_FUNCTION_CALL_FINISH_REASON;
       }
       if (candidate.finishReason) {
         return candidate.finishReason;
