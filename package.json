@@ -62,6 +62,7 @@
     "@aws-sdk/client-sagemaker-runtime": "^3.782.0",
     "@aws-sdk/credential-providers": "^3.782.0",
     "@eslint/js": "^9.24.0",
+    "@google/adk": "^1.1.0",
     "@google/genai": "^1.7.0",
     "@langchain/anthropic": "^0.3.19",
     "@langchain/aws": "^0.1.9",
