@@ -1,6 +1,9 @@
 import { Tracer } from "@opentelemetry/api";
 import { SpanHandler } from "./spanHandler";
 
+// Tracks the currently-active Monocle span on a context key, we don't rely on the OTel context, as internal no-op spans overwrite them.
+export const MONOCLE_ACTIVE_SPAN_KEY = Symbol("monocle.active_span");
+
 const AWS_CONSTANTS = {
     AWS_LAMBDA_FUNCTION_NAME: 'AWS_LAMBDA_FUNCTION_NAME',
 }
@@ -89,6 +92,16 @@ export const service_name_map = {
 }
 
 export const LANGGRAPH_AGENT_NAME_KEY = Symbol("agent.langgraph");
+export const ADK_AGENT_NAME_KEY = Symbol("agent.adk");
+// Marks "an ADK turn span is already open in this trace tree" so nested
+// Runner wrappers (e.g. Runner.runEphemeral → Runner.runAsync internally, or
+// AgentTool's inner Runner) skip creating a duplicate agentic.turn span.
+export const ADK_TURN_SPAN_ACTIVE_KEY = Symbol("monocle.adk.turn_span_active");
+// Set by ADKAgentSpanHandler.preTracing on a delegated sub-agent invocation
+// (when the previous agent on the context isn't the current agent). Read by
+// the AGENT schema's from_agent / from_agent_span_id accessors.
+export const FROM_AGENT_KEY = Symbol("monocle.adk.from_agent");
+export const FROM_AGENT_SPAN_ID_KEY = Symbol("monocle.adk.from_agent_span_id");
 export const AGENT_PREFIX_KEY = Symbol("monocle.agent.prefix")
 export const DELEGATION_NAME_PREFIX = Symbol("transfer_to_")
 export const INFERENCE_AGENT_DELEGATION = "delegation"
@@ -125,6 +138,7 @@ export const SPAN_SUBTYPE_COMMUNICATION = "communication";
 export const SPAN_SUBTYPE_TRANSFORMATIONS = "transformations";
 export const SPAN_SUBTYPE_DOMAIN_SPECIFIC = "domain_specific";
 export const SPAN_SUBTYPE_GENERIC = "generic";
+export const SPAN_SUBTYPE_TURN = "turn";
 
 
 export const AGENT_REQUEST_SPAN_NAME = "agentic.request"
@@ -137,7 +151,8 @@ export const SPAN_SUBTYPES = {
     COMMUNICATION: SPAN_SUBTYPE_COMMUNICATION,
     TRANSFORMATIONS: SPAN_SUBTYPE_TRANSFORMATIONS,
     DOMAIN_SPECIFIC: SPAN_SUBTYPE_DOMAIN_SPECIFIC,
-    GENERIC: SPAN_SUBTYPE_GENERIC
+    GENERIC: SPAN_SUBTYPE_GENERIC,
+    TURN: SPAN_SUBTYPE_TURN
 } as const;
 
 export type SpanSubtype = typeof SPAN_SUBTYPES[keyof typeof SPAN_SUBTYPES];

@@ -63,6 +63,7 @@ vi.mock('../../src/instrumentation/common/utils', () => ({
 vi.mock('../../src/instrumentation/common/utils', () => ({
   setScopesInternal: vi.fn((scopes, ctx, fn) => fn()),
   getSourcePath: vi.fn().mockReturnValue('test/examples/mockFile.ts'), // Add mock implementation
+  isIsolateSpansEnabled: vi.fn().mockReturnValue(true),
 }));
 describe('Wrapper Functions', () => {
   // Create a mock tracer function that returns a mock span
