@@ -156,3 +156,125 @@ describe('Gemini inference schema.subtype classifier', () => {
         expect(classify(null)).toBe('turn_end');
     });
 });
+
+// =============================================================================
+// data.input — system instruction + user message extraction
+// =============================================================================
+describe('Gemini inference data.input extraction', () => {
+    // Resolve the data.input "input" accessor from the schema and invoke it the
+    // way the instrumentation does: with { args }, where args is the call's
+    // argument list (args[0] === the genai params object).
+    const inputAccessor = (() => {
+        const event = (geminiInferenceConfig.events as any[]).find((e) => e.name === 'data.input');
+        const attr = event.attributes.find((a: any) => a.attribute === 'input');
+        return attr.accessor as (ctx: { args: any[] }) => string[];
+    })();
+
+    const extractInput = (params: any) => inputAccessor({ args: [params] });
+
+    it('captures a string systemInstruction ahead of the user message', () => {
+        const input = extractInput({
+            config: { systemInstruction: 'You are a travel agent.' },
+            contents: [{ role: 'user', parts: [{ text: 'book me a flight' }] }],
+        });
+        expect(input).toEqual([
+            JSON.stringify({ system: 'You are a travel agent.' }),
+            JSON.stringify({ user: 'book me a flight' }),
+        ]);
+    });
+
+    it('flattens a Content-shaped systemInstruction (parts)', () => {
+        const input = extractInput({
+            config: { systemInstruction: { role: 'system', parts: [{ text: 'Be concise.' }, { text: 'Be kind.' }] } },
+            contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
+        });
+        expect(input[0]).toBe(JSON.stringify({ system: 'Be concise. Be kind.' }));
+    });
+
+    it('reads systemInstruction from the top-level param as a fallback', () => {
+        const input = extractInput({
+            systemInstruction: 'Top-level system prompt.',
+            contents: 'hello',
+        });
+        expect(input[0]).toBe(JSON.stringify({ system: 'Top-level system prompt.' }));
+    });
+
+    it('preserves the system message when contents is a bare string', () => {
+        const input = extractInput({
+            config: { systemInstruction: 'sys' },
+            contents: 'just a string',
+        });
+        expect(input).toEqual([JSON.stringify({ system: 'sys' }), 'just a string']);
+    });
+
+    it('omits the system entry when no systemInstruction is present', () => {
+        const input = extractInput({
+            contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
+        });
+        expect(input).toEqual([JSON.stringify({ user: 'hi' })]);
+    });
+});
+
+// =============================================================================
+// data.output — text vs function-call response extraction
+// =============================================================================
+describe('Gemini inference data.output extraction', () => {
+    const responseAccessor = (() => {
+        const event = (geminiInferenceConfig.events as any[]).find((e) => e.name === 'data.output');
+        const attr = event.attributes.find((a: any) => a.attribute === 'response');
+        return attr.accessor as (ctx: any) => any;
+    })();
+
+    // status is derived from response.status; leaving it unset yields "success".
+    const extractOutput = (response: any) => responseAccessor({ response });
+
+    it('extracts plain text output', () => {
+        const out = extractOutput({
+            candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'Flight booked.' }] } }],
+        });
+        expect(out).toBe('Flight booked.');
+    });
+
+    it('serializes a single function-call response (was previously empty)', () => {
+        const out = extractOutput({
+            candidates: [{
+                finishReason: 'STOP',
+                content: { parts: [{ functionCall: { name: 'book_flight', args: { from: 'SFO', to: 'AYJ' } } }] },
+            }],
+        });
+        expect(JSON.parse(out)).toEqual({
+            function_call: { name: 'book_flight', args: { from: 'SFO', to: 'AYJ' } },
+        });
+    });
+
+    it('serializes multiple function calls as an array', () => {
+        const out = extractOutput({
+            candidates: [{
+                content: {
+                    parts: [
+                        { functionCall: { name: 'a', args: { x: 1 } } },
+                        { functionCall: { name: 'b', args: { y: 2 } } },
+                    ],
+                },
+            }],
+        });
+        expect(JSON.parse(out)).toEqual([
+            { function_call: { name: 'a', args: { x: 1 } } },
+            { function_call: { name: 'b', args: { y: 2 } } },
+        ]);
+    });
+
+    it('prefers text when a response interleaves text and a function call', () => {
+        const out = extractOutput({
+            candidates: [{
+                content: { parts: [{ text: 'Let me check.' }, { functionCall: { name: 'lookup' } }] },
+            }],
+        });
+        expect(out).toBe('Let me check.');
+    });
+
+    it('returns empty string when there is neither text nor a function call', () => {
+        const out = extractOutput({ candidates: [{ content: { parts: [] } }] });
+        expect(out).toBe('');
+    });
+});
