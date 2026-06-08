@@ -12,6 +12,19 @@ import {
 } from "../../utils";
 
 
+// Pulls functionCall parts out of the first candidate — emitted on tool calls /
+// sub-agent delegation. Drives both finish-reason synthesis and output extraction.
+function extractFunctionCalls(response: any): any[] {
+  try {
+    const parts = response?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) return [];
+    return parts.map((p: any) => p?.functionCall).filter((fc: any) => fc);
+  } catch (e) {
+    console.warn("Warning: Error occurred in extractFunctionCalls:", e);
+    return [];
+  }
+}
+
 function extractFinishReason(response: any): string | null {
   try {
     if (response && response.candidates && response.candidates[0]) {
@@ -21,8 +34,7 @@ function extractFinishReason(response: any): string | null {
       // synthesize "FUNCTION_CALL" when any part of the response is a
       // function-call. That lets the finishReason → finishType mapping
       // classify it correctly as a tool_call.
-      const parts = candidate.content?.parts;
-      if (Array.isArray(parts) && parts.some((p: any) => p?.functionCall)) {
+      if (extractFunctionCalls(response).length > 0) {
         return GEMINI_FUNCTION_CALL_FINISH_REASON;
       }
       if (candidate.finishReason) {
@@ -86,13 +98,43 @@ function getMetadataUsage(response, _instance) {
   return null;
 }
 
+// Flattens any @google/genai content shape — string, Content ({ parts }),
+// Part ({ text }), or an array of those — into a single text string.
+function flattenContentText(value: any): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.map(flattenContentText).filter((t) => t).join(" ");
+  }
+  if (value.parts && Array.isArray(value.parts)) {
+    return value.parts
+      .map((part: any) => (typeof part === "string" ? part : part?.text || ""))
+      .filter((text: string) => text)
+      .join(" ");
+  }
+  if (typeof value.text === "string") return value.text;
+  return "";
+}
+
 function extractMessages(args) {
   const params = args[0];
   const messages = [];
 
   if (params && typeof params === "object") {
+    // ADK (and direct genai callers) pass the agent/system prompt via
+    // config.systemInstruction rather than in contents, so capture it first.
+    const systemInstruction =
+      params.config?.systemInstruction ?? params.systemInstruction;
+    const systemText = flattenContentText(systemInstruction);
+    if (systemText) {
+      messages.push(JSON.stringify({ system: systemText }));
+    }
+  }
+
+  if (params && typeof params === "object") {
     if (typeof params.contents === "string") {
-      return [params.contents]
+      messages.push(params.contents);
+      return messages;
     } else if (Array.isArray(params.contents)) {
       for (const content of params.contents) {
         if (typeof content === "string") {
@@ -177,6 +219,16 @@ function extractInferenceOutput(result) {
 
       if (extractedText && extractedText.length > 0) {
         return extractedText;
+      }
+
+      // No text part — the output is a tool call / delegation. Serialize the
+      // functionCall(s) so the routing decision is captured, not an empty response.
+      const functionCalls = extractFunctionCalls(result?.response);
+      if (functionCalls.length > 0) {
+        const serialized = functionCalls.map((fc) => ({
+          function_call: { name: fc.name, args: fc.args },
+        }));
+        return JSON.stringify(serialized.length === 1 ? serialized[0] : serialized);
       }
     } else if (result?.error) {
       return result.error;
