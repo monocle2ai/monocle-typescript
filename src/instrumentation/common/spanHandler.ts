@@ -288,7 +288,29 @@ export class DefaultSpanHandler implements SpanHandler {
             span.setAttribute("span.type", outputProcessor?.type || "generic");
         }
         if (outputProcessor?.subtype) {
-            span.setAttribute("span.subtype", outputProcessor.subtype);
+            // Allow schemas to compute the subtype dynamically from the call
+            // payload (e.g. classify an inference span as "tool_call" vs
+            // "turn_end" based on the model's finish_reason). Static string
+            // subtypes continue to work unchanged.
+            let subtypeValue: any = outputProcessor.subtype;
+            if (typeof subtypeValue === 'function') {
+                try {
+                    subtypeValue = subtypeValue({
+                        instance,
+                        args,
+                        output: returnValue,
+                        response: returnValue,
+                        exception,
+                        parentSpan,
+                    });
+                } catch (e) {
+                    console.error(`Error evaluating subtype accessor: ${e}`);
+                    subtypeValue = undefined;
+                }
+            }
+            if (subtypeValue) {
+                span.setAttribute("span.subtype", subtypeValue);
+            }
         }
         if (spanIndex > 1) {
             span.setAttribute("entity.count", spanIndex - 1);
