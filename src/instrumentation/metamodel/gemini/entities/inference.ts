@@ -1,5 +1,10 @@
 import { mapGeminiFinishReasonToFinishType } from "../../finishType";
 import {
+  GEMINI_FUNCTION_CALL_FINISH_REASON,
+  INFERENCE_TOOL_CALL,
+  INFERENCE_TURN_END,
+} from "../../../common/constants";
+import {
   extractGeminiEndpoint,
   getStatus,
   getStatusCode,
@@ -9,9 +14,20 @@ import {
 
 function extractFinishReason(response: any): string | null {
   try {
-    // Handle traditional chat.completions.create() format
-    if (response && response.candidates && response.candidates[0] && response.candidates[0].finishReason) {
-      return response.candidates[0].finishReason;
+    if (response && response.candidates && response.candidates[0]) {
+      const candidate = response.candidates[0];
+      // Tool-call detection takes priority: Gemini sets finishReason to
+      // "STOP" even when the model produced a functionCall part, so we
+      // synthesize "FUNCTION_CALL" when any part of the response is a
+      // function-call. That lets the finishReason → finishType mapping
+      // classify it correctly as a tool_call.
+      const parts = candidate.content?.parts;
+      if (Array.isArray(parts) && parts.some((p: any) => p?.functionCall)) {
+        return GEMINI_FUNCTION_CALL_FINISH_REASON;
+      }
+      if (candidate.finishReason) {
+        return candidate.finishReason;
+      }
     }
   } catch (e) {
     console.warn("Warning: Error occurred in extractFinishReason:", e);
@@ -36,12 +52,30 @@ function getMetadataUsage(response, _instance) {
       metadata = response.usage;
     }
     if (metadata) {
-      const usage = {
-        prompt_tokens: metadata.promptTokenCount || metadata.input_tokens || 0,
-        completion_tokens:
-          metadata.candidatesTokenCount || metadata.output_tokens || 0,
-        total_tokens: metadata.totalTokenCount || metadata.total_tokens || 0,
+      // Per Gemini's GenerateContentResponseUsageMetadata:
+      //   total_tokens = prompt + candidates + tool_use_prompt + thoughts
+      // (cached_tokens is *included in* prompt; it's reported separately for
+      // billing visibility but must NOT be added to the sum.)
+      // Reporting all fields keeps the math reconcilable: a consumer can
+      // verify total = prompt + completion + tool_use_prompt + thoughts.
+      const promptTokens = metadata.promptTokenCount ?? metadata.input_tokens ?? 0;
+      const completionTokens = metadata.candidatesTokenCount ?? metadata.output_tokens ?? 0;
+      const totalTokens = metadata.totalTokenCount ?? metadata.total_tokens ?? 0;
+      const thoughtsTokens = metadata.thoughtsTokenCount ?? 0;
+      const toolUsePromptTokens = metadata.toolUsePromptTokenCount ?? 0;
+      const cachedTokens = metadata.cachedContentTokenCount ?? 0;
+
+      const usage: Record<string, number> = {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
       };
+      // Only emit the optional fields when they're actually present (>0), to
+      // keep spans clean for models/responses that don't use thinking, tools,
+      // or caching.
+      if (thoughtsTokens > 0) usage.thoughts_tokens = thoughtsTokens;
+      if (toolUsePromptTokens > 0) usage.tool_use_prompt_tokens = toolUsePromptTokens;
+      if (cachedTokens > 0) usage.cached_tokens = cachedTokens;
 
       return usage;
     }
@@ -159,8 +193,26 @@ function extractInferenceOutput(result) {
   }
 }
 
+// Classify an inference call as a tool-call dispatch or a normal end-of-turn
+// response, based on Gemini's finish reason. Used as a dynamic span.subtype
+// so traces can distinguish "the model wanted to call a tool" from "the
+// model produced its final answer for this turn" at a glance.
+function classifyInferenceSubtype(response: any): string {
+  try {
+    const finishReason = extractFinishReason(response);
+    const finishType = mapGeminiFinishReasonToFinishType(finishReason);
+    if (finishType === "tool_call") return INFERENCE_TOOL_CALL;
+  } catch (e) {
+    console.warn("Warning: Error occurred in classifyInferenceSubtype:", e);
+  }
+  return INFERENCE_TURN_END;
+}
+
 export const config = {
   type: "inference",
+  subtype: function ({ response, output }: any) {
+    return classifyInferenceSubtype(response ?? output);
+  },
   attributes: [
     [
       {

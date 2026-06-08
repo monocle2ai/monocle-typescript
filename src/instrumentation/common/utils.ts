@@ -8,52 +8,48 @@ import { DefaultSpanHandler, attachWorkflowType } from './spanHandler';
 import { Span } from './opentelemetryUtils';
 
 
-const NODE_PACKAGES = [
-    'anthropic-ai',
-    'aws-sdk',
-    'langchain',
-    'llamaindex',
-    'openai',
-    'opensearch-project',
-    'microsoft',
-    'ai'
+// skip internal frames of monocle while building the span_source.
+// If a future internal helper appears between patchMainMethodName and the real
+// caller, add it here.
+const MONOCLE_INTERNAL_FRAME_NAMES = [
+    'getSourcePath',
+    'patchMainMethodName',
+    'mainMethodName',
+    'processSpanWithTracing',
+    'handleSpanProcess',
+    'spanCallback',
+    'startSpan',
+    'monocleAsyncIteratorWrapper',
+    'monocleWorkflowIteratorWrapper',
+    'processMultipleElementsWithTracing',
+    'processElementsRecursively',
 ];
 
+// Returns "<file>:<line>" of the caller that invoked the wrapped method.
+// Falls back to 'unknown_source' if no usable frame is found.
 export function getSourcePath(): string {
     try {
         const stack = new Error().stack;
-        const stackLines = stack?.split('\n') || [];
-        
-        // Find the first non-internal call in the stack
-        let callerLine = stackLines.reverse().find(line => {
-            return line.includes('at') && 
-                   !line.includes('node:internal') && 
-                   !line.includes('node_modules') &&
-                   !line.includes('getPatchedMain') &&
-                   !line.includes('getSourcePath') &&
-                   (line.includes('/test/') || line.includes('/src/'));
-        });
-
-        // If no application code found, look for important library functions
-        if (!callerLine) {
-            callerLine = stackLines.find(line => {                
-                // Check for important packages
-                const hasImportantPackage = NODE_PACKAGES.some(pkg => 
-                    line.includes(`node_modules/${pkg}`) ||
-                    line.includes(`node_modules/@${pkg}/`)
-                );
-
-                return line.includes('at') && hasImportantPackage;
-            });
-        }
-
-        if (callerLine) {
-            // Extract file path from the stack trace
-            const match = callerLine.match(/\((.+?):(\d+):\d+\)/) || 
-                         callerLine.match(/at\s+(.+?):(\d+):\d+/);
-            if (match && match[1] && match[2]) {
-                const [_, fullPath, lineNumber] = match;
-                return `${fullPath}:${lineNumber}` || 'unknown_source';
+        const lines = stack?.split('\n') ?? [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.includes(' at ')) continue;
+            // Skip Node-internal frames.
+            if (line.includes('node:internal')) continue;
+            // Skip Monocle's own wrapper/iterator frames.
+            const isInternal = MONOCLE_INTERNAL_FRAME_NAMES.some((name) =>
+                line.includes(` ${name} `) || line.includes(` ${name}(`) || line.includes(`.${name} `) || line.includes(`.${name}(`)
+            );
+            if (isInternal) continue;
+            // Path-based escape hatch for our compiled internals — narrower
+            // than "anywhere inside monocle-typescript" so test fixtures in
+            // this repo (which are legitimate callers in our integration
+            // tests) aren't mistakenly skipped.
+            if (line.includes('/monocle2ai/instrumentation/') ||
+                line.includes('/monocle-typescript/dist/instrumentation/')) continue;
+            const m = line.match(/\((.+?):(\d+):\d+\)/) || line.match(/at\s+(.+?):(\d+):\d+/);
+            if (m && m[1] && m[2]) {
+                return `${m[1]}:${m[2]}`;
             }
         }
         return 'unknown_source';
@@ -91,7 +87,7 @@ export function setScopesInternal<A extends unknown[], F extends (...args: A) =>
     return context_api.with(updated_baggage_context, fn, thisArg, ...args);
 }
 
-function updateBaggageContextWithScopes(baggage_context: Context, scopes: Record<string, string>) {
+export function updateBaggageContextWithScopes(baggage_context: Context, scopes: Record<string, string | null>) {
     if (baggage_context === null) {
         baggage_context = context_api.active();
     }
@@ -108,6 +104,16 @@ function updateBaggageContextWithScopes(baggage_context: Context, scopes: Record
     }
     const updated_baggage_context = propagation.setBaggage(baggage_context, baggage);
     return updated_baggage_context;
+}
+
+// Returns the value already set on a Monocle scope key in the given context, or
+// undefined if absent. Lets handlers avoid overwriting an inherited scope
+// (e.g. a child agent invocation must not clobber its parent's session id).
+export function getScopeFromContext(baggage_context: Context, scope_name: string): string | undefined {
+    const baggage = propagation.getBaggage(baggage_context);
+    if (!baggage) return undefined;
+    const entry = baggage.getEntry(`${MONOCLE_SCOPE_NAME_PREFIX}${scope_name}`);
+    return entry?.value;
 }
 
 export function setScopesBindInternal(
@@ -245,6 +251,22 @@ export function isVercelEnvironment(): boolean {
 
 export function isAwsLambdaEnvironment(): boolean {
     return !!process.env.AWS_LAMBDA_RUNTIME_API && !isVercelEnvironment()
+}
+
+// Monocle wrappers pick parents from MONOCLE_ACTIVE_SPAN_KEY instead
+// of the OTel active-span slot — keeping the parent chain pointing exclusively
+// at Monocle spans even when other tracing-aware libraries (e.g. ADK) scribble
+// on the standard slot. Set to "false" to merge into the OTel-natural chain.
+export function isIsolateSpansEnabled(): boolean {
+    return (process.env.MONOCLE_ISOLATE_SPANS ?? "true").toLowerCase() !== "false";
+}
+
+// Default-off opt-in: when "true", non-Monocle spans (e.g. ADK's internal
+// `invocation`, `invoke_agent X`, `call_llm` spans) are also exported. By
+// default the exporter pipeline drops anything missing the Monocle SDK
+// version attribute so traces stay clean.
+export function shouldIncludeNonMonocleSpans(): boolean {
+    return (process.env.MONOCLE_INCLUDE_ALL_SPANS ?? "false").toLowerCase() === "true";
 }
 export function extractInferenceEndpoint(instance: any): string | undefined {
     try {

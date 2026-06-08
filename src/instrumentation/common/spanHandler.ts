@@ -56,7 +56,7 @@ export interface SpanHandler {
         parentSpan?: Span;
     }): void;
 
-    preTracing(element: WrapperArguments, currentContext?: any, args?: any): any;
+    preTracing(element: WrapperArguments, currentContext?: any, thisArg?: any, callArgs?: any): any;
 }
 
 export function isRootSpan(span: Span) {
@@ -83,6 +83,7 @@ const WORKFLOW_TYPE_MAP = {
     "@microsoft/teams-ai": "workflow.teams_ai",
     "teams.ai": "workflow.teams_ai",
     "llama_index": "workflow.llamaindex",
+    "@google/adk": "workflow.adk",
 }
 
 function getWorkflowName(span: Span) {
@@ -163,7 +164,7 @@ export class DefaultSpanHandler implements SpanHandler {
 
     }
 
-    processSpan({ span, instance, args, returnValue, outputProcessor, exception }: {
+    processSpan({ span, instance, args, returnValue, outputProcessor, exception, parentSpan }: {
         span: Span;
         instance: any;
         args: IArguments;
@@ -199,7 +200,7 @@ export class DefaultSpanHandler implements SpanHandler {
                             if (attribute && accessor) {
                                 const attributeName = `entity.${spanIndex}.${attribute}`;
                                 try {
-                                    const accessor_args = { instance: instance, args: args, output: returnValue };
+                                    const accessor_args = { instance: instance, args: args, output: returnValue, parentSpan: parentSpan };
                                     if (typeof accessor === 'function') {
                                         const result = accessor(accessor_args);
                                         if (result) {
@@ -287,7 +288,29 @@ export class DefaultSpanHandler implements SpanHandler {
             span.setAttribute("span.type", outputProcessor?.type || "generic");
         }
         if (outputProcessor?.subtype) {
-            span.setAttribute("span.subtype", outputProcessor.subtype);
+            // Allow schemas to compute the subtype dynamically from the call
+            // payload (e.g. classify an inference span as "tool_call" vs
+            // "turn_end" based on the model's finish_reason). Static string
+            // subtypes continue to work unchanged.
+            let subtypeValue: any = outputProcessor.subtype;
+            if (typeof subtypeValue === 'function') {
+                try {
+                    subtypeValue = subtypeValue({
+                        instance,
+                        args,
+                        output: returnValue,
+                        response: returnValue,
+                        exception,
+                        parentSpan,
+                    });
+                } catch (e) {
+                    console.error(`Error evaluating subtype accessor: ${e}`);
+                    subtypeValue = undefined;
+                }
+            }
+            if (subtypeValue) {
+                span.setAttribute("span.subtype", subtypeValue);
+            }
         }
         if (spanIndex > 1) {
             span.setAttribute("entity.count", spanIndex - 1);
