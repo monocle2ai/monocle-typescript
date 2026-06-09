@@ -106,14 +106,6 @@ export const AGENT = {
                 },
             },
             {
-                "_comment": "name of the agent receiving the delegation (this agent); paired with from_agent",
-                "attribute": "to_agent",
-                "accessor": function ({ instance }: any) {
-                    if (!readFromAgent()) return undefined;
-                    return instance?.name || undefined;
-                },
-            },
-            {
                 "_comment": "span_id of the delegating agent's invocation",
                 "attribute": "from_agent_span_id",
                 "accessor": function () {
