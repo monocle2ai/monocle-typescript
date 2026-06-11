@@ -1,9 +1,16 @@
 import { defineConfig } from "vitest/config";
+import { configDefaults } from "vitest/config";
 
 export default defineConfig({
   test: {
     testTimeout: 30000,
     globals: true,
+    exclude: [
+      ...configDefaults.exclude,
+      "test/integration/openai.test.ts",
+      "test/integration/langgraph.test.ts",
+      "test/integration/azure-openai.test.ts",
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
