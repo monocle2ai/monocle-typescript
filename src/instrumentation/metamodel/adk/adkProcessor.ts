@@ -78,12 +78,15 @@ export class ADKRunnerSpanHandler extends DefaultSpanHandler {
         const params = callArgs?.[0] || {};
         const scopes: Record<string, string | null> = {};
 
-        // Session: prefer the runner's sessionId param. If missing (e.g.
-        // runEphemeral) and no session is already on the context, generate
-        // one. Don't overwrite an inherited session — multi-turn workflows
-        // need it stable across calls.
-        if (!getScopeFromContext(currentContext, SCOPE_AGENTIC_SESSION)) {
-            scopes[SCOPE_AGENTIC_SESSION] = params.sessionId ?? null;
+        // Session comes from the external app via the runner's sessionId
+        // param. Monocle only reads it — it never fabricates one. If the
+        // caller doesn't supply a sessionId (e.g. runEphemeral), leave the
+        // session scope unset rather than generating a synthetic id. Don't
+        // overwrite an inherited session — multi-turn workflows need it
+        // stable across calls.
+        if (!getScopeFromContext(currentContext, SCOPE_AGENTIC_SESSION)
+            && typeof params.sessionId === "string") {
+            scopes[SCOPE_AGENTIC_SESSION] = params.sessionId;
         }
         // Turn: one user message → one turn. ADK's runEphemeral internally
         // calls runAsync; both go through this handler and must share a
