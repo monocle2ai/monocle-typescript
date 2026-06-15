@@ -72,7 +72,7 @@ async function geminiChatEmbedding(ai) {
   try {
 
     const response = await ai.models.embedContent({
-      model: 'gemini-embedding-exp-03-07',
+      model: 'gemini-embedding-001',
       contents: 'What is the meaning of life?',
     });
 

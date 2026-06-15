@@ -20,6 +20,7 @@ export const cleanSpan = (span: SpanExport): Partial<SpanExport> => {
                 delete cleanedEvent.attributes.completion_tokens;
                 delete cleanedEvent.attributes.prompt_tokens;
                 delete cleanedEvent.attributes.total_tokens;
+                delete cleanedEvent.attributes.thoughts_tokens;
             }
             return cleanedEvent;
         });

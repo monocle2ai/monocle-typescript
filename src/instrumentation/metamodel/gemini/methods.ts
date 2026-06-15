@@ -12,7 +12,7 @@ export const config = [
   {
     package: "@google/genai",
     object: "Models",
-    method: "embedContent",
+    method: "embedContentInternal",
     spanName: "gemini.embed_content",
     output_processor: [embeddingConfig],
   },
