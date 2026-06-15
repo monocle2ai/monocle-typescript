@@ -38,13 +38,6 @@ function extractFinalResponseFromEvents(returnValue: any): string {
     return "";
 }
 
-function extractAgentToolNames(instance: any): string[] {
-    if (!Array.isArray(instance?.tools)) return [];
-    return instance.tools
-        .map((t: any) => t?.name || t?.agent?.name || "")
-        .filter((n: string) => n);
-}
-
 // Reads delegation info that ADKAgentSpanHandler.preTracing stamped on the
 // OTel context. Returns undefined for top-level invocations (no key set),
 // so the attribute is omitted — matching Python monocle's behavior.
@@ -88,14 +81,6 @@ export const AGENT = {
                 "attribute": "description",
                 "accessor": function ({ instance }: any) {
                     return instance?.description || "";
-                },
-            },
-            {
-                "_comment": "tools available to the agent",
-                "attribute": "tools",
-                "accessor": function ({ instance }: any) {
-                    const names = extractAgentToolNames(instance);
-                    return names.length > 0 ? names : undefined;
                 },
             },
             {
@@ -172,20 +157,6 @@ export const AGENT_REQUEST = {
                 "attribute": "type",
                 "accessor": function () {
                     return ADK_AGENT_TYPE;
-                },
-            },
-            {
-                "_comment": "root agent name as configured on the runner",
-                "attribute": "name",
-                "accessor": function ({ instance }: any) {
-                    return instance?.agent?.name || instance?.appName || "";
-                },
-            },
-            {
-                "_comment": "app name configured on the runner",
-                "attribute": "app_name",
-                "accessor": function ({ instance }: any) {
-                    return instance?.appName || "";
                 },
             },
         ],
