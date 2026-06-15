@@ -6,7 +6,7 @@ const ADK_AGENT_TYPE = "agent.adk";
 
 export const TOOL = {
     "type": SPAN_TYPES.AGENTIC_TOOL_INVOCATION,
-    "subtype": SPAN_SUBTYPES.ROUTING,
+    "subtype": SPAN_SUBTYPES.CONTENT_GENERATION,
     "attributes": [
         [
             {
