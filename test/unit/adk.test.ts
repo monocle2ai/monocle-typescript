@@ -87,28 +87,9 @@ describe('ADK AGENT schema', () => {
         });
     });
 
-    describe('tools accessor', () => {
-        const tools = (instance: any) => attrAccessor(AGENT, 'tools')({ instance });
-
-        it('extracts tool names', () => {
-            expect(tools({ tools: [{ name: 'book_flight' }, { name: 'cancel_flight' }] }))
-                .toEqual(['book_flight', 'cancel_flight']);
-        });
-
-        it('falls back to the wrapped agent name for AgentTools', () => {
-            expect(tools({ tools: [{ agent: { name: 'sub_agent' } }] })).toEqual(['sub_agent']);
-        });
-
-        it('drops entries with no resolvable name', () => {
-            expect(tools({ tools: [{ name: 'book_flight' }, {}, { name: '' }] }))
-                .toEqual(['book_flight']);
-        });
-
-        it('returns undefined (attribute omitted) when there are no tools', () => {
-            expect(tools({ tools: [] })).toBeUndefined();
-            expect(tools({})).toBeUndefined();
-            expect(tools({ tools: [{}] })).toBeUndefined();
-        });
+    it('does not declare a tools attribute', () => {
+        const found = AGENT.attributes[0].find((a: any) => a.attribute === 'tools');
+        expect(found).toBeUndefined();
     });
 
     describe('delegation accessors (from_agent / from_agent_span_id)', () => {
@@ -222,32 +203,9 @@ describe('ADK AGENT_REQUEST schema', () => {
         expect(attrAccessor(AGENT_REQUEST, 'type')({})).toBe('agent.adk');
     });
 
-    describe('name accessor', () => {
-        const name = (instance: any) => attrAccessor(AGENT_REQUEST, 'name')({ instance });
-
-        it('prefers the configured root agent name', () => {
-            expect(name({ agent: { name: 'root_agent' }, appName: 'my-app' })).toBe('root_agent');
-        });
-
-        it('falls back to appName when no agent is set', () => {
-            expect(name({ appName: 'my-app' })).toBe('my-app');
-        });
-
-        it('returns "" when neither is present', () => {
-            expect(name({})).toBe('');
-        });
-    });
-
-    describe('app_name accessor', () => {
-        const appName = (instance: any) => attrAccessor(AGENT_REQUEST, 'app_name')({ instance });
-
-        it('returns the runner appName', () => {
-            expect(appName({ appName: 'travel-agent' })).toBe('travel-agent');
-        });
-
-        it('returns "" when missing', () => {
-            expect(appName({})).toBe('');
-        });
+    it('declares only the entity type — no name or app_name attributes', () => {
+        const attrs = AGENT_REQUEST.attributes[0].map((a: any) => a.attribute);
+        expect(attrs).toEqual(['type']);
     });
 
     describe('data.input event', () => {
@@ -290,9 +248,9 @@ describe('ADK AGENT_REQUEST schema', () => {
 // TOOL schema — agentic.tool.invocation (adk.tool)
 // =============================================================================
 describe('ADK TOOL schema', () => {
-    it('declares the agentic.tool.invocation type and routing subtype', () => {
+    it('declares the agentic.tool.invocation type and content_generation subtype', () => {
         expect(TOOL.type).toBe(SPAN_TYPES.AGENTIC_TOOL_INVOCATION);
-        expect(TOOL.subtype).toBe(SPAN_SUBTYPES.ROUTING);
+        expect(TOOL.subtype).toBe(SPAN_SUBTYPES.CONTENT_GENERATION);
     });
 
     describe('entity group 0 — the tool itself', () => {
