@@ -278,3 +278,54 @@ describe('Gemini inference data.output extraction', () => {
         expect(out).toBe('');
     });
 });
+
+// =============================================================================
+// metadata event — finish_reason / finish_type span attributes (the accessors
+// that emit onto the span, incl. FUNCTION_CALL synthesis when Gemini says STOP)
+// =============================================================================
+describe('Gemini inference finish_reason / finish_type accessors', () => {
+    const metadataAttr = (attribute: string) => {
+        const event = (geminiInferenceConfig.events as any[]).find((e) => e.name === 'metadata');
+        const attr = event.attributes.find((a: any) => a.attribute === attribute);
+        return attr.accessor as (ctx: { response: any }) => any;
+    };
+    const finishReason = (response: any) => metadataAttr('finish_reason')({ response });
+    const finishType = (response: any) => metadataAttr('finish_type')({ response });
+
+    it('emits the raw finishReason for a plain text turn', () => {
+        const response = { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }] };
+        expect(finishReason(response)).toBe('STOP');
+        expect(finishType(response)).toBe(FinishType.SUCCESS);
+    });
+
+    it('synthesizes FUNCTION_CALL when the response carries a functionCall part (even with finishReason STOP)', () => {
+        // Gemini reports STOP for tool calls; the accessor must rewrite to FUNCTION_CALL / tool_call.
+        const response = {
+            candidates: [{
+                finishReason: 'STOP',
+                content: { parts: [{ functionCall: { name: 'book_flight', args: {} } }] },
+            }],
+        };
+        expect(finishReason(response)).toBe('FUNCTION_CALL');
+        expect(finishType(response)).toBe(FinishType.TOOL_CALL);
+    });
+
+    it('maps MAX_TOKENS through to the truncated finish type', () => {
+        const response = { candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'cut' }] } }] };
+        expect(finishReason(response)).toBe('MAX_TOKENS');
+        expect(finishType(response)).toBe(FinishType.TRUNCATED);
+    });
+
+    it('returns null finish_reason (and null finish_type) when none is present', () => {
+        const response = { candidates: [{ content: { parts: [{ text: 'no reason' }] } }] };
+        expect(finishReason(response)).toBeNull();
+        expect(finishType(response)).toBeNull();
+    });
+
+    it('returns null for an empty / malformed response', () => {
+        expect(finishReason({})).toBeNull();
+        expect(finishType({})).toBeNull();
+        expect(finishReason(null)).toBeNull();
+        expect(finishType(null)).toBeNull();
+    });
+});
