@@ -109,6 +109,9 @@ export const INFERENCE_TOOL_CALL = "tool_call"
 export const INFERENCE_COMMUNICATION = "turn"
 export const INFERENCE_TURN_END = "turn_end"
 
+// Entity type for a function/tool declared on an inference request.
+export const TOOL_FUNCTION_TYPE = "tool.function"
+
 // Synthesized finish reason — Gemini returns "STOP" for tool-call responses, so we set this when a functionCall part is detected.
 export const GEMINI_FUNCTION_CALL_FINISH_REASON = "FUNCTION_CALL"
 
