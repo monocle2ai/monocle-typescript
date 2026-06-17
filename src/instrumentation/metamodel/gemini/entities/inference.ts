@@ -3,14 +3,39 @@ import {
   GEMINI_FUNCTION_CALL_FINISH_REASON,
   INFERENCE_TOOL_CALL,
   INFERENCE_TURN_END,
+  TOOL_FUNCTION_TYPE,
 } from "../../../common/constants";
 import {
   extractGeminiEndpoint,
-  getStatus,
   getStatusCode,
   resolveFromAlias,
 } from "../../utils";
 
+
+// Collects declared tool names from config.tools (genai/ADK shape) or
+// params.tools, accepting functionDeclarations or function_declarations.
+function extractToolNames(args: any): string[] {
+  try {
+    const params = args?.[0];
+    if (!params || typeof params !== "object") return [];
+    const toolGroups = params.config?.tools ?? params.tools;
+    if (!Array.isArray(toolGroups)) return [];
+    const names: string[] = [];
+    for (const group of toolGroups) {
+      const declarations =
+        group?.functionDeclarations ?? group?.function_declarations;
+      if (Array.isArray(declarations)) {
+        for (const declaration of declarations) {
+          if (declaration?.name) names.push(declaration.name);
+        }
+      }
+    }
+    return names;
+  } catch (e) {
+    console.warn("Warning: Error occurred in extractToolNames:", e);
+    return [];
+  }
+}
 
 // Pulls functionCall parts out of the first candidate — emitted on tool calls /
 // sub-agent delegation. Drives both finish-reason synthesis and output extraction.
@@ -303,6 +328,24 @@ export const config = {
         },
       },
     ],
+    [
+      {
+        _comment: "tools declared on the request (e.g. ADK function tools)",
+        attribute: "name",
+        accessor: function ({ args }) {
+          // Comma-separated string of declared tool names; undefined (not "")
+          // when no tools, so the handler skips this entity.
+          const names = extractToolNames(args);
+          return names.length > 0 ? names.join(", ") : undefined;
+        },
+      },
+      {
+        attribute: "type",
+        accessor: function ({ args }) {
+          return extractToolNames(args).length > 0 ? TOOL_FUNCTION_TYPE : undefined;
+        },
+      },
+    ],
   ],
   events: [
     {
@@ -322,18 +365,6 @@ export const config = {
       attributes: [
         {
           _comment: "this is result from LLM",
-          attribute: "status",
-          accessor: function (args) {
-            return getStatus(args);
-          },
-        },
-        {
-          attribute: "status_code",
-          accessor: function (args) {
-            return getStatusCode(args);
-          },
-        },
-        {
           attribute: "response",
           accessor: function ({ response, exception, args }) {
             return extractInferenceOutput({ response, exception, args });
