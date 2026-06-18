@@ -271,7 +271,7 @@ export const config = {
                         }
 
                         // Handle original chat.completions.create() format
-                        return response?.choices?.[0]?.message?.content ? [response.choices?.[0].message.content] : []
+                        return response?.choices?.[0]?.message?.content ? [response.choices?.[0].message.content] : [];
                     }
                 },
                 {
@@ -337,17 +337,25 @@ export class OpenAISpanHandler extends NonFrameworkSpanHandler {
         return currentActiveWorkflowType === "workflow.teams_ai"
     }
 
-    // If openAI is being called by Teams AI SDK, then retain the metadata part of the span events
-    skipProcessor({ instance, args, element }: {
+    // If openAI is being called by Teams AI SDK, then retain the metadata part
+    // of the span events (handled specially in processSpan), so skip the normal
+    // output processing here.
+    //
+    // For every other case (including when a framework like LangChain owns the
+    // workflow) we must NOT skip: the openai.* span is the model-API span and is
+    // the only place that carries the real request/response (the actual prompt,
+    // the model entity, token usage). NonFrameworkSpanHandler.skipProcessor would
+    // blank it whenever a framework workflow is active, which is exactly what
+    // left openai.chat/openai.embeddings empty under LangChain.
+    skipProcessor(_: {
         instance: any;
         args: IArguments;
         element: WrapperArguments;
     }) {
         if (this.isTeamsSpanInProgress()) {
             return true;
-        } else {
-            return super.skipProcessor({ instance, args, element });
         }
+        return false;
     }
 
     processSpan({ span, instance, args, returnValue, outputProcessor, wrappedPackage, exception, parentSpan }: {
@@ -384,10 +392,6 @@ export class OpenAISpanHandler extends NonFrameworkSpanHandler {
                 parentSpan
 
             });
-        }
-
-        if (this.checkActiveWorkflowType()) {
-            span.setAttribute("span.type", "inference.modelapi");
         }
 
     }
