@@ -6,7 +6,7 @@ export const config = [
         package: "openai/resources/chat/completions",
         object: "Completions",
         method: "create",
-        spanName: "openai.chat",
+        spanName: "openai_chat",
         output_processor: [inferenceConfig],
         spanHandler: new OpenAISpanHandler()
     },
@@ -14,7 +14,7 @@ export const config = [
         package: "openai/resources/embeddings",
         object: "Embeddings",
         method: "create",
-        spanName: "openai.embeddings",
+        spanName: "openai_embeddings",
         output_processor: [retrievalConfig],
         spanHandler: new OpenAISpanHandler()
     },
@@ -22,7 +22,7 @@ export const config = [
         package: "openai/resources/responses/responses",
         object: "Responses",
         method: "create",
-        spanName: "openai.responses",
+        spanName: "openai_responses",
         output_processor: [inferenceConfig],
         spanHandler: new OpenAISpanHandler(),
     },
@@ -30,7 +30,7 @@ export const config = [
         package: "openai/resources/responses/responses",
         object: "Responses",
         method: "stream",
-        spanName: "openai.responses.stream",
+        spanName: "openai_responses_stream",
         output_processor: [inferenceConfig],
         spanHandler: new OpenAISpanHandler(),
     }

@@ -54,14 +54,16 @@ export const config = {
                 {
                     "_comment": "this is instruction to LLM",
                     "attribute": "input",
-                    "accessor": function ({ args }) {
+                    "accessor": function ({
+                        args,
+                        // instance 
+                    }) {
                         if (args[0].value && typeof args[0].value === "string") {
-                            return [args[0].value]
+                            return args[0].value
                         }
                         if (args[0] && typeof args[0] === "string") {
-                            return [args[0]]
+                            return args[0]
                         }
-                        return []
                     }
                 }
             ]
