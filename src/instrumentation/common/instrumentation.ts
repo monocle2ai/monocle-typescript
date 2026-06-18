@@ -5,7 +5,7 @@ import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
 } from '@opentelemetry/instrumentation';
-import { context, trace } from "@opentelemetry/api";
+import { context } from "@opentelemetry/api";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
@@ -347,14 +347,6 @@ const setupMonocle = (
         setInstrumentor(monocleInstrumentation)
 
         monocleInstrumentation.setTracerProvider(tracerProvider);
-
-        // Attempt to register Monocle's tracer provider as the OTel global provider. If another provider is already registered, log a warning and skip registration to avoid conflicts.
-        const registered = trace.setGlobalTracerProvider(tracerProvider);
-        if (registered) {
-            consoleLog('Monocle registered as the global tracer provider');
-        } else {
-            consoleLog('Global tracer provider already set; Monocle skipping global registration');
-        }
 
         monocleInstrumentation.enable();
 
