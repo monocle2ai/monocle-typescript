@@ -193,8 +193,8 @@ export const config = {
         {
           "_comment": "finish reason from LLM response",
           "attribute": "finish_reason",
-          "accessor": function ({ args }) {
-            return extractFinishReason(args);
+          "accessor": function ({ response }) {
+            return extractFinishReason(response);
           }
         },
         {
