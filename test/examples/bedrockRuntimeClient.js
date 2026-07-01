@@ -13,21 +13,15 @@ async function invokeBedrockModel() {
 
   // Request payload for Claude model
   const requestPayload = {
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: 500,
-    messages: [
-      {
-        role: "user",
-        content: "What is coffee?"
-      }
-    ],
+    prompt: "\n\nHuman: What is coffee?\n\nAssistant: ",
+    max_tokens_to_sample: 500,
     temperature: 0.7,
     top_p: 1
   };
   const requestData = JSON.stringify(requestPayload);
 
   const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-3-sonnet-20240229-v1:0",  // Using the latest Claude 3 model
+    modelId: "anthropic.claude-v2",
     body: requestData,
     contentType: "application/json"
   });
@@ -49,13 +43,13 @@ async function invokeBedrockModel() {
 
     console.log("Bedrock Response:", {
       statusCode: response.$metadata.httpStatusCode,
-      payload: decodedResponse?.content || "No payload"
+      payload: decodedResponse ? decodedResponse.completion : "No payload"
     });
 
     return {
       command: {
         input: {
-          modelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+          modelId: "anthropic.claude-v2",
           body: requestData,
           contentType: "application/json"
         }

@@ -41,14 +41,14 @@ export const config = {
                     "accessor": function ({ args }: any): any {
                         try {
                             if (args && args.length > 0 && args[0]?.message?.parts?.length) {
-                                const message = args[0].message;
-                                if (message.parts.length > 0) {
-                                    return [`{'${message.role}': '${message.parts[0].text}'}`];
+                                const parts = args[0].message.parts;
+                                if (parts.length > 0) {
+                                    return parts[0].text;
                                 }
                             }
-                            return [JSON.stringify(args[0])];
+                            return JSON.stringify(args[0]) || JSON.stringify(args);
                         } catch {
-                            return [JSON.stringify(args)];
+                            return JSON.stringify(args);
                         }
                     }
                 }
