@@ -74,8 +74,7 @@ class AWSS3SpanExporter {
     private async _sendSpans(spans: Span[], done: (result: { code: ExportResultCode, error?: Error }) => void): Promise<void> {
         const prefix = this.keyPrefix + (process.env.MONOCLE_S3_KEY_PREFIX_CURRENT || '');
 
-        // Group spans by trace id so each trace is uploaded as its own file,
-        // matching the Python S3 exporter's per-trace file naming.
+        // Group spans by trace id so each trace is uploaded as its own file.
         const spansByTrace = new Map<string, Span[]>();
         for (const span of spans) {
             const traceId = span.spanContext().traceId;

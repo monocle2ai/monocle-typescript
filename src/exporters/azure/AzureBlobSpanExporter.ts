@@ -58,7 +58,6 @@ class AzureBlobSpanExporter {
 
     async _sendSpans(spans: Span[], done) {
         // Group spans by trace id so each trace is uploaded as its own blob,
-        // matching the Python Azure Blob exporter's per-trace file naming.
         const spansByTrace = new Map<string, Span[]>();
         for (const span of spans) {
             const traceId = span.spanContext().traceId;
