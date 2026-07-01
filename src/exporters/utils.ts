@@ -6,6 +6,16 @@ export function getUrlFriendlyTime(date = new Date()) {
   return format(date, "yyyyMMdd'T'HHmmss");
 }
 
+// Matches the Python S3 exporter time format: "%Y-%m-%d__%H.%M.%S"
+export function getS3FormattedTime(date = new Date()) {
+  return format(date, "yyyy-MM-dd'__'HH.mm.ss");
+}
+
+// Matches the Python Azure Blob exporter time format: "%Y-%m-%d_%H.%M.%S"
+export function getBlobFormattedTime(date = new Date()) {
+  return format(date, "yyyy-MM-dd'_'HH.mm.ss");
+}
+
 export interface SpanExport {
   name: string;
   context: {
