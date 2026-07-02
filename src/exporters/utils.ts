@@ -2,12 +2,12 @@ import { format } from "date-fns";
 import { hrTimeToTimeStamp } from "@opentelemetry/core";
 import { Span } from "@opentelemetry/sdk-trace-node";
 
-// Matches the Python S3 exporter time format: "%Y-%m-%d__%H.%M.%S"
+// Generates S3 exporter time format: "%Y-%m-%d__%H.%M.%S"
 export function getS3FormattedTime(date = new Date()) {
   return format(date, "yyyy-MM-dd'__'HH.mm.ss");
 }
 
-// Matches the Python Azure Blob exporter time format: "%Y-%m-%d_%H.%M.%S"
+// Generates Azure Blob exporter time format: "%Y-%m-%d_%H.%M.%S"
 export function getBlobFormattedTime(date = new Date()) {
   return format(date, "yyyy-MM-dd'_'HH.mm.ss");
 }
