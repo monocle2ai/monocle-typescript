@@ -1,6 +1,61 @@
 # Changelog
 
 All notable changes to Monocle TypeScript will be documented in this file.
+## 0.4.0 (2026-07-28)
+
+### Features
+
+- **Google ADK Support**
+
+- **Gemini Enhancements**
+  - Added extraction for declared tool names and types in inference requests [#107](https://github.com/monocle2ai/monocle-typescript/pull/107)
+  - Added dynamic subtypes to inference spans [#97](https://github.com/monocle2ai/monocle-typescript/pull/97)
+  - Enhanced token usage reporting in metadata
+  - Capture system input and tool-call output in inference spans [#99](https://github.com/monocle2ai/monocle-typescript/pull/99)
+  - Updated instrumented method and integration tests [#106](https://github.com/monocle2ai/monocle-typescript/pull/106)
+
+- **Exporter Improvements**
+  - Enhanced FileSpanExporter to flush all spans in single file with updated file naming convention [#98](https://github.com/monocle2ai/monocle-typescript/pull/98)
+  - Updated AWS and Azure exporters' file naming convention for exported traces [#112](https://github.com/monocle2ai/monocle-typescript/pull/112)
+
+### Bug Fixes
+
+- **LangChain**
+  - Fixed LangChain inference spans across LLM providers (OpenAI, Gemini, Anthropic, Bedrock) [#113](https://github.com/monocle2ai/monocle-typescript/pull/113)
+  - Updated LangChain and OpenAI inference spans structure [#111](https://github.com/monocle2ai/monocle-typescript/pull/111)
+
+- **OpenAI**
+  - Fixed OpenAI embeddings span to be retrieval instead of modelapi [#115](https://github.com/monocle2ai/monocle-typescript/pull/115)
+
+- **Span Handling**
+  - Removed auto generation of session IDs when not provided by external app [#101](https://github.com/monocle2ai/monocle-typescript/pull/101)
+  - Removed `to_agent` property from agentic span [#100](https://github.com/monocle2ai/monocle-typescript/pull/100)
+  - Removed unused agent tool names extraction and updated tool subtype to content generation [#105](https://github.com/monocle2ai/monocle-typescript/pull/105)
+  - Improved comments and streamlined `skipProcessor` logic in OpenAISpanHandler
+
+- **Configuration**
+  - Disabled Monocle's global tracer provider registration [#108](https://github.com/monocle2ai/monocle-typescript/pull/108)
+  - Hidden Langgraph and OpenAI SDK instrumentation [#103](https://github.com/monocle2ai/monocle-typescript/pull/103)
+
+### Testing
+
+- Added unit tests for ADK and Gemini schemas, including delegation and finish_reason accessors [#102](https://github.com/monocle2ai/monocle-typescript/pull/102)
+
+## 0.3.1 (2026-03-25)
+- Okahu eval exporter support
+
+## 0.3.0 (2025-09-09)
+
+### Features
+
+- **Agent Support**
+  - Added instrumentation for LlamaIndex agents [#78](https://github.com/monocle2ai/monocle-typescript/pull/78)
+  - Added instrumentation for LangGraph agents
+
+### Bug Fixes
+
+- Fixed default .monocle path configuration [#83](https://github.com/monocle2ai/monocle-typescript/pull/83)
+- Set ./.monocle as default trace export path for file exporter [#82](https://github.com/monocle2ai/monocle-typescript/pull/82)
 
 ## 0.1.2 (2025-04-02)
 
