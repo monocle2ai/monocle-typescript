@@ -13,6 +13,7 @@ import { config as mcpPackages } from "../metamodel/mcp/methods";
 import { config as a2aPackages } from "../metamodel/a2a/methods";
 // import { config as openaiAgentsPackages } from "../metamodel/agents/methods";
 import { config as adkPackages } from "../metamodel/adk/methods";
+import { config as mastraPackages } from "../metamodel/mastra/methods";
 import { MethodConfig } from "./constants";
 
 export const combinedPackages: MethodConfig[] = [
@@ -30,5 +31,28 @@ export const combinedPackages: MethodConfig[] = [
   ...mcpPackages,
   ...a2aPackages,
   // ...openaiAgentsPackages,
-  ...adkPackages
+  ...adkPackages,
+  ...mastraPackages
 ];
+
+// Bare package name from a possibly-subpath specifier.
+// "@mastra/core/agent" -> "@mastra/core"; "openai/resources/..." -> "openai".
+export function getBarePackageName(spec: string): string {
+  if (spec.startsWith("@")) {
+    return spec.split("/").slice(0, 2).join("/");
+  }
+  return spec.split("/")[0];
+}
+
+// Bare package names Monocle instruments, derived from the enabled metamodels.
+// Single runtime source of truth for the hook audit and the withMonocle sync test.
+export function getInstrumentedPackageNames(): string[] {
+  return Array.from(
+    new Set(
+      combinedPackages
+        .map((p) => (p as any).package)
+        .filter((pkg: unknown): pkg is string => typeof pkg === "string")
+        .map(getBarePackageName)
+    )
+  );
+}

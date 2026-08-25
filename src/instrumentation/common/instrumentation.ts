@@ -9,11 +9,14 @@ import { context } from "@opentelemetry/api";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeTracerProvider, SpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
-import { combinedPackages } from "./packages";
+import { combinedPackages, getBarePackageName } from "./packages";
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-node";
 import { getPatchedMain, getPatchedScopeMain, getPatchedMainList } from "./wrapper";
+// Must stay a static import: a lazy require() throws in the ESM build.
+import { NonFrameworkSpanHandler } from "./spanHandler";
 import { AWS_CONSTANTS, MethodConfig } from './constants';
 import * as path from 'path';
+import * as fs from 'fs';
 import { Hook as ImportHook } from "import-in-the-middle";
 import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporters } from '../../exporters';
@@ -23,6 +26,12 @@ import { consoleLog } from '../../common/logging';
 import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal } from './utils';
 
 class MonocleInstrumentation extends InstrumentationBase {
+    // `declare` (no runtime field): a real field would emit `this.x = undefined`
+    // after super()/init() and wipe the Sets init() populates. Created in init().
+    declare instrumentedPackages: Set<string>;   // configured to instrument
+    declare hookedPackages: Set<string>;          // actually hooked (a patch fired)
+    declare _auditDone?: boolean;
+
     constructor(config = {}) {
         super('MonocleInstrumentation', "1.0", config)
         consoleLog('MonocleInstrumentation initialized with config:', config);
@@ -30,6 +39,46 @@ class MonocleInstrumentation extends InstrumentationBase {
 
     public getTracer() {
         return this.tracer;
+    }
+
+    // Warn about instrumented direct-deps that were never hooked — usually a
+    // bundler (Next.js) inlined them, so tracing silently produces nothing.
+    // Runs once. Disable with MONOCLE_DISABLE_HOOK_AUDIT=true.
+    public auditHooks() {
+        if (this._auditDone) return;
+        this._auditDone = true;
+        try {
+            if (process.env.MONOCLE_DISABLE_HOOK_AUDIT === 'true') return;
+            // Bundler-only: in plain Node/tsx a missing hook just means "not loaded
+            // yet", and tsx helper processes would false-positive.
+            if (!process.env.NEXT_RUNTIME && process.env.MONOCLE_FORCE_HOOK_AUDIT !== 'true') return;
+            if (!this.instrumentedPackages || !this.hookedPackages) return;
+
+            let deps: Record<string, string> = {};
+            try {
+                const pkgPath = path.join(process.cwd(), 'package.json');
+                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                deps = { ...(pkg.dependencies || {}), ...(pkg.optionalDependencies || {}) };
+            } catch {
+                return; // no readable package.json → can't audit, stay silent
+            }
+            const directDeps = new Set(Object.keys(deps));
+
+            const missing: string[] = [];
+            for (const pkg of this.instrumentedPackages) {
+                if (directDeps.has(pkg) && !this.hookedPackages.has(pkg)) missing.push(pkg);
+            }
+            if (missing.length) {
+                console.warn(
+                    `[monocle] Instrumented package(s) installed but not hooked: ${missing.join(', ')}. ` +
+                    `If your app uses them under a bundler (Next.js/webpack), add them to serverExternalPackages ` +
+                    `(or withMonocle's externalPackages) so they aren't inlined — bundled modules can't be traced. ` +
+                    `Silence with MONOCLE_DISABLE_HOOK_AUDIT=true.`
+                );
+            }
+        } catch (e) {
+            consoleLog('Error in auditHooks', { error: (e as any)?.message });
+        }
     }
 
     /**
@@ -41,6 +90,8 @@ class MonocleInstrumentation extends InstrumentationBase {
      */
     init() {
         consoleLog('Initializing MonocleInstrumentation');
+        this.instrumentedPackages = new Set();
+        this.hookedPackages = new Set();
         const modules: any[] = []
         const scopeMethodsForInstrumentation = load_scopes();
 
@@ -61,6 +112,9 @@ class MonocleInstrumentation extends InstrumentationBase {
                 // unpatch
                 this._unPatch(elements).bind(this),
             );
+            // Config for the ESM hook (enable()) to patch by export-presence.
+            (module as any).monocleElements = elements;
+            this.instrumentedPackages.add(getBarePackageName(elements[0].package));
             modules.push(module);
         }
 
@@ -153,17 +207,6 @@ class MonocleInstrumentation extends InstrumentationBase {
 
         // @ts-ignore: private field access required
         for (const module of this._modules) {
-            const hookFn = (exports, name, baseDir) => {
-                if (!baseDir && path.isAbsolute(name)) {
-                    const parsedPath = path.parse(name);
-                    name = parsedPath.name;
-                    baseDir = parsedPath.dir;
-                }
-
-                // @ts-ignore: private field access required
-                return this._onRequire(module, exports, name, baseDir);
-            };
-
             const onRequire = (exports, name: string, baseDir: string) => {
                 try {
                     if (module.name !== name && module.name.includes(path.join(baseDir, name))) {
@@ -188,7 +231,33 @@ class MonocleInstrumentation extends InstrumentationBase {
             const hook = new RequireHook([module.name], { internals: true }, onRequire);
             // @ts-ignore: private field access required
             this._hooks.push(hook);
-            const esmHook = new ImportHook([module.name], { internals: false }, hookFn);
+
+            // IITM matches only the bare package name (it collapses subpaths like
+            // "@mastra/core/agent" to "@mastra/core"), so hook the bare package with
+            // `internals` and patch whichever internal module exposes the target.
+            // (CJS works via require-in-the-middle's literal string match above.)
+            const esmElements: MethodConfig[] = (module as any).monocleElements || [];
+            const barePackage = getBarePackageName(module.name);
+            const esmHook = new ImportHook([barePackage], { internals: true }, (exports) => {
+                try {
+                    const el = esmElements[0];
+                    if (!el) return exports;
+                    const target = el.object ? exports?.[el.object]?.prototype : exports;
+                    // Skip modules without the target; __wrapped guards against
+                    // double-wrapping (the class fires from both chunk and barrel).
+                    if (!target || typeof target[el.method] !== "function") return exports;
+                    if ((target[el.method] as any).__wrapped) return exports;
+                    module.moduleExports = exports;
+                    module.patch(exports, module.moduleVersion);
+                } catch (err) {
+                    consoleLog("Error in ESM hookFn", {
+                        module: module.name,
+                        error: err.message,
+                        stack: err.stack
+                    });
+                }
+                return exports;
+            });
             // @ts-ignore: private field access required
             this._hooks.push(esmHook);
         }
@@ -256,6 +325,8 @@ class MonocleInstrumentation extends InstrumentationBase {
                         );
                     }
                 }
+                // Record a successful wrap for the hook audit.
+                this.hookedPackages.add(getBarePackageName(elements[0].package));
                 return moduleExports;
             } catch (e) {
                 consoleLog('Error in _getOnPatchMain', {
@@ -278,7 +349,6 @@ class MonocleInstrumentation extends InstrumentationBase {
         if ((element as any).wrapperMethod && typeof (element as any).wrapperMethod === 'function') {
             return (original: Function) => {
                 return function (this: any, ...args: any[]) {
-                    const { NonFrameworkSpanHandler } = require('./spanHandler');
                     const spanHandler = (element as any).spanHandler || new NonFrameworkSpanHandler();
 
                     return (element as any).wrapperMethod(
@@ -349,6 +419,14 @@ const setupMonocle = (
         monocleInstrumentation.setTracerProvider(tracerProvider);
 
         monocleInstrumentation.enable();
+
+        // Deferred hook audit, once. Timer is unref'd so it never holds a script open.
+        if (process.env.MONOCLE_DISABLE_HOOK_AUDIT !== 'true') {
+            const delayMs = Number(process.env.MONOCLE_HOOK_AUDIT_DELAY_MS ?? 20000);
+            const timer = setTimeout(() => monocleInstrumentation.auditHooks(), delayMs);
+            if (typeof (timer as any).unref === 'function') (timer as any).unref();
+            process.on('beforeExit', () => monocleInstrumentation.auditHooks());
+        }
 
         consoleLog('Monocle setup completed');
         return monocleInstrumentation;

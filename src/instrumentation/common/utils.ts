@@ -59,9 +59,18 @@ export function getSourcePath(): string {
     }
 }
 
-let _instrumentor = null
+// On globalThis, not module scope: `--import monocle2ai/register` loads the ESM
+// build while a later require("monocle2ai") loads the CJS build, and each copy
+// has its own module state. Symbol.for() resolves to the same symbol in both, so
+// whichever copy ran setupMonocle publishes an instrumentor the other can read.
+const INSTRUMENTOR_KEY = Symbol.for("monocle2ai.instrumentor");
+
 export function setInstrumentor(instrumentor: any) {
-    _instrumentor = instrumentor;
+    (globalThis as any)[INSTRUMENTOR_KEY] = instrumentor;
+}
+
+function getInstrumentor(): any {
+    return (globalThis as any)[INSTRUMENTOR_KEY];
 }
 
 const scope_id_generator = new RandomIdGenerator();
@@ -195,7 +204,16 @@ export function startTraceInternal<A extends unknown[], F extends (...args: A) =
 ) {
     let isFnCalled = false;
     try {
-        const tracer: Tracer = _instrumentor.getTracer();
+        const instrumentor = getInstrumentor();
+        if (!instrumentor) {
+            // Loud on purpose: the failure below is otherwise a silent no-span.
+            console.warn(
+                "[monocle] startTrace() called before setupMonocle() — no span will be " +
+                "recorded. If you preload with --import monocle2ai/register, make sure " +
+                "the running build is current.",
+            );
+        }
+        const tracer: Tracer = instrumentor.getTracer();
         const contextWithWorkflow = attachWorkflowType();
         return context_api.with(contextWithWorkflow, () => {
             return tracer.startActiveSpan("workflow", (span: Span) => {

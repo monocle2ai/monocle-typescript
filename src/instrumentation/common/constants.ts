@@ -48,6 +48,18 @@ export const WORKFLOW_TYPE_GENERIC = "workflow.generic"
 export const MONOCLE_SDK_VERSION = "monocle_apptrace.version"
 export const MONOCLE_DETECTED_SPAN_ERROR = "monocle_apptrace.detected_span_error"
 
+// Default service/workflow name when the app doesn't supply one (e.g. the
+// `monocle2ai/register` preload reading MONOCLE_WORKFLOW_NAME).
+export const DEFAULT_WORKFLOW_NAME = "monocle-app"
+
+// Agentic scope names shared across framework metamodels (ADK, Mastra, ...).
+//   agentic.session    — one user session/thread (multiple turns share this)
+//   agentic.turn       — one agent turn (e.g. Runner.runAsync / Agent.generate)
+//   agentic.invocation — one agent activation within a turn
+export const SCOPE_AGENTIC_SESSION = "agentic.session"
+export const SCOPE_AGENTIC_TURN = "agentic.turn"
+export const SCOPE_AGENTIC_INVOCATION = "agentic.invocation"
+
 // # Azure environment constants
 const AZURE_ML_ENDPOINT_ENV_NAME = "AZUREML_ENTRY_SCRIPT"
 const AZURE_FUNCTION_WORKER_ENV_NAME = "FUNCTIONS_WORKER_RUNTIME"
@@ -93,10 +105,16 @@ export const service_name_map = {
 
 export const LANGGRAPH_AGENT_NAME_KEY = Symbol("agent.langgraph");
 export const ADK_AGENT_NAME_KEY = Symbol("agent.adk");
+// The agent currently executing, so a nested one can name its delegator.
+export const MASTRA_AGENT_NAME_KEY = Symbol("agent.mastra");
 // Marks "an ADK turn span is already open in this trace tree" so nested
 // Runner wrappers (e.g. Runner.runEphemeral → Runner.runAsync internally, or
 // AgentTool's inner Runner) skip creating a duplicate agentic.turn span.
 export const ADK_TURN_SPAN_ACTIVE_KEY = Symbol("monocle.adk.turn_span_active");
+// Marks "a Mastra turn span is already open in this trace tree" so nested
+// agent invocations (agent-as-tool, workflow steps, or generate() delegating
+// internally to the streaming loop) skip creating a duplicate agentic.turn span.
+export const MASTRA_TURN_SPAN_ACTIVE_KEY = Symbol("monocle.mastra.turn_span_active");
 // Set by ADKAgentSpanHandler.preTracing on a delegated sub-agent invocation
 // (when the previous agent on the context isn't the current agent). Read by
 // the AGENT schema's from_agent / from_agent_span_id accessors.

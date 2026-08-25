@@ -5,17 +5,13 @@ import {
     FROM_AGENT_KEY,
     FROM_AGENT_SPAN_ID_KEY,
     MONOCLE_ACTIVE_SPAN_KEY,
+    SCOPE_AGENTIC_INVOCATION,
+    SCOPE_AGENTIC_SESSION,
+    SCOPE_AGENTIC_TURN,
     WrapperArguments,
 } from "../../common/constants";
 import { DefaultSpanHandler } from "../../common/spanHandler";
 import { getScopeFromContext, updateBaggageContextWithScopes } from "../../common/utils";
-
-//   agentic.session    — one user session (multiple turns share this)
-//   agentic.turn       — one user message → one runner.runAsync call
-//   agentic.invocation — one BaseAgent.runAsync activation
-const SCOPE_AGENTIC_SESSION = "agentic.session";
-const SCOPE_AGENTIC_TURN = "agentic.turn";
-const SCOPE_AGENTIC_INVOCATION = "agentic.invocation";
 
 function getAgentName(thisArg: any): string {
     return thisArg?.name || thisArg?.agent?.name || thisArg?.constructor?.name || "adk_agent";

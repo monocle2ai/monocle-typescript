@@ -57,6 +57,8 @@ export interface SpanHandler {
     }): void;
 
     preTracing(element: WrapperArguments, currentContext?: any, thisArg?: any, callArgs?: any): any;
+
+    resolveCompletion?({ returnValue }: { returnValue: any }): Promise<any> | null;
 }
 
 export function isRootSpan(span: Span) {
@@ -84,6 +86,7 @@ const WORKFLOW_TYPE_MAP = {
     "teams.ai": "workflow.teams_ai",
     "llama_index": "workflow.llamaindex",
     "@google/adk": "workflow.adk",
+    "@mastra/core": "workflow.mastra",
 }
 
 function getWorkflowName(span: Span) {
@@ -353,6 +356,14 @@ export class DefaultSpanHandler implements SpanHandler {
                 span.setAttribute(`entity.${spanIndex}.name`, process.env[entityNameEnv] || "generic");
             }
         }
+    }
+
+    // Hook for return values that are neither a Promise nor an async iterable
+    // but still finish asynchronously (e.g. Mastra's MastraModelOutput, whose
+    // getFullOutput() resolves on completion). Returning a Promise makes the
+    // wrapper defer ending the span until it settles. Default: not applicable.
+    resolveCompletion(_: { returnValue: any }): Promise<any> | null {
+        return null;
     }
 
     public static setMonocleAttributes(span: Span, sourcePath) {
