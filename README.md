@@ -47,18 +47,82 @@ hooking them **at module load**, so Monocle must be set up **before your app imp
 those libraries**. One preload does this for both ESM and CommonJS; Next.js and
 `mastra dev` supply it their own way.
 
+### Run one file, without changing anything
+
+To trace a single script — an agent, a prototype, a reproduction — there is nothing to
+set up:
+
+```
+npx monocle2ai run src/agent.ts
+```
+
+Tracing is preloaded before your file loads, so the file needs no `setupMonocle()` call
+and your project keeps its `package.json`, lockfile and `node_modules` as they are. The
+file runs exactly as it would otherwise: arguments after the path are passed through,
+and stdin stays connected, so an agent that prompts for input still works.
+
+```
+npx monocle2ai run src/agent.ts --city Berlin
+```
+
+The target runs under [tsx](https://tsx.is), which handles TypeScript and both module
+systems. If tsx is not installed, Monocle fetches it with `npx` for the run only and
+tells you it did — nothing is added to your project.
+
+Name the workflow and choose where traces go with a `.env.monocle` file beside your
+`package.json`:
+
+```
+# .env.monocle
+MONOCLE_WORKFLOW_NAME=my-agent
+MONOCLE_EXPORTER=file
+```
+
+Monocle reads this file itself, so it applies however the app is started — including
+Next.js and `mastra dev`, which never see a `--env-file` flag. With no exporter set,
+traces are written as JSON under `.monocle/`. **Reading `.env.monocle` needs Node 20.12
+or 21.7+**; on older releases, set the variables in the environment instead.
+
+Use this to trace a run. To trace an application you start yourself — `npm start`, a
+dev server, anything with its own entry point — use the preload below instead.
+
+#### From VS Code
+
+The [Okahu AI Debugging Agent](https://marketplace.visualstudio.com/items?itemName=OkahuAI.okahu-ai-observability)
+extension for VS Code runs the same command for you, from either of two places:
+
+- **The sidebar.** Open the Okahu AI Observability view in the activity bar and pick
+  **Run Agent with Monocle2AI** under **TOOLS**.
+- **The editor.** Right-click the file and choose **Monocle → Run Agent with
+  Monocle2AI**.
+
+Both act on the file open in the editor and route on its language, so a TypeScript file
+runs through `monocle2ai run` — a terminal opens in the project and the file runs
+traced.
+
+**Instrument using Monocle2AI**, in the same two places, does the other half: it adds
+the preload to your `.env`, writes `.env.monocle`, and offers to add `--env-file` to
+whichever npm scripts you pick — for an app you start yourself rather than a file you
+run once.
+
 ### Node / tsx scripts (ESM and CommonJS)
 
-The same setup works for both module systems. Put the preload in `.env`:
+The same setup works for both module systems. Put the preload in `.env` — only the
+preload, since Node has to read it before startup and everything else belongs in
+`.env.monocle`:
 
 ```
 # .env
 NODE_OPTIONS=--import monocle2ai/register
-MONOCLE_WORKFLOW_NAME=my-app        # service name used by monocle2ai/register
+```
+
+```
+# .env.monocle — read by Monocle itself
+MONOCLE_WORKFLOW_NAME=my-app
 MONOCLE_EXPORTER=file
 ```
 
-and pass `--env-file` when you launch, so Node reads it **at startup**:
+and pass `--env-file` when you launch, so Node reads the preload **at startup**:
 
 ```jsonc
 // package.json
@@ -197,6 +261,11 @@ one-time warning telling you to externalize it. Silence or tune it with
 
 See [.env.example](.env.example) for all environment variables — exporters
 (console/file/S3/Azure/Okahu), output paths, preload, hook audit, and debug.
+
+Everything except `NODE_OPTIONS` belongs in `.env.monocle`, which Monocle reads for
+itself. Its values take precedence over the environment, so the same settings apply
+whichever way the app is started. `NODE_OPTIONS` is the exception: Node applies it
+before startup, so it has to be somewhere Node reads — your `.env`, or the shell.
 ## Roadmap 
 
 Goal of Monocle is to support tracing for apps written in *any language* with *any LLM orchestration or agentic framework* and built using models, vectors, agents or other components served up by *any cloud or model inference provider*. 

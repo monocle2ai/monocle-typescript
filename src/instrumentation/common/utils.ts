@@ -69,7 +69,7 @@ export function setInstrumentor(instrumentor: any) {
     (globalThis as any)[INSTRUMENTOR_KEY] = instrumentor;
 }
 
-function getInstrumentor(): any {
+export function getInstrumentor(): any {
     return (globalThis as any)[INSTRUMENTOR_KEY];
 }
 

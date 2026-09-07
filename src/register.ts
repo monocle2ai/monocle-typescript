@@ -1,9 +1,11 @@
 // Preload entry: `--import monocle2ai/register` (or via NODE_OPTIONS). Runs
 // setupMonocle before the app's import graph loads, so IITM can hook it. Kept
 // separate from the exported API so importing the library doesn't start tracing.
-// Service name: MONOCLE_WORKFLOW_NAME (default "monocle-app").
+// Service name: MONOCLE_WORKFLOW_NAME, from the environment or .env.monocle
+// (default "monocle-app").
 import { setupMonocle } from "./instrumentation/common/instrumentation";
 import { DEFAULT_WORKFLOW_NAME } from "./instrumentation/common/constants";
+import { loadMonocleEnvFile } from "./common/envFile";
 
 // Run once per process (tsx spawns helpers that each inherit --import).
 const REGISTERED = Symbol.for("monocle2ai.register.done");
@@ -12,6 +14,9 @@ const g = globalThis as any;
 if (!g[REGISTERED]) {
   g[REGISTERED] = true;
 
+  // Must precede the read below: the workflow name lives in .env.monocle, so
+  // reading it first would name every traced workflow "monocle-app".
+  loadMonocleEnvFile();
   setupMonocle(process.env.MONOCLE_WORKFLOW_NAME ?? DEFAULT_WORKFLOW_NAME);
 
   // Hold the loop briefly on exit so a short script's batched spans flush
