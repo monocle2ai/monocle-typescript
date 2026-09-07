@@ -18,12 +18,13 @@ import { AWS_CONSTANTS, MethodConfig } from './constants';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Hook as ImportHook } from "import-in-the-middle";
+import { loadMonocleEnvFile } from "../../common/envFile";
 import { Hook as RequireHook } from "require-in-the-middle";
 import { getMonocleExporters } from '../../exporters';
 import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
-import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, startTraceInternal } from './utils';
+import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, getInstrumentor, startTraceInternal } from './utils';
 
 class MonocleInstrumentation extends InstrumentationBase {
     // `declare` (no runtime field): a real field would emit `this.x = undefined`
@@ -375,9 +376,26 @@ const setupMonocle = (
 ) => {
 
     try {
+        // Before anything reads configuration, and before consoleLog checks
+        // MONOCLE_DEBUG. Next.js and mastra reach tracing through here rather
+        // than through the register preload, so this is their only chance.
+        loadMonocleEnvFile();
+
         consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
+
         if (spanProcessors.length && exporter_list) {
             throw new Error('Cannot set both spanProcessors and exporter_list.');
+        }
+
+        // Set up once per process: `monocle2ai run` preloads the register entry
+        // and the target file may call setupMonocle too, which would build a
+        // second tracer provider and export every span twice.
+        const existing = getInstrumentor();
+        if (existing) {
+            consoleLog(
+                `Monocle is already set up; ignoring this call for workflow: ${workflowName}`
+            );
+            return existing;
         }
         registerModule();
 

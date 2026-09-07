@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// Thin shim: the package has no "type" field, so this file is CommonJS and can
+// require the CJS build directly. Copied verbatim into dist/bin/ by scripts/build.
+require("../cli.cjs").runCli();

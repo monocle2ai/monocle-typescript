@@ -36,6 +36,8 @@ pkgJson.exports = {
   },
   './package.json': './package.json',
 };
+// `npx monocle2ai run <file>` — preloads tracing, then runs the target.
+pkgJson.bin = { monocle2ai: './bin/cli' };
 // delete pkgJson.scripts.prepack;
 // delete pkgJson.scripts.prepublishOnly;
 // delete pkgJson.scripts.prepare;

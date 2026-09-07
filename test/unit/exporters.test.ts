@@ -21,10 +21,18 @@ describe('getMonocleExporters', () => {
         process.env = originalEnv;
     });
 
-    it('should return console exporter by default when no MONOCLE_EXPORTER is set', () => {
+    // Spans printed to the terminal are lost the moment the scrollback rolls;
+    // written to .monocle/ they survive the run and can be read back.
+    it('should return file exporter by default when no MONOCLE_EXPORTER is set', () => {
         delete process.env.MONOCLE_EXPORTER;
         const exporters = getMonocleExporters();
         expect(exporters).toHaveLength(1);
+        expect(exporters[0]).toBeInstanceOf(FileSpanExporter);
+    });
+
+    it('should still use console when MONOCLE_EXPORTER asks for it', () => {
+        process.env.MONOCLE_EXPORTER = 'console';
+        const exporters = getMonocleExporters();
         expect(exporters[0]).toBeInstanceOf(MonocleConsoleSpanExporter);
     });
 
