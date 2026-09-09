@@ -64,10 +64,16 @@ function fakeTool(name: string, description: string) {
 }
 
 // The SDK creates one RunContext per run and passes that same instance to every
-// event, which is how the bridge tells concurrent runs apart — so reuse one per
-// run rather than minting one per emit.
+// event, so reuse one per run rather than minting one per emit.
 function fakeRunContext() {
     return { usage: { inputTokens: 11, outputTokens: 7, totalTokens: 18 } };
+}
+
+// agent_start's third argument. Verified against 0.3.9 and 0.17.0: the runner
+// emits `agent_start(runContext, agent, inputItems)`, and inputItems holds the
+// turn's messages — so the fixture must carry real items, not an empty array.
+function turnInput(text: string) {
+    return [{ type: 'message', role: 'user', content: text }];
 }
 
 // Runner-shaped emitter: `script` emits the lifecycle a test wants, `result` is
@@ -190,7 +196,7 @@ describe('@openai/agents instrumentation', () => {
         const agent = fakeAgent('Solo');
         const runner = new FakeRunner(
             (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_end', ctx, agent, 'all done');
             },
             { finalOutput: 'all done' },
@@ -210,7 +216,7 @@ describe('@openai/agents instrumentation', () => {
         const agent = fakeAgent('Solo');
         const runner = new FakeRunner(
             (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_end', ctx, agent, 'all done');
             },
             { finalOutput: 'all done' },
@@ -235,7 +241,7 @@ describe('@openai/agents instrumentation', () => {
         const agent = fakeAgent('Solo', { handoffDescription: 'the only agent' });
         const runner = new FakeRunner(
             (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_end', ctx, agent, 'all done');
             },
             { finalOutput: 'all done' },
@@ -253,6 +259,12 @@ describe('@openai/agents instrumentation', () => {
         expect(invocation.attributes['entity.1.name']).toBe('Solo');
         expect(invocation.attributes['entity.1.instructions']).toBe('instructions for Solo');
 
+        // Pins agent_start's third argument: if the SDK ever stopped passing
+        // turnInput, or the listener dropped it, this input would go empty.
+        const inEvent = invocation.events.find((e: any) => e.name === 'data.input');
+        expect(inEvent, 'expected a data.input event').toBeDefined();
+        expect(String(inEvent!.attributes!.input)).toContain('are we done?');
+
         const outEvent = invocation.events.find((e: any) => e.name === 'data.output');
         expect(String(outEvent!.attributes!.response)).toContain('all done');
 
@@ -269,9 +281,9 @@ describe('@openai/agents instrumentation', () => {
         const runner = new FakeRunner(
             (r, ctx) => {
                 // No agent_end for Triage: the handoff ends its activation.
-                r.emit('agent_start', ctx, triage, []);
+                r.emit('agent_start', ctx, triage, turnInput('I have a billing question'));
                 r.emit('agent_handoff', ctx, triage, billing);
-                r.emit('agent_start', ctx, billing, []);
+                r.emit('agent_start', ctx, billing, turnInput('I have a billing question'));
                 r.emit('agent_end', ctx, billing, 'billing handled');
             },
             { finalOutput: 'billing handled' },
@@ -312,7 +324,7 @@ describe('@openai/agents instrumentation', () => {
         const toolCall = { callId: 'call_1', name: 'get_weather', arguments: '{"city":"SFO"}' };
         const runner = new FakeRunner(
             (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_tool_start', ctx, agent, tool, { toolCall });
                 r.emit('agent_tool_end', ctx, agent, tool, 'sunny in SFO', { toolCall });
                 r.emit('agent_end', ctx, agent, 'it is sunny');
@@ -355,7 +367,7 @@ describe('@openai/agents instrumentation', () => {
 
         const runner = new FakeRunner(
             (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 // Both start before either ends, completing FIFO. That ordering
                 // is what discriminates: "most recent wins" bookkeeping would
                 // hand the weather result to the time span, while LIFO
@@ -402,7 +414,7 @@ describe('@openai/agents instrumentation', () => {
         const runner = new FakeRunner(
             (r, ctx) => {
                 // Neither agent_end nor agent_tool_end arrives.
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_tool_start', ctx, agent, tool, { toolCall });
                 throw new Error('model exploded');
             },
@@ -429,7 +441,7 @@ describe('@openai/agents instrumentation', () => {
         const makeRunner = () =>
             new FakeRunner(
                 (r, ctx) => {
-                    r.emit('agent_start', ctx, agent, []);
+                    r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                     r.emit('agent_end', ctx, agent, 'ok');
                 },
                 { finalOutput: 'ok' },
@@ -465,11 +477,11 @@ describe('@openai/agents instrumentation', () => {
 
         const runner = new FakeRunner(
             (r, ctx) => {
-                r.emit('agent_start', ctx, triage, []);
+                r.emit('agent_start', ctx, triage, turnInput('I have a billing question'));
                 r.emit('agent_tool_start', ctx, triage, tool, { toolCall });
                 r.emit('agent_tool_end', ctx, triage, tool, 'found', { toolCall });
                 r.emit('agent_handoff', ctx, triage, billing);
-                r.emit('agent_start', ctx, billing, []);
+                r.emit('agent_start', ctx, billing, turnInput('I have a billing question'));
                 r.emit('agent_end', ctx, billing, 'handled');
             },
             { finalOutput: 'handled' },
@@ -496,7 +508,7 @@ describe('@openai/agents instrumentation', () => {
         const makeRunner = () =>
             new FakeRunner(
                 (r, ctx) => {
-                    r.emit('agent_start', ctx, agent, []);
+                    r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                     r.emit('agent_end', ctx, agent, 'ok');
                 },
                 { finalOutput: 'ok' },
@@ -534,13 +546,13 @@ describe('@openai/agents instrumentation', () => {
         const waitForGate = () => new Promise<void>((resolve) => gate.push(resolve));
 
         const runnerA = new FakeRunner(async (r, ctx) => {
-            r.emit('agent_start', ctx, alpha, []);
+            r.emit('agent_start', ctx, alpha, turnInput('a'));
             await waitForGate();
             r.emit('agent_end', ctx, alpha, 'alpha done');
         }, { finalOutput: 'alpha done' });
 
         const runnerB = new FakeRunner(async (r, ctx) => {
-            r.emit('agent_start', ctx, beta, []);
+            r.emit('agent_start', ctx, beta, turnInput('b'));
             r.emit('agent_end', ctx, beta, 'beta done');
         }, { finalOutput: 'beta done' });
 
@@ -577,7 +589,7 @@ describe('@openai/agents instrumentation', () => {
 
         const runner = new FakeRunner(
             async (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 // Instrumented by the openai metamodel, not by this bridge.
                 await new FakeResponses().create({ model: 'gpt-4o', input: 'weather?' });
                 r.emit('agent_end', ctx, agent, 'It is sunny.');
@@ -616,7 +628,7 @@ describe('@openai/agents instrumentation', () => {
 
         const runner = new FakeRunner(
             async (r, ctx) => {
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_end', ctx, agent, 'done');
                 // The activation is over; must not attach to an ended span.
                 await new FakeResponses().create({ model: 'gpt-4o', input: 'after' });
@@ -642,7 +654,7 @@ describe('@openai/agents instrumentation', () => {
         const make = () =>
             new FakeRunner(
                 (r, ctx) => {
-                    r.emit('agent_start', ctx, agent, []);
+                    r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                     r.emit('agent_end', ctx, agent, 'done');
                 },
                 { finalOutput: 'done' },
@@ -674,7 +686,7 @@ describe('@openai/agents instrumentation', () => {
         const runner = new FakeStreamingRunner(
             async (r, ctx) => {
                 traceId = trace.getSpan(context.active())?.spanContext().traceId;
-                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_start', ctx, agent, turnInput('are we done?'));
                 r.emit('agent_tool_start', ctx, agent, tool, { toolCall });
                 r.emit('agent_tool_end', ctx, agent, tool, 'sunny', { toolCall });
                 r.emit('agent_end', ctx, agent, 'it is sunny');
