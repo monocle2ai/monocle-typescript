@@ -93,6 +93,50 @@ class FakeRunner extends EventEmitter {
     }
 }
 
+// Models Runner.run({ stream: true }): it resolves at stream *setup*, kicking
+// the agent loop off without awaiting it, and returns a StreamedRunResult whose
+// `completed` promise settles when the loop finishes.
+class FakeStreamingRunner extends EventEmitter {
+    constructor(
+        private script: (runner: FakeStreamingRunner, runContext: any) => Promise<void>,
+        private result: any,
+    ) {
+        super();
+    }
+
+    async run(_agent: any, _input: any, _options?: any) {
+        const runContext = fakeRunContext();
+        let done = false;
+        // Not awaited — exactly what #runIndividualStream does.
+        const loop = (async () => {
+            await new Promise((r) => setTimeout(r, 5));
+            await this.script(this, runContext);
+            done = true;
+        })();
+        const result = this.result;
+        return {
+            completed: loop,
+            // undefined until the stream drains, as StreamedRunResult is
+            get finalOutput() {
+                return done ? result.finalOutput : undefined;
+            },
+        };
+    }
+}
+
+function patchStreamingRunner() {
+    const entry = (agentsConfig as any[]).find(
+        (c) => c.object === 'Runner' && c.method === 'run',
+    );
+    if (!(FakeStreamingRunner.prototype.run as any).__monoclePatched) {
+        const patched = getPatchedMain({ ...entry, tracer } as any)(
+            FakeStreamingRunner.prototype.run,
+        );
+        (patched as any).__monoclePatched = true;
+        FakeStreamingRunner.prototype.run = patched as any;
+    }
+}
+
 // Patches FakeRunner.prototype.run with the real config entry, as the
 // instrumentor would patch Runner.prototype.run.
 function patchRunner() {
@@ -616,5 +660,50 @@ describe('@openai/agents instrumentation', () => {
         // make the second run attach to the first run's (already ended) turn.
         expect(invocations.map(parentIdOf).sort())
             .toEqual(turns.map((t) => t.spanContext().spanId).sort());
+    });
+
+    it('holds the turn span open until a streamed run finishes', async () => {
+        patchStreamingRunner();
+        const agent = fakeAgent('Solo');
+        const tool = fakeTool('get_weather', 'weather');
+        const toolCall = { callId: 'call_1', name: 'get_weather', arguments: '{}' };
+
+        // Scoped to this run's trace: spans from earlier tests can still be
+        // exported here, and picking one of those would compare unrelated clocks.
+        let traceId: string | undefined;
+        const runner = new FakeStreamingRunner(
+            async (r, ctx) => {
+                traceId = trace.getSpan(context.active())?.spanContext().traceId;
+                r.emit('agent_start', ctx, agent, []);
+                r.emit('agent_tool_start', ctx, agent, tool, { toolCall });
+                r.emit('agent_tool_end', ctx, agent, tool, 'sunny', { toolCall });
+                r.emit('agent_end', ctx, agent, 'it is sunny');
+            },
+            { finalOutput: 'it is sunny' },
+        );
+
+        const stream = await runner.run(agent, 'weather?', { stream: true });
+        await stream.completed;
+        await new Promise((r) => setTimeout(r, 20));
+
+        const inThisRun = (x: any) => !traceId || x.spanContext().traceId === traceId;
+        const turns = spansByName('openai_agents.runner.run').filter(inThisRun);
+        expect(turns, 'expected one turn span').toHaveLength(1);
+
+        // finalOutput only exists once the stream drains, so a span ended at
+        // run() resolution records nothing.
+        const out = turns[0].events.find((e: any) => e.name === 'data.output');
+        expect(String(out!.attributes!.response)).toContain('it is sunny');
+
+        // And the turn must end last. Asserted through export order, which
+        // SimpleSpanProcessor emits on span end: comparing timestamps is unsound
+        // here because OTel takes start times off a millisecond clock and end
+        // times off the monotonic one.
+        const order = exporter.getFinishedSpans().filter(inThisRun).map((x: any) => x.name);
+        const invocation = spansByName('openai_agents.agent').filter(inThisRun)[0];
+        expect(invocation, 'expected the invocation span').toBeDefined();
+        expect(order.indexOf('openai_agents.agent'),
+            `turn span must end after the activation it contains. order: ${order.join(' -> ')}`)
+            .toBeLessThan(order.indexOf('openai_agents.runner.run'));
     });
 });

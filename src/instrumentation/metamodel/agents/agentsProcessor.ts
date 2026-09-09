@@ -51,6 +51,19 @@ export class OpenAIAgentsSpanHandler extends DefaultSpanHandler {
         return updateBaggageContextWithScopes(currentContext, scopes);
     }
 
+    // Runner.run({ stream: true }) resolves at stream setup, kicking the agent
+    // loop off without awaiting it, so ending the span there would record no
+    // output and export the turn before the spans nested inside it exist.
+    // StreamedRunResult.completed settles when the loop finishes; resolving to
+    // the result itself keeps finalOutput readable by the output processor.
+    resolveCompletion({ returnValue }: { returnValue: any }): Promise<any> | null {
+        const completed = returnValue?.completed;
+        if (completed && typeof completed.then === "function") {
+            return Promise.resolve(completed).then(() => returnValue);
+        }
+        return null;
+    }
+
     postProcessSpan(params: {
         span: Span;
         instance: any;
