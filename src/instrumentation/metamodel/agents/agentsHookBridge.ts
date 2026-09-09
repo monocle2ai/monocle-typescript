@@ -64,12 +64,15 @@ interface RunState {
     tools: Map<string, ToolRecord>;
 }
 
-// Keyed by the SDK's RunContext, which is passed to every event.
-const runStates = new WeakMap<object, RunState>();
+// Keyed by the turn span, which is one per Runner.run call. The RunContext is
+// NOT the run's identity: the SDK reuses an app-supplied one verbatim, so two
+// sequential runs can share it and the second would inherit the first run's
+// ended turn span.
+const statesByTurn = new Map<Span, RunState>();
 
-// Lets the turn span's postProcessSpan find its run to force-close what is
-// still open.
-const turnStates = new Map<Span, RunState>();
+// Only for runs with no turn span (skipSpan suppressed it), where there is
+// nothing else to key on. Weak, so a finished run's state is collectable.
+const statesByRunContext = new WeakMap<object, RunState>();
 
 // One listener set per Runner: the module-level run() reuses a singleton Runner,
 // so attaching per call would leak listeners or detach them from a live run.
@@ -86,21 +89,25 @@ function activeTurnSpan(): Span | undefined {
     return monocleSpan || (trace.getSpan(active) as Span | undefined);
 }
 
-// Resolves the run's state, creating it on the first event. Without a RunContext
-// concurrent runs are indistinguishable, so emit nothing rather than risk
-// cross-attributing spans.
+// Resolves the run's state, creating it on the first event.
 function stateFor(runContext: any, element: WrapperArguments, tracer: Tracer):
     RunState | undefined {
-    if (!runContext || typeof runContext !== "object") return undefined;
-    const existing = runStates.get(runContext);
-    if (existing) return existing;
-
     const turn = activeTurnSpan();
-    const state: RunState = { tracer, element, turn, tools: new Map() };
-    runStates.set(runContext, state);
-    // First run to claim this turn owns the cleanup slot.
-    if (turn && !turnStates.has(turn)) {
-        turnStates.set(turn, state);
+    if (turn) {
+        let state = statesByTurn.get(turn);
+        if (!state) {
+            state = { tracer, element, turn, tools: new Map() };
+            statesByTurn.set(turn, state);
+        }
+        return state;
+    }
+
+    // No turn span: the RunContext is all there is to group events by.
+    if (!runContext || typeof runContext !== "object") return undefined;
+    let state = statesByRunContext.get(runContext);
+    if (!state) {
+        state = { tracer, element, tools: new Map() };
+        statesByRunContext.set(runContext, state);
     }
     return state;
 }
@@ -241,9 +248,9 @@ function openTool(state: RunState, agent: any, tool: any, toolCall: any) {
 
 // Closes anything still open and drops the run's state.
 export function endRun(turn: Span) {
-    const state = turnStates.get(turn);
+    const state = statesByTurn.get(turn);
     if (!state) return;
-    turnStates.delete(turn);
+    statesByTurn.delete(turn);
     clearOpenAgentInvocation(turn);
 
     for (const record of state.tools.values()) {

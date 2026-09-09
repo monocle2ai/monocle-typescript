@@ -82,8 +82,10 @@ class FakeRunner extends EventEmitter {
 
     // Async on purpose: the real Runner.run awaits between emits, so this is
     // what exercises the bridge's context read across await boundaries.
-    async run(_agent: any, _input: any, _options?: any) {
-        const runContext = fakeRunContext();
+    async run(_agent: any, _input: any, options?: any) {
+        // The SDK reuses an app-supplied RunContext verbatim rather than making
+        // a fresh one, so a test can hand the same instance to two runs.
+        const runContext = options?.context ?? fakeRunContext();
         await Promise.resolve();
         await this.script(this, runContext);
         await Promise.resolve();
@@ -589,4 +591,30 @@ describe('@openai/agents instrumentation', () => {
         expect(inference.attributes['scope.agentic.invocation']).toBeUndefined();
     });
 
+    it('keeps sequential runs apart when the app reuses one RunContext', async () => {
+        patchRunner();
+        const agent = fakeAgent('Solo');
+        const shared = fakeRunContext();
+        const make = () =>
+            new FakeRunner(
+                (r, ctx) => {
+                    r.emit('agent_start', ctx, agent, []);
+                    r.emit('agent_end', ctx, agent, 'done');
+                },
+                { finalOutput: 'done' },
+            );
+
+        await make().run(agent, 'first', { context: shared });
+        await make().run(agent, 'second', { context: shared });
+
+        const turns = spansByName('openai_agents.runner.run');
+        const invocations = spansByName('openai_agents.agent');
+        expect(turns).toHaveLength(2);
+        expect(invocations).toHaveLength(2);
+
+        // Each activation belongs to its own turn: sharing a RunContext must not
+        // make the second run attach to the first run's (already ended) turn.
+        expect(invocations.map(parentIdOf).sort())
+            .toEqual(turns.map((t) => t.spanContext().spanId).sort());
+    });
 });
