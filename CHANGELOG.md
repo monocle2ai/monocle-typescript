@@ -1,6 +1,31 @@
 # Changelog
 
 All notable changes to Monocle TypeScript will be documented in this file.
+## 0.4.1 (2026-08-25)
+
+### Features
+
+- **Mastra AI Support** [#114](https://github.com/monocle2ai/monocle-typescript/pull/114)
+  - Added instrumentation for Mastra agents with `agentic.request` turn spans
+  - Added `agentic.invocation` spans per agent activation, nested inside the turn span, with `from_agent` / `from_agent_span_id` delegation tracking
+  - Added inference spans for `agent.generate` and `agent.stream`, including input/output capture for streaming
+  - Added tool schema and wrapper for tool execution instrumentation; internal Mastra tool invocation spans between agent invocations are hidden
+
+- **ESM and Next.js Compatibility** [#114](https://github.com/monocle2ai/monocle-typescript/pull/114)
+  - Added `monocle2ai/register` preload entry for `--import` / `NODE_OPTIONS`, so instrumentation is set up before the app's import graph loads
+  - Added `withMonocle` helper (`monocle2ai/next`) that keeps the Monocle chain and instrumented SDKs external from the Next.js bundle
+  - Unified CommonJS and ESM instrumentation onto a single template
+  - Updated README with ESM, CommonJS, and Next.js setup instructions, and added `.env.example`
+
+### Bug Fixes
+
+- **File Exporter**
+  - Append late-arriving spans and keep the flush window open for the idle duration, while retaining close-on-root behavior [#114](https://github.com/monocle2ai/monocle-typescript/pull/114)
+
+### Testing
+
+- Added unit and integration tests for Mastra instrumentation, stream completion, the file span exporter, global instrumentor setup, and Next.js externals [#114](https://github.com/monocle2ai/monocle-typescript/pull/114)
+
 ## 0.4.0 (2026-07-28)
 
 ### Features
