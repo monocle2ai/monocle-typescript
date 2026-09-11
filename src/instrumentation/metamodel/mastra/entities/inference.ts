@@ -113,6 +113,12 @@ function extractToolNames(args: any[]): string[] {
     return tools.map((t: any) => t?.name).filter((n: any) => typeof n === "string" && n);
 }
 
+// 3 entities for spans with no stop finish reason, for stop 2 entities.
+function toolEntityNames(args: any[], result: any): string[] {
+    if (classifyInferenceSubtype(result) !== INFERENCE_TOOL_CALL) return [];
+    return extractToolNames(args);
+}
+
 // Flatten one LanguageModelV2 message's content (string, or an array of typed
 // parts) to a readable string. Non-text parts (tool-call / tool-result /
 // reasoning) are serialized so tool-using turns aren't dropped.
@@ -220,18 +226,18 @@ export const INFERENCE = {
         ],
         [
             {
-                "_comment": "tools declared on the request (function tools)",
+                "_comment": "tools the model invoked on this call (function tools)",
                 "attribute": "name",
-                "accessor": function ({ args }: any) {
-                    const names = extractToolNames(args);
+                "accessor": function ({ args, output }: any) {
+                    const names = toolEntityNames(args, output);
                     return names.length > 0 ? names.join(", ") : undefined;
                 },
             },
             {
-                "_comment": "tool type marker (only present when tools were declared)",
+                "_comment": "tool type marker (only present when a tool was invoked)",
                 "attribute": "type",
-                "accessor": function ({ args }: any) {
-                    return extractToolNames(args).length > 0 ? TOOL_FUNCTION_TYPE : undefined;
+                "accessor": function ({ args, output }: any) {
+                    return toolEntityNames(args, output).length > 0 ? TOOL_FUNCTION_TYPE : undefined;
                 },
             },
         ],
