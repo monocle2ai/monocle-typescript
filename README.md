@@ -257,6 +257,50 @@ hooked — usually because it was bundled/inlined and can't be traced — Monocl
 one-time warning telling you to externalize it. Silence or tune it with
 `MONOCLE_DISABLE_HOOK_AUDIT` / `MONOCLE_HOOK_AUDIT_DELAY_MS` / `MONOCLE_FORCE_HOOK_AUDIT`.
 
+### Returning traces on the HTTP response
+
+A test running outside your server can't see the spans a request produced. Turn on
+trace return and the server appends them to the response it was already sending:
+the spans travel with the answer, so there's no backend, shared database or log
+scraping in the loop.
+
+Set both variables in `.env.monocle` **before the process starts** — the tracer
+provider fixes its span processors at construction, so flipping this later does
+nothing:
+
+MONOCLE_ENABLE_TRACE_RETURN=true
+MONOCLE_TRACE_RETRIEVAL_DEFAULT_KEY=some-shared-secret
+
+
+Nothing in your app changes. Monocle hooks `node:http`, which covers Express,
+Fastify, Koa, NestJS and `next start` alike.
+
+A client asks for traces by sending the key:
+
+curl -H "x-monocle-retrieve-traces: some-shared-secret" localhost:3000/chat
+
+
+The response comes back as `<your body><delimiter><base64(gzip(spans))>`, with
+`x-monocle-traces: v1; delim=<delimiter>` in the headers. The client cuts the body
+at the delimiter to recover the untouched response plus the spans. Python's
+[monocle_test_tools](https://docs.okahu.ai/monocle_test_tools/) `HttpRunner` does
+this for you and runs assertions against the spans.
+
+It is off by default and gated twice — master switch, then a per-request key check
+with `crypto.timingSafeEqual`. Every failure path serves a completely normal
+response, so a misconfigured server leaks nothing. Requests that don't ask for
+traces are untouched and pay one env read and one header lookup.
+
+Notes:
+- An authorized request is served uncompressed. Monocle strips `accept-encoding`
+  so a compression middleware can't gzip the response out from under the trailer.
+  Other clients still get compression as usual.
+- `Content-Length` is dropped on a traced response, which falls back to chunked
+  encoding. That keeps streaming and SSE working without buffering the body.
+- `MONOCLE_TRACE_RETRIEVAL_CALLBACK` (`"module:export"`) replaces the key check with
+  your own synchronous `(headers) => boolean`. See [.env.example](.env.example).
+
+
 ### Configuration
 
 See [.env.example](.env.example) for all environment variables — exporters
