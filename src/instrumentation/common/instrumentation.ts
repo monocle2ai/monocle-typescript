@@ -1,6 +1,4 @@
 import { registerModule } from "./esmModule"
-
-
 import {
     InstrumentationBase,
     InstrumentationNodeModuleDefinition,
@@ -25,6 +23,9 @@ import { PatchedBatchSpanProcessor } from './opentelemetryUtils';
 import { AWSS3SpanExporter } from '../../exporters/aws/AWSS3SpanExporter'
 import { consoleLog } from '../../common/logging';
 import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, getInstrumentor, startTraceInternal } from './utils';
+import { maybeTraceReturnProcessor } from '../../traceReturn/exporter';
+import { initTraceRetrievalCallback, isTraceReturnEnabled } from '../../traceReturn/gate';
+
 
 class MonocleInstrumentation extends InstrumentationBase {
     // `declare` (no runtime field): a real field would emit `this.x = undefined`
@@ -383,6 +384,16 @@ const setupMonocle = (
 
         consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
 
+        // Resolve a custom trace-retrieval callback once, because Node's import()
+        // is async while the per-request gate must answer synchronously. Not
+        // awaited on purpose: setupMonocle stays synchronous, since register.ts
+        // calls it as a preload before the app's import graph loads. The gate
+        // denies until this settles, which is the right failure mode for an
+        // authorization check. initTraceRetrievalCallback never rejects.
+        if (isTraceReturnEnabled()) {
+            void initTraceRetrievalCallback();
+        }
+
         if (spanProcessors.length && exporter_list) {
             throw new Error('Cannot set both spanProcessors and exporter_list.');
         }
@@ -412,6 +423,17 @@ const setupMonocle = (
             addSpanProcessors(monocleProcessors, exporter_list);
         }
         const finalSpanProcessors = [...spanProcessors, ...monocleProcessors];
+
+        // Deliberately outside addSpanProcessors: that function is skipped
+        // entirely when the caller supplies its own spanProcessors, and trace
+        // return is orthogonal to which exporter the app uses. Must happen before
+        // the provider is built — NodeTracerProvider fixes its processors at
+        // construction and has no addSpanProcessor.
+        const traceReturnProcessor = maybeTraceReturnProcessor();
+        if (traceReturnProcessor) {
+            finalSpanProcessors.push(traceReturnProcessor);
+        }
+        
         finalSpanProcessors.forEach(processor => {
             consoleLog(`Adding span processor: ${processor.constructor.name}`);
         });
