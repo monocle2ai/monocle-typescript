@@ -25,6 +25,7 @@ import { consoleLog } from '../../common/logging';
 import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scopes, setInstrumentor, getInstrumentor, startTraceInternal } from './utils';
 import { maybeTraceReturnProcessor } from '../../traceReturn/exporter';
 import { initTraceRetrievalCallback, isTraceReturnEnabled } from '../../traceReturn/gate';
+import { installTraceReturnHttpHook } from '../../traceReturn/httpHook';
 
 
 class MonocleInstrumentation extends InstrumentationBase {
@@ -432,6 +433,7 @@ const setupMonocle = (
         const traceReturnProcessor = maybeTraceReturnProcessor();
         if (traceReturnProcessor) {
             finalSpanProcessors.push(traceReturnProcessor);
+            installTraceReturnHttpHook();
         }
         
         finalSpanProcessors.forEach(processor => {
