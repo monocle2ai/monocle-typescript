@@ -234,8 +234,8 @@ export const TOOLS = {
             "name": "data.input",
             "attributes": [
                 {
-                    "_comment": "this is Agent input",
-                    "attribute": "Inputs",
+                    "_comment": "this is Tool input",
+                    "attribute": "input",
                     "accessor": function ({ args }) {
                         if (args && args[0]) {
                             return [JSON.stringify(args[0].args)];
