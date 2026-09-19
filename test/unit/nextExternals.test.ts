@@ -35,6 +35,8 @@ describe('withMonocle default external list', () => {
     // spot-check a couple of known instrumented packages
     expect(getInstrumentedPackageNames()).toContain('@mastra/core');
     expect(getInstrumentedPackageNames()).toContain('openai');
+    // Hooking agents-core covers apps importing either specifier.
+    expect(getInstrumentedPackageNames()).toContain('@openai/agents-core');
   });
 });
 
