@@ -140,6 +140,9 @@ export const SPAN_TYPES = {
     AGENTIC_INVOCATION: "agentic.invocation",
     AGENTIC_MCP_INVOCATION: "agentic.mcp.invocation",
     AGENTIC_REQUEST: "agentic.request",
+    // One user request served by a framework. ADK and Mastra spell this as a
+    // literal in their entities; new metamodels should use this constant.
+    AGENTIC_TURN: "agentic.turn",
 
     HTTP_PROCESS: "http.process",
     HTTP_SEND: "http.send",

@@ -25,6 +25,9 @@ export const MONOCLE_INSTRUMENTED_PACKAGES = [
     "@anthropic-ai/sdk",
     "@google/genai",
     "@google/adk",
+    // agents-core is where Runner lives; the browser-facing realtime package is
+    // not instrumented.
+    "@openai/agents-core",
     "@langchain/core",
     "llamaindex",
     "@llamaindex/workflow",
