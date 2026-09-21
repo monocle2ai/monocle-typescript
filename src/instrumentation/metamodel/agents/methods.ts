@@ -1,41 +1,22 @@
-import {
-    AgentsSpanHandler,
-    toolConstructorWrapper,
-    handoffConstructorWrapper,
-} from "./agentProcessors";
-import { AGENT, AGENT_DELEGATION, AGENT_REQUEST, TOOLS } from "./entities/inference";
+import { MethodConfig } from "../../common/constants";
+import { AGENT_REQUEST } from "./entities/agentRequest";
+import { OpenAIAgentsSpanHandler } from "./agentsProcessor";
 
-export const config = [
+// @openai/agents only re-exports from -core, so hooking core covers both
+// specifiers: the Runner class is shared, and patching its prototype reaches
+// every holder.
+const AGENTS_PACKAGE = "@openai/agents-core";
+
+// Runner.run is the only patchable seam: the run loop's per-agent steps are ES
+// private fields. Invocation and tool spans come from the SDK's RunHooks
+// lifecycle events instead — see agentsHookBridge.
+export const config: MethodConfig[] = [
     {
-        "package": "@openai/agents",
-        "object": "Runner",
-        "method": "run",
-        "spanName": "openai.Runner.run",
-        "spanHandler": new AgentsSpanHandler(),
-        "output_processor": [AGENT_REQUEST],
-    },
-    {
-        "package": "@openai/agents",
-        "object": "",
-        "method": "run",
-        "spanName": "openai.run",
-        "spanHandler": new AgentsSpanHandler(),
-        "output_processor": [AGENT],
-    },
-    {
-        "package": "@openai/agents",
-        "object": "",
-        "method": "tool",
-        "wrapperMethod": toolConstructorWrapper,
-        "spanName": "openai.tool",
-        "output_processor": [TOOLS],
-    },
-    {
-        "package": "@openai/agents",
-        "object": "",
-        "method": "handoff",
-        "wrapperMethod": handoffConstructorWrapper,
-        "spanName": "openai.handoff",
-        "output_processor": [AGENT_DELEGATION],
-    }
+        package: AGENTS_PACKAGE,
+        object: "Runner",
+        method: "run",
+        spanName: "openai_agents.runner.run",
+        spanHandler: new OpenAIAgentsSpanHandler(),
+        output_processor: [AGENT_REQUEST],
+    } as unknown as MethodConfig,
 ];

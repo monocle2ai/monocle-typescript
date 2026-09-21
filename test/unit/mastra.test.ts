@@ -211,17 +211,43 @@ describe('Mastra INFERENCE schema', () => {
         });
     });
 
-    describe('tools declared (entity 3)', () => {
-        const toolNames = (args: any[]) => attrAccessor(INFERENCE, 'name', 2)({ args });
-        const toolType = (args: any[]) => attrAccessor(INFERENCE, 'type', 2)({ args });
+    describe('tools invoked (entity 3)', () => {
+        // Names come from the request's declared tools, but the entity is only
+        // emitted on the "tool-calls" finish reason that drives span.subtype.
+        const toolCallResult = { finishReason: 'tool-calls' };
+        const toolNames = (args: any[], output: any = toolCallResult) => attrAccessor(INFERENCE, 'name', 2)({ args, output });
+        const toolType = (args: any[], output: any = toolCallResult) => attrAccessor(INFERENCE, 'type', 2)({ args, output });
+        const declared = [{ tools: [{ type: 'function', name: 'get_weather' }, { type: 'function', name: 'get_time' }] }];
+
         it('lists declared function-tool names and marks the tool type', () => {
-            const args = [{ tools: [{ type: 'function', name: 'get_weather' }, { type: 'function', name: 'get_time' }] }];
-            expect(toolNames(args)).toBe('get_weather, get_time');
-            expect(toolType(args)).toBe('tool.function');
+            expect(toolNames(declared)).toBe('get_weather, get_time');
+            expect(toolType(declared)).toBe('tool.function');
         });
         it('omits the tools entity when no tools are declared', () => {
             expect(toolNames([{}])).toBeUndefined();
             expect(toolType([{}])).toBeUndefined();
+        });
+        it('omits the tools entity on a stop turn even though tools are declared', () => {
+            // Regression: a stop turn used to emit entity.3 for the declared tools.
+            expect(toolNames(declared, { finishReason: 'stop' })).toBeUndefined();
+            expect(toolType(declared, { finishReason: 'stop' })).toBeUndefined();
+        });
+        it('omits the tools entity for length / error / missing finish reasons', () => {
+            for (const output of [{ finishReason: 'length' }, { finishReason: 'error' }, {}, null]) {
+                expect(attrAccessor(INFERENCE, 'name', 2)({ args: declared, output })).toBeUndefined();
+                expect(attrAccessor(INFERENCE, 'type', 2)({ args: declared, output })).toBeUndefined();
+            }
+        });
+        it('honors the Mastra nested finishReason shape ({ unified })', () => {
+            expect(toolNames(declared, { finishReason: { unified: 'tool-calls' } })).toBe('get_weather, get_time');
+            expect(toolNames(declared, { finishReason: { unified: 'stop' } })).toBeUndefined();
+        });
+        it('stays consistent with span.subtype: entity 3 is present exactly when subtype is tool_call', () => {
+            const subtype = (response: any) => (INFERENCE.subtype as Function)({ response });
+            for (const output of [{ finishReason: 'tool-calls' }, { finishReason: 'stop' }, { finishReason: { unified: 'tool-calls' } }, {}]) {
+                const hasToolEntity = attrAccessor(INFERENCE, 'type', 2)({ args: declared, output }) !== undefined;
+                expect(hasToolEntity).toBe(subtype(output) === INFERENCE_TOOL_CALL);
+            }
         });
     });
 

@@ -11,7 +11,7 @@ import { config as geminiPackages } from "../metamodel/gemini/methods";
 // import { config as langgraphPackages } from "../metamodel/langgraph/methods";
 import { config as mcpPackages } from "../metamodel/mcp/methods";
 import { config as a2aPackages } from "../metamodel/a2a/methods";
-// import { config as openaiAgentsPackages } from "../metamodel/agents/methods";
+import { config as openaiAgentsPackages } from "../metamodel/agents/methods";
 import { config as adkPackages } from "../metamodel/adk/methods";
 import { config as mastraPackages } from "../metamodel/mastra/methods";
 import { MethodConfig } from "./constants";
@@ -30,7 +30,7 @@ export const combinedPackages: MethodConfig[] = [
   // ...langgraphPackages,
   ...mcpPackages,
   ...a2aPackages,
-  // ...openaiAgentsPackages,
+  ...openaiAgentsPackages,
   ...adkPackages,
   ...mastraPackages
 ];
