@@ -40,8 +40,8 @@ describe('ADK instrumentation', () => {
 
         const inputEvent = toolSpan.events.find((e: any) => e.name === 'data.input');
         const outputEvent = toolSpan.events.find((e: any) => e.name === 'data.output');
-        expect(inputEvent.attributes.Inputs[0]).toContain('SFO');
-        expect(inputEvent.attributes.Inputs[0]).toContain('BOM');
+        expect(inputEvent.attributes.input[0]).toContain('SFO');
+        expect(inputEvent.attributes.input[0]).toContain('BOM');
         expect(outputEvent.attributes.response).toContain('Flight booked from SFO to BOM');
     }, 30000);
 
