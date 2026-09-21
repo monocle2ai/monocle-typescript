@@ -219,17 +219,24 @@ describe('Gemini inference data.input extraction', () => {
 // entity attributes — tools declared on the request (3rd entity group)
 // =============================================================================
 describe('Gemini inference tools entity', () => {
-    // The 3rd entity attribute group carries the declared tools: a `name`
-    // (comma-separated tool names) and a `type` ("tool.function"). Extraction reads
-    // the standard @google/genai functionDeclarations shape, so it is
-    // framework-agnostic — the names below are plain genai tool names, not
-    // anything ADK-specific (ADK just happens to prefix its own tool names).
+    // Names come from the request's declared tools, but the entity is only
+    // emitted when the response carries a functionCall part. Tool names below
+    // are plain genai ones — extraction is framework-agnostic.
     const toolsGroup = (geminiInferenceConfig.attributes as any[])[2];
-    const nameAccessor = toolsGroup.find((a: any) => a.attribute === 'name').accessor as (ctx: { args: any[] }) => any;
-    const typeAccessor = toolsGroup.find((a: any) => a.attribute === 'type').accessor as (ctx: { args: any[] }) => any;
+    const nameAccessor = toolsGroup.find((a: any) => a.attribute === 'name').accessor as (ctx: any) => any;
+    const typeAccessor = toolsGroup.find((a: any) => a.attribute === 'type').accessor as (ctx: any) => any;
 
-    const names = (params: any) => nameAccessor({ args: [params] });
-    const type = (params: any) => typeAccessor({ args: [params] });
+    // finish_type tool_call.
+    const toolCallResponse = (name = 'book_flight') => ({
+        candidates: [{ finishReason: 'STOP', content: { parts: [{ functionCall: { name, args: {} } }] } }],
+    });
+    // finishReason STOP, no tool call.
+    const textResponse = {
+        candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'I have booked your flight.' }] } }],
+    };
+
+    const names = (params: any, output: any = toolCallResponse()) => nameAccessor({ args: [params], output });
+    const type = (params: any, output: any = toolCallResponse()) => typeAccessor({ args: [params], output });
 
     it('extracts function tool names from config.tools (genai shape)', () => {
         const params = {
@@ -267,6 +274,47 @@ describe('Gemini inference tools entity', () => {
         const params = { model: 'gemini-2.5-flash', contents: 'hi' };
         expect(names(params)).toBeUndefined();
         expect(type(params)).toBeUndefined();
+    });
+
+    it('skips the entity on a text turn even though tools are declared', () => {
+        // Regression: a STOP turn used to emit entity.3 for the declared tools.
+        const params = {
+            model: 'gemini-2.5-flash',
+            config: { tools: [{ functionDeclarations: [{ name: 'book_flight' }] }] },
+        };
+        expect(names(params, textResponse)).toBeUndefined();
+        expect(type(params, textResponse)).toBeUndefined();
+    });
+
+    it('skips the entity when the response is missing or malformed', () => {
+        const params = {
+            config: { tools: [{ functionDeclarations: [{ name: 'book_flight' }] }] },
+        };
+        // Raw accessors, so an absent `output` isn't filled in by the defaults above.
+        for (const output of [undefined, null, {}, { candidates: [] }]) {
+            expect(nameAccessor({ args: [params], output })).toBeUndefined();
+            expect(typeAccessor({ args: [params], output })).toBeUndefined();
+        }
+    });
+
+    it('emits the entity when the response carries multiple function calls', () => {
+        const params = {
+            config: {
+                tools: [{ functionDeclarations: [{ name: 'book_flight' }, { name: 'book_hotel' }] }],
+            },
+        };
+        const output = {
+            candidates: [{
+                content: {
+                    parts: [
+                        { functionCall: { name: 'book_flight', args: {} } },
+                        { functionCall: { name: 'book_hotel', args: {} } },
+                    ],
+                },
+            }],
+        };
+        expect(names(params, output)).toBe('book_flight, book_hotel');
+        expect(type(params, output)).toBe('tool.function');
     });
 });
 

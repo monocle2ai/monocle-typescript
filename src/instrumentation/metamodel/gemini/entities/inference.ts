@@ -285,6 +285,11 @@ function classifyInferenceSubtype(response: any): string {
   return INFERENCE_TURN_END;
 }
 
+function toolEntityNames(args: any, output: any): string[] {
+  if (extractFunctionCalls(output).length === 0) return [];
+  return extractToolNames(args);
+}
+
 export const config = {
   type: "inference",
   subtype: function ({ response, output }: any) {
@@ -330,19 +335,20 @@ export const config = {
     ],
     [
       {
-        _comment: "tools declared on the request (e.g. ADK function tools)",
+        _comment: "tools invoked by the call (e.g. ADK function tools)",
         attribute: "name",
-        accessor: function ({ args }) {
-          // Comma-separated string of declared tool names; undefined (not "")
-          // when no tools, so the handler skips this entity.
-          const names = extractToolNames(args);
+        accessor: function ({ args, output }) {
+          // undefined (not "") when it doesn't apply, so the handler skips it.
+          const names = toolEntityNames(args, output);
           return names.length > 0 ? names.join(", ") : undefined;
         },
       },
       {
         attribute: "type",
-        accessor: function ({ args }) {
-          return extractToolNames(args).length > 0 ? TOOL_FUNCTION_TYPE : undefined;
+        accessor: function ({ args, output }) {
+          return toolEntityNames(args, output).length > 0
+            ? TOOL_FUNCTION_TYPE
+            : undefined;
         },
       },
     ],
