@@ -385,12 +385,10 @@ const setupMonocle = (
 
         consoleLog(`Setting up Monocle for workflow: ${workflowName}`);
 
-        // Resolve a custom trace-retrieval callback once, because Node's import()
-        // is async while the per-request gate must answer synchronously. Not
-        // awaited on purpose: setupMonocle stays synchronous, since register.ts
-        // calls it as a preload before the app's import graph loads. The gate
-        // denies until this settles, which is the right failure mode for an
-        // authorization check. initTraceRetrievalCallback never rejects.
+        // Resolved once: import() is async, the per-request gate is not. Not
+        // awaited (setupMonocle stays synchronous for register.ts's preload, and
+        // the call never rejects); until it settles the gate denies, which is the
+        // right failure mode for an authorization check.
         if (isTraceReturnEnabled()) {
             void initTraceRetrievalCallback();
         }
@@ -425,11 +423,9 @@ const setupMonocle = (
         }
         const finalSpanProcessors = [...spanProcessors, ...monocleProcessors];
 
-        // Deliberately outside addSpanProcessors: that function is skipped
-        // entirely when the caller supplies its own spanProcessors, and trace
-        // return is orthogonal to which exporter the app uses. Must happen before
-        // the provider is built — NodeTracerProvider fixes its processors at
-        // construction and has no addSpanProcessor.
+        // Outside addSpanProcessors: that is skipped when the caller supplies its own
+        // processors, and trace return is orthogonal to the exporter. Must precede the
+        // provider — NodeTracerProvider fixes its processors at construction.
         const traceReturnProcessor = maybeTraceReturnProcessor();
         if (traceReturnProcessor) {
             finalSpanProcessors.push(traceReturnProcessor);

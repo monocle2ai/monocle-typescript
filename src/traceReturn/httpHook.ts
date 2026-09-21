@@ -49,12 +49,10 @@ function patchEmit(proto: any): void {
                 return passthrough();
             }
 
-            // The whole compression problem, solved. Our res.end patch is
-            // installed first and therefore runs innermost, so a compression
-            // middleware layered above would hand us already-gzipped bytes and
-            // our plaintext trailer would land after a finished gzip member.
-            // Encoders honour accept-encoding, so removing it here means the
-            // response stays plaintext for this one authorized request.
+            // The whole compression problem, solved. Our res.end patch runs innermost, so a
+            // compression middleware above would hand us already-gzipped bytes and our
+            // plaintext trailer would land after a finished gzip member. Encoders honour
+            // accept-encoding, so dropping it keeps this one response plaintext.
             delete req.headers["accept-encoding"];
 
             const request = startTraceReturnRequest({

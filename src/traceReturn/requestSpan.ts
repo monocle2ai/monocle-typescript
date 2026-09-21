@@ -43,12 +43,10 @@ export function startTraceReturnRequest(
         [TRACE_RETURN_SCOPE_NAME]: null,
     });
 
-    // The key to keeping the tree shape. Once this span exists, isRootSpan() is
-    // false for everything inside, so wrapper.ts would stop injecting the
-    // `workflow` span entirely. This flag tells the first instrumented call to
-    // insert one anyway — with the correct framework-derived type, which a
-    // workflow span opened here could not know yet. wrapper.ts:144 clears it for
-    // that call's descendants.
+    // Keeps the tree shape. Once this span exists isRootSpan() is false for
+    // everything inside, so wrapper.ts would stop injecting the `workflow` span.
+    // This flag makes the first instrumented call insert one anyway, with the
+    // framework-derived type this span cannot know. wrapper.ts:144 clears it.
     ctx = ctx.setValue(ADD_NEW_WORKFLOW_SYMBOL, true);
 
     const span = tracer.startSpan(

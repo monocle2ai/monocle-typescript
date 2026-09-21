@@ -8,30 +8,24 @@ import {
 } from "./constants";
 import { toLoaderSpan } from "./toLoaderSpan";
 
-//Wire format, fixed by monocle_apptrace's trace_return.py. 
-// body <response body><delimiter><payload>
-// header x-monocle-traces: v1; delim=<delimiter>
-// payload base64(gzip(json array of loader shaped spans))
-
-// The gzip bytes need not match Python's byte-for-byte — the client decompresses
-// rather than compares, and Node defaults to level 6 where Python uses 9. What
-// must match exactly: the delimiter shape, the header grammar, and standard
-// padded base64 (Buffer's "base64" and Python's b64encode use the same alphabet).
+// Wire format, fixed by monocle_apptrace's trace_return.py:
+//   body    <response body><delimiter><payload>
+//   header  x-monocle-traces: v1; delim=<delimiter>
+//   payload base64(gzip(json array of loader-shaped spans))
 
 const DELIM_MARKER = "delim=";
 
-// Mirrors uuid.uuid4().hex — 32 lowercase hex chars, no dashes. The value is
-// never validated by the client, only string-matched, so what matters is that
-// 128 random bits make a collision with body content unreachable.
+// Mirrors uuid.uuid4().hex: 32 lowercase hex chars. Only string-matched by the
+// client, so all that matters is that 128 random bits never collide with a body.
 export function makeDelimiter(): string {
     const hex = randomUUID().replace(/-/g, "");
     return `${TRACE_RETURN_DELIMITER_PREFIX}${hex}${TRACE_RETURN_DELIMITER_SUFFIX}`;
 }
 
 export function encodeSpans(spans: ReadableSpan[]): string {
-    // exportInfo()'s parameter is typed as the SDK Span class but only ever reads
-    // ReadableSpan members; the other exporters hand it untyped spans for the
-    // same reason.
+    // exportInfo() types its parameter as the SDK Span class but reads only
+    // ReadableSpan members; the other exporters cast the same way. The gzip bytes
+    // need not match Python's — the client decompresses rather than compares.
     const payload = spans.map((span) => toLoaderSpan(span as Span));
     return gzipSync(Buffer.from(JSON.stringify(payload), "utf8")).toString("base64");
 }
@@ -53,15 +47,13 @@ export function buildResponseHeaderValue(delimiter: string): string {
 
 
 // ------------- client-side halves -----------------------------------------
-// Python's HttpRunner owns these in production. Keeping them here makes the
-// codec round-trip testable without standing up a Python client, and gives the
-// step-10 integration test something to check Python's answer against.
+// Python's HttpRunner owns these in production; keeping them here makes the
+// codec round-trip testable without standing up a Python client.
 
 export function parseDelimiterFromHeader(headerValue: string): string | null {
     if (!headerValue) return null;
-    // indexOf + slice, not split("delim="): Python uses split(..., 1) so
-    // everything after the FIRST marker is the delimiter. JS's split()[1] would
-    // instead stop at a second occurrence.
+    // indexOf + slice, not split: Python's split(..., 1) keeps everything after
+    // the FIRST marker; JS's split()[1] would stop at a second occurrence.
     const idx = headerValue.indexOf(DELIM_MARKER);
     if (idx === -1) return null;
     return headerValue.slice(idx + DELIM_MARKER.length).trim();

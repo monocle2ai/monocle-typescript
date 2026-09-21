@@ -9,18 +9,14 @@ import { consoleLog } from "../common/logging";
 import { TRACE_RETURN_SCOPE_ATTRIBUTE } from "./constants";
 import { isTraceReturnEnabled } from "./gate";
 
-// In-memory buffer holding only spans tagged with the trace-return scope, keyed
-// by trace id so a response can claim exactly its own request's spans.
-//
-// No locking, unlike Python's threading.Lock: Node's event loop is single
-// threaded and neither export() nor popSpansForTrace() awaits, so a pop can
-// never interleave with an export.
+// Buffers only spans tagged with the trace-return scope, keyed by trace id, so a
+// response claims exactly its own request's spans. No lock, unlike Python's:
+// Node is single threaded and neither export() nor popSpansForTrace() awaits.
 
-// Bound on how many un-popped traces we hold. Divergence from Python, which is
-// unbounded: a tagged request whose response path never pops (handler crashed,
-// socket died mid-flight) would otherwise leak its spans for the life of the
-// process. Only authorized requests ever buffer, so this is a backstop, not a
-// hot path.
+// Bound on un-popped traces; Python is unbounded. A tagged request whose
+// response path never pops (crashed handler, dead socket) would otherwise leak
+// for the life of the process. Only authorized requests buffer, so it is a
+// backstop, not a hot path.
 const MAX_PENDING_TRACES = 128;
 
 export class TraceReturnSpanExporter implements SpanExporter {
@@ -59,12 +55,9 @@ export class TraceReturnSpanExporter implements SpanExporter {
         return spans;
     }
 
-    // Deliberately a no-op, for the same reason Python's resets _stopped rather
-    // than calling super(): this is a process-global singleton reachable from the
-    // tracer provider, so any provider teardown propagates shutdown() to it.
-    // Clearing the buffer here would drop the spans of a request that is still
-    // mid-flight, and permanently disabling the exporter would kill the feature
-    // for the rest of the process.
+    // No-op by design: a process-global singleton, so any provider teardown reaches
+    // it. Clearing would drop the spans of a request still mid-flight, and disabling
+    // would kill the feature for the rest of the process.
     shutdown(): Promise<void> {
         return Promise.resolve();
     }
@@ -82,11 +75,9 @@ export class TraceReturnSpanExporter implements SpanExporter {
     }
 }
 
-// On globalThis for the same reason as INSTRUMENTOR_KEY in
-// instrumentation/common/utils.ts: `--import monocle2ai/register` loads the ESM
-// build while a later require("monocle2ai") loads the CJS build, and each copy
-// has its own module state. The middleware must reach the very same exporter the
-// tracer provider was built with, or it pops from an empty buffer.
+// On globalThis, like INSTRUMENTOR_KEY in common/utils.ts: the ESM and CJS
+// builds have separate module state, and the hook must reach the same exporter
+// the provider was built with, or it pops an empty buffer.
 const TRACE_RETURN_EXPORTER_KEY = Symbol.for("monocle2ai.traceReturnExporter");
 
 export function getTraceReturnExporter(): TraceReturnSpanExporter {

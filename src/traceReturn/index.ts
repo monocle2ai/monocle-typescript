@@ -1,10 +1,7 @@
-// Public surface for HTTP trace return.
-//
-// Nothing here is needed for the normal path: with MONOCLE_ENABLE_TRACE_RETURN
-// set, setupMonocle installs the http hook and the feature is entirely automatic.
-// These exports exist for adapters the hook cannot reach — AWS Lambda, Azure
-// Functions, Web Request/Response runtimes — where you own the response object
-// and have to assemble the trailer yourself.
+// Public surface for HTTP trace return. Nothing here is needed normally — with
+// MONOCLE_ENABLE_TRACE_RETURN set, setupMonocle installs the hook and the
+// feature is automatic. These exist for adapters the hook cannot reach (Lambda,
+// Azure Functions, Web Request/Response), where you assemble the trailer.
 
 export { installTraceReturnHttpHook } from "./httpHook";
 export { startTraceReturnRequest } from "./requestSpan";

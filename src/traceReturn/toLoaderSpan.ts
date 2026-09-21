@@ -14,11 +14,9 @@ export interface LoaderSpan extends Omit<SpanExport, "kind" | "links"> {
     }>
 }
 
-// A function, not a module-level map. Two reasons: an unrecognised value must
-// degrade to a valid name rather than emit "SpanKind.undefined" (which the enum's
-// own reverse mapping, SpanKind[n], would), and reading SpanKind at call time
-// instead of at import time keeps this module loadable in tests that partially
-// mock @opentelemetry/api.
+// A function, not a module-level map: an unrecognised value must degrade to a
+// valid name rather than "SpanKind.undefined" (what SpanKind[n] gives), and
+// reading SpanKind at call time keeps this loadable under partial api mocks.
 function spanKindName(kind: number): string {
     switch (kind) {
         case SpanKind.SERVER: return "SERVER";
@@ -33,11 +31,10 @@ export function toLoaderSpan(span: Span): LoaderSpan {
     const exported = exportInfo(span);
     return {
         ...exported,
-        // exportInfo emits the numeric enum. The loader does
-        // span_data["kind"].replace("SpanKind.", "") — an int has no .replace, so
-        // any non-INTERNAL span raises AttributeError and the client loses the
-        // entire payload, not just this span. INTERNAL survives today only
-        // because 0 is falsy and the loader's `if` skips it.
+        // exportInfo emits the numeric enum, but the loader does
+        // kind.replace("SpanKind.", "") — an int has no .replace, so any non-INTERNAL
+        // span raises AttributeError and the client loses the whole payload. INTERNAL
+        // survives only because 0 is falsy and the loader's `if` skips it.
         kind: `SpanKind.${spanKindName(span.kind)}`,
         // exportInfo passes OTel-JS links straight through, so context is
         // camelCase (traceId/spanId). The loader hard-indexes link_data["context"]

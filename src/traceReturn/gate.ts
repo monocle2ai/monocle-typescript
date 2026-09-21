@@ -80,13 +80,10 @@ type CallbackState =
 // null = init has not run. See currentCallback() for why that is not fatal.
 let callbackState: CallbackState | null = null;
 
-// The one real divergence from Python. There, _resolve_callback runs per-request
-// through importlib, which is synchronous. Node's import() is not, and the gate
-// has to answer synchronously mid-request, so resolution happens once here and
-// setupMonocle awaits it.
-//
-// modulePath should be absolute or a bare package specifier. A relative path
-// would resolve against this file, not the caller's.
+// The one real divergence from Python, whose _resolve_callback runs per request
+// through synchronous importlib. Node's import() is async while the gate must
+// answer synchronously, so resolution happens once, here. modulePath must be
+// absolute or a bare specifier — a relative path resolves against this file.
 export async function initTraceRetrievalCallback(): Promise<void> {
     const spec = process.env[MONOCLE_TRACE_RETRIEVAL_CALLBACK_ENV];
     if (!spec) {
