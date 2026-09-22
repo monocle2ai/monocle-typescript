@@ -1,4 +1,6 @@
-// Sets up the contract for HTTP trace return feature (span piggyback in the response body), we maintain the keys as it is in python implementation, as we're going to use python's monocle test tools, so they need to be in sync, otherwise feature breaks.
+// Contract for HTTP trace return (span piggyback in the response body). Every
+// key here mirrors monocle_test_tools exactly, because that is the client. If
+// the two drift, the feature breaks silently — the client just sees no traces.
 
 
 // Master switch. Off unless explicitely "true" (case-sensitive).
@@ -21,7 +23,7 @@ export const TRACE_RETURN_VERSION="v1";
 
 // Authorization. CALLBACK overrides the default key check; the callback spec is
 // resolved once at setup here (Node's import() is async) rather than per-request
-// as Python does with importlib.
+// as monocle_apptrace does with importlib.
 export const MONOCLE_TRACE_RETRIEVAL_CALLBACK_ENV="MONOCLE_TRACE_RETRIEVAL_CALLBACK";
 export const MONOCLE_TRACE_RETRIEVAL_DEFAULT_KEY_ENV="MONOCLE_TRACE_RETRIEVAL_DEFAULT_KEY";
 

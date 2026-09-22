@@ -77,7 +77,7 @@ export function startTraceReturnRequest(
         // Idempotent: res.end can fire more than once, and the trailer path must
         // not depend on the caller being careful. Must be called BEFORE popping —
         // SimpleSpanProcessor hands the span over synchronously on end, so this
-        // span makes it into its own payload, which Python's version never does.
+        // span makes it into its own payload, which monocle_apptrace never does.
         end(outcome = {}) {
             if (ended) return;
             ended = true;

@@ -111,7 +111,7 @@ describe("every failure path denies", () => {
         expect(warn).toHaveBeenCalled();
     });
 
-    // No Python counterpart: every Promise is truthy, so Boolean(result) on an
+    // No counterpart upstream: every Promise is truthy, so Boolean(result) on an
     // async callback would authorize unconditionally.
     it("denies an async callback instead of trusting its Promise", async () => {
         process.env.MONOCLE_TRACE_RETRIEVAL_CALLBACK = `${FIX}:asyncCheck`;

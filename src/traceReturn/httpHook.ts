@@ -132,7 +132,7 @@ function installTrailer(res: ServerResponse, request: TraceReturnRequest, delimi
 
             // Ends the root span BEFORE popping. SimpleSpanProcessor hands it
             // over synchronously, so the request's own span makes it into its
-            // own payload — which Python's version never manages.
+            // own payload — which monocle_apptrace never manages.
             request.end({ httpStatus: res.statusCode });
 
             const spans = getTraceReturnExporter().popSpansForTrace(request.traceId);

@@ -25,7 +25,7 @@ export function makeDelimiter(): string {
 export function encodeSpans(spans: ReadableSpan[]): string {
     // exportInfo() types its parameter as the SDK Span class but reads only
     // ReadableSpan members; the other exporters cast the same way. The gzip bytes
-    // need not match Python's — the client decompresses rather than compares.
+    // need not match monocle_apptrace's — the client decompresses, not compares.
     const payload = spans.map((span) => toLoaderSpan(span as Span));
     return gzipSync(Buffer.from(JSON.stringify(payload), "utf8")).toString("base64");
 }
@@ -47,13 +47,13 @@ export function buildResponseHeaderValue(delimiter: string): string {
 
 
 // ------------- client-side halves -----------------------------------------
-// Python's HttpRunner owns these in production; keeping them here makes the
-// codec round-trip testable without standing up a Python client.
+// monocle_test_tools' HttpRunner owns these in production; keeping them here
+// makes the codec round-trip testable without standing up that client.
 
 export function parseDelimiterFromHeader(headerValue: string): string | null {
     if (!headerValue) return null;
-    // indexOf + slice, not split: Python's split(..., 1) keeps everything after
-    // the FIRST marker; JS's split()[1] would stop at a second occurrence.
+    // indexOf + slice, not split: the client's split(..., 1) keeps everything
+    // after the FIRST marker; JS's split()[1] would stop at a second occurrence.
     const idx = headerValue.indexOf(DELIM_MARKER);
     if (idx === -1) return null;
     return headerValue.slice(idx + DELIM_MARKER.length).trim();

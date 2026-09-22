@@ -88,7 +88,7 @@ describe("per-trace buffering", () => {
 });
 
 describe("lifecycle", () => {
-    // Python's shutdown() exists purely to NOT do what the base class does.
+    // Upstream's shutdown() exists purely to NOT do what the base class does.
     it("shutdown leaves an in-flight request's spans intact", async () => {
         exporter.export([mkSpan(TRACE_A, "1".repeat(16), { [SCOPE]: "x" })], () => { });
         await exporter.shutdown();

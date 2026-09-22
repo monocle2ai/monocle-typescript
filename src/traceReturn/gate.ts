@@ -58,8 +58,8 @@ function constantTimeEquals(a: string, b: string): boolean {
     const bb = Buffer.from(b, "utf8");
 
     // timingSafeEqual throws on a length mismatch, so it has to be short-circuited.
-    // That leaks the key length — exactly as Python's hmac.compare_digest documents
-    // for str inputs, so this is parity, not a new weakness.
+    // That leaks the key length — exactly as hmac.compare_digest documents for
+    // str inputs, so this is parity, not a new weakness.
     if (ab.length !== bb.length) return false;
     return timingSafeEqual(ab, bb);
 }
@@ -80,9 +80,9 @@ type CallbackState =
 // null = init has not run. See currentCallback() for why that is not fatal.
 let callbackState: CallbackState | null = null;
 
-// The one real divergence from Python, whose _resolve_callback runs per request
-// through synchronous importlib. Node's import() is async while the gate must
-// answer synchronously, so resolution happens once, here. modulePath must be
+// The one real divergence from monocle_apptrace, whose _resolve_callback runs
+// per request through synchronous importlib. Node's import() is async while
+// the gate must answer synchronously, so it resolves once, here. modulePath is
 // absolute or a bare specifier — a relative path resolves against this file.
 export async function initTraceRetrievalCallback(): Promise<void> {
     const spec = process.env[MONOCLE_TRACE_RETRIEVAL_CALLBACK_ENV];
@@ -93,9 +93,9 @@ export async function initTraceRetrievalCallback(): Promise<void> {
     // Deny for the duration of the await, and permanently if anything below fails.
     callbackState = { kind: "failed" };
 
-    // lastIndexOf, where Python uses partition(":") — Node specifiers legitimately
-    // contain colons (file:// URLs, Windows drive letters) and the export name
-    // never does.
+    // lastIndexOf, where monocle_apptrace uses partition(":") — Node specifiers
+    // legitimately contain colons (file:// URLs, drive letters) and the export
+    // name never does.
     const sep = spec.lastIndexOf(":");
     if (sep <= 0 || sep === spec.length - 1) {
         console.warn(
@@ -117,7 +117,7 @@ export async function initTraceRetrievalCallback(): Promise<void> {
         callbackState = { kind: "ready", callback: candidate };
         consoleLog(`[monocle] trace-retrieval callback resolved: ${spec}`);
     } catch (e) {
-        // Broad by design, as in Python: any resolve failure denies rather than
+        // Broad by design, as upstream: any resolve failure denies rather than
         // propagating into the request path.
         console.warn(`[monocle] could not load trace-retrieval callback "${spec}": ${e}`);
     }
@@ -151,7 +151,7 @@ export function isTraceReturnAuthorized(headers: TraceReturnHeaders): boolean {
     }
     try {
         const result: any = callback(headers);
-        // A JS-specific hazard with no Python counterpart: an async callback
+        // A JS-specific hazard with no counterpart upstream: an async callback
         // returns a Promise, and every Promise is truthy. Boolean(result) would
         // silently authorize every request.
         if (result && typeof result.then === "function") {

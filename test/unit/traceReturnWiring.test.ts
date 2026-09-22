@@ -23,7 +23,7 @@ describe("setupMonocle wiring", () => {
         monocle.setupMonocle("trace-return-demo", [noop]);
     });
 
-    it("turns scoped work into a payload the Python loader can read", () => {
+    it("turns scoped work into a payload monocle_test_tools can read", () => {
         let traceId = "";
         setScopes({ monocle_trace_return: "1" }, () => {
             startTrace(() => {

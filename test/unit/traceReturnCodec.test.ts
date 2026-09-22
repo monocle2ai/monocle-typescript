@@ -49,7 +49,7 @@ describe("response header", () => {
         expect(parseDelimiterFromHeader(buildResponseHeaderValue(d))).toBe(d);
     });
 
-    it("takes everything after the first marker, as Python's split(..., 1) does", () => {
+    it("takes everything after the first marker, as the client's split(..., 1) does", () => {
         expect(parseDelimiterFromHeader("v1; delim=aa_delim=bb")).toBe("aa_delim=bb");
     });
 
@@ -60,7 +60,7 @@ describe("response header", () => {
 });
 
 describe("payload", () => {
-    it("is base64 Python's b64decode will accept", () => {
+    it("is base64 the client's b64decode will accept", () => {
         expect(encodeSpans([mkSpan()])).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
     });
 

@@ -10,11 +10,11 @@ import { TRACE_RETURN_SCOPE_ATTRIBUTE } from "./constants";
 import { isTraceReturnEnabled } from "./gate";
 
 // Buffers only spans tagged with the trace-return scope, keyed by trace id, so a
-// response claims exactly its own request's spans. No lock, unlike Python's:
+// response claims exactly its own request's spans. No lock, unlike upstream:
 // Node is single threaded and neither export() nor popSpansForTrace() awaits.
 
-// Bound on un-popped traces; Python is unbounded. A tagged request whose
-// response path never pops (crashed handler, dead socket) would otherwise leak
+// Bound on un-popped traces; monocle_apptrace is unbounded. A tagged request
+// whose response path never pops (crashed handler, dead socket) would leak
 // for the life of the process. Only authorized requests buffer, so it is a
 // backstop, not a hot path.
 const MAX_PENDING_TRACES = 128;

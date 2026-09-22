@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as C from "../../src/traceReturn/constants";
 
-// Pinned against the Python side. If one of these changes, the TS server and the
+// Pinned against the client. If one of these changes, the TS server and the
 // monocle_test_tools client stop understanding each other, and the symptom is a
-// client that just sees no traces — not an error. Update only alongside Python.
+// client that just sees no traces — not an error. Update the two together.
 describe("trace return wire constants", () => {
     it("matches monocle_apptrace constants.py exactly", () => {
         expect(C.MONOCLE_TRACE_RETURN_ENABLED_ENV).toBe("MONOCLE_ENABLE_TRACE_RETURN");

@@ -282,7 +282,7 @@ curl -H "x-monocle-retrieve-traces: some-shared-secret" localhost:3000/chat
 
 The response comes back as `<your body><delimiter><base64(gzip(spans))>`, with
 `x-monocle-traces: v1; delim=<delimiter>` in the headers. The client cuts the body
-at the delimiter to recover the untouched response plus the spans. Python's
+at the delimiter to recover the untouched response plus the spans.
 [monocle_test_tools](https://docs.okahu.ai/monocle_test_tools/) `HttpRunner` does
 this for you and runs assertions against the spans.
 
