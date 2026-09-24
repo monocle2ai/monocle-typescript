@@ -1,156 +1,104 @@
-// Static imports: a lazy require() throws in the ESM build (see the same note
-// in instrumentation.ts). Core modules are process singletons, so patching
-// these prototypes reaches every server the app creates.
-import * as http from "http";
-import * as https from "https";
 import type { IncomingMessage, ServerResponse } from "http";
-import { context as contextApi } from "@opentelemetry/api";
 import { consoleLog } from "../common/logging";
-import { TRACE_RETURN_REQUEST_HEADER, TRACE_RETURN_RESPONSE_HEADER } from "./constants";
+import { installHttpServerHook, registerHttpRequestHooks } from "../instrumentation/http/serverHook";
+import { TRACE_RETURN_REQUEST_HEADER, TRACE_RETURN_RESPONSE_HEADER, TRACE_RETURN_SCOPE_NAME } from "./constants";
 import { buildResponseHeaderValue, buildTrailerBytes, makeDelimiter } from "./codec";
 import { getTraceReturnExporter } from "./exporter";
 import { getHeaderCaseInsensitive, isTraceReturnAuthorized, isTraceReturnEnabled } from "./gate";
-import { startTraceReturnRequest, TraceReturnRequest } from "./requestSpan";
 
 const HOOK_INSTALLED = Symbol.for("monocle2ai.traceReturnHttpHook");
+const DELIMITER_KEY = Symbol("monocle.traceReturnDelimiter");
 
-// Installed from setupMonocle, which runs before the app's import graph loads
-// under `--import monocle2ai/register`. Patching the prototype means Express,
-// Fastify, Koa, NestJS and `next start` are all covered with no app change.
+// Installed from setupMonocle. Trace return no longer owns the server hook or
+// the request span: it registers callbacks with the general HTTP hook, which
+// creates the workflow / http.process pair for every request.
 export function installTraceReturnHttpHook(): void {
     const g = globalThis as any;
     if (g[HOOK_INSTALLED]) return;
     g[HOOK_INSTALLED] = true;
 
-    for (const mod of [http, https] as any[]) {
-        const proto = mod?.Server?.prototype;
-        if (!proto || typeof proto.emit !== "function") continue;
-        patchEmit(proto);
-    }
-    consoleLog("[monocle] trace return: http server hook installed");
+    registerHttpRequestHooks({ onRequestStart, scopesFor: traceReturnScopes, onBeforeEnd });
+    installHttpServerHook();
+    consoleLog("[monocle] trace return: trailer hooks registered");
 }
 
-function patchEmit(proto: any): void {
-    const originalEmit = proto.emit;
-    proto.emit = function monocleTraceReturnEmit(this: any, event: string, ...args: any[]) {
-        if (event !== "request") return originalEmit.apply(this, [event, ...args]);
-        const [req, res] = args as [IncomingMessage, ServerResponse];
-        const passthrough = () => originalEmit.apply(this, [event, ...args]);
+function isTraceReturnRequest(req: IncomingMessage): boolean {
+    if (!isTraceReturnEnabled()) return false;
+    if (getHeaderCaseInsensitive(req.headers, TRACE_RETURN_REQUEST_HEADER) === undefined) return false;
+    return isTraceReturnAuthorized(req.headers);
+}
 
-        try {
-            // Three cheap gates before we touch anything. An ordinary request
-            // pays one env read and one header lookup.
-            if (!isTraceReturnEnabled()) return passthrough();
-            if (getHeaderCaseInsensitive(req.headers, TRACE_RETURN_REQUEST_HEADER) === undefined) {
-                return passthrough();
-            }
-            if (!isTraceReturnAuthorized(req.headers)) {
-                consoleLog("[monocle] trace return: request not authorized");
-                return passthrough();
-            }
-
-            // The whole compression problem, solved. Our res.end patch runs innermost, so a
-            // compression middleware above would hand us already-gzipped bytes and our
-            // plaintext trailer would land after a finished gzip member. Encoders honour
-            // accept-encoding, so dropping it keeps this one response plaintext.
-            delete req.headers["accept-encoding"];
-
-            const request = startTraceReturnRequest({
-                name: `${req.method} ${stripQuery(req.url)}`,
-                attributes: { "http.method": req.method, "http.target": req.url },
-            });
-            if (!request) return passthrough();
-
-            // Set before anything can flush. The delimiter is random and known
-            // up front — it does not depend on the spans — which is what makes
-            // streaming responses work.
-            const delimiter = makeDelimiter();
-            res.setHeader(TRACE_RETURN_RESPONSE_HEADER, buildResponseHeaderValue(delimiter));
-            installTrailer(res, request, delimiter);
-
-            return contextApi.with(request.context, passthrough);
-        } catch (e) {
-            // A tracing feature must never take a request down.
-            console.warn(`[monocle] trace return hook failed, serving request untouched: ${e}`);
-            return passthrough();
+// One predicate, deliberately shared with traceReturnScopes: the scope tag and
+// the delimiter must be applied to exactly the same requests, or the exporter
+// buffers spans no response will ever pop.
+function onRequestStart(req: IncomingMessage, res: ServerResponse): void {
+    if (!isTraceReturnRequest(req)) {
+        if (isTraceReturnEnabled()
+            && getHeaderCaseInsensitive(req.headers, TRACE_RETURN_REQUEST_HEADER) !== undefined) {
+            consoleLog("[monocle] trace return: request not authorized");
         }
-    };
+        return;
+    }
+
+    // Our write patch runs innermost, so a compression middleware above would
+    // hand us gzipped bytes and the plaintext trailer would land after a
+    // finished member. Encoders honour accept-encoding, so dropping it is enough.
+    delete req.headers["accept-encoding"];
+
+    const delimiter = makeDelimiter();
+    (res as any)[DELIMITER_KEY] = delimiter;
+    res.setHeader(TRACE_RETURN_RESPONSE_HEADER, buildResponseHeaderValue(delimiter));
+    dropContentLength(res);
+    patchWriteHead(res);
 }
 
-function stripQuery(url?: string): string {
-    if (!url) return "";
-    const q = url.indexOf("?");
-    return q === -1 ? url : url.slice(0, q);
+function onBeforeEnd(_req: IncomingMessage, res: ServerResponse, traceId: string): Buffer | null {
+    const delimiter = (res as any)[DELIMITER_KEY] as string | undefined;
+    if (!delimiter) return null;
+
+    const spans = getTraceReturnExporter().popSpansForTrace(traceId);
+    if (!spans.length) {
+        consoleLog("[monocle] trace return: no spans buffered for this request");
+        return null;
+    }
+    if (res.getHeader("content-encoding")) {
+        // Belt and braces: something encoded the body despite the
+        // accept-encoding strip. Send a clean response rather than a corrupt one.
+        console.warn("[monocle] trace return: response is content-encoded, skipping trailer.");
+        return null;
+    }
+    return buildTrailerBytes(spans, delimiter);
 }
 
-function installTrailer(res: ServerResponse, request: TraceReturnRequest, delimiter: string): void {
-    const origWrite = res.write.bind(res);
-    const origEnd = res.end.bind(res);
+// Appending past a declared Content-Length truncates the response. Dropping it
+// falls back to chunked encoding, which — unlike recomputing the length — needs
+// no buffering, so streaming still works.
+function dropContentLength(res: ServerResponse): void {
+    if (res.headersSent) return;
+    try { res.removeHeader("Content-Length"); } catch { /* already flushed */ }
+}
+
+function patchWriteHead(res: ServerResponse): void {
     const origWriteHead = res.writeHead.bind(res);
-    let finished = false;
-
-    // Appending bytes past a declared Content-Length truncates the response or
-    // hangs the connection. Dropping it entirely falls back to chunked encoding,
-    // which costs nothing and — unlike recomputing the length — does not require
-    // buffering the body, so SSE and streaming still work.
-    const dropContentLength = () => {
-        if (res.headersSent) return;
-        try { res.removeHeader("Content-Length"); } catch { /* already flushed */ }
-    };
-
-    // writeHead(status, headers) sets headers that removeHeader may not reach,
-    // so strip it out of the argument too.
     res.writeHead = function (this: ServerResponse, ...args: any[]) {
+        // Before the call, not after: writeHead stores the header block, and
+        // removeHeader can no longer reach it once that has happened. res.end()
+        // reaches here through _implicitHeader(), so this covers every path.
+        dropContentLength(res);
         const headers = args[args.length - 1];
         if (headers && typeof headers === "object" && !Array.isArray(headers)) {
             for (const key of Object.keys(headers)) {
                 if (key.toLowerCase() === "content-length") delete headers[key];
             }
         }
-        const out = origWriteHead(...(args as [any]));
-        dropContentLength();
-        return out;
+        return origWriteHead(...(args as [any]));
     } as any;
+}
 
-    // Pass-through, not buffering: the body streams to the client as normal.
-    res.write = function (this: ServerResponse, ...args: any[]) {
-        dropContentLength();
-        return (origWrite as any)(...args);
-    } as any;
-
-    res.end = function (this: ServerResponse, chunk?: any, encoding?: any, callback?: any) {
-        // end(cb) / end(chunk, cb) / end(chunk, encoding, cb)
-        if (typeof chunk === "function") { callback = chunk; chunk = undefined; encoding = undefined; }
-        else if (typeof encoding === "function") { callback = encoding; encoding = undefined; }
-
-        if (finished) return (origEnd as any)(chunk, encoding, callback);
-        finished = true;
-
-        try {
-            dropContentLength();
-            if (chunk !== undefined && chunk !== null) (origWrite as any)(chunk, encoding);
-
-            // Ends the root span BEFORE popping. SimpleSpanProcessor hands it
-            // over synchronously, so the request's own span makes it into its
-            // own payload — which monocle_apptrace never manages.
-            request.end({ httpStatus: res.statusCode });
-
-            const spans = getTraceReturnExporter().popSpansForTrace(request.traceId);
-            if (!spans.length) {
-                consoleLog("[monocle] trace return: no spans buffered for this request");
-            } else if (res.getHeader("content-encoding")) {
-                // Belt and braces: something encoded the body despite the
-                // accept-encoding strip. Send a clean response rather than a
-                // corrupt one.
-                console.warn(
-                    "[monocle] trace return: response is content-encoded, skipping trailer.",
-                );
-            } else {
-                (origWrite as any)(buildTrailerBytes(spans, delimiter));
-            }
-        } catch (e) {
-            console.warn(`[monocle] trace return: could not append trailer: ${e}`);
-        }
-        return (origEnd as any)(callback);
-    } as any;
+// The scope must be applied only to authorized requests: the exporter buffers
+// every span carrying it until a response pops them, so tagging unauthorized
+// traffic would fill that buffer with traces nobody claims.
+export function traceReturnScopes(req: IncomingMessage): Record<string, string | null> | null {
+    if (!isTraceReturnRequest(req)) return null;
+    return { [TRACE_RETURN_SCOPE_NAME]: null };
 }
