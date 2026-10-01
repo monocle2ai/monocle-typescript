@@ -54,7 +54,7 @@ export const TOOL = {
             "attributes": [
                 {
                     "_comment": "validated args the model produced for this tool call",
-                    "attribute": "Inputs",
+                    "attribute": "input",
                     "accessor": function ({ args }: any) {
                         const toolArgs = args?.[0]?.args;
                         return toolArgs ? [JSON.stringify(toolArgs)] : [""];
