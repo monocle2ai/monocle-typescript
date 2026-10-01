@@ -26,6 +26,7 @@ import { setScopesInternal, getScopesInternal, setScopesBindInternal, load_scope
 import { maybeTraceReturnProcessor } from '../../traceReturn/exporter';
 import { initTraceRetrievalCallback, isTraceReturnEnabled } from '../../traceReturn/gate';
 import { installTraceReturnHttpHook } from '../../traceReturn/httpHook';
+import { installHttpServerHook } from '../http/serverHook';
 
 
 class MonocleInstrumentation extends InstrumentationBase {
@@ -431,7 +432,13 @@ const setupMonocle = (
             finalSpanProcessors.push(traceReturnProcessor);
             installTraceReturnHttpHook();
         }
-        
+
+        // HTTP spans are ordinary instrumentation: the hook installs for every
+        // app, like any other metamodel. Trace return, when enabled, registers
+        // its trailer callbacks on top of this same hook above.
+        installHttpServerHook();
+
+
         finalSpanProcessors.forEach(processor => {
             consoleLog(`Adding span processor: ${processor.constructor.name}`);
         });

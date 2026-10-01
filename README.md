@@ -257,6 +257,81 @@ hooked — usually because it was bundled/inlined and can't be traced — Monocl
 one-time warning telling you to externalize it. Silence or tune it with
 `MONOCLE_DISABLE_HOOK_AUDIT` / `MONOCLE_HOOK_AUDIT_DELAY_MS` / `MONOCLE_FORCE_HOOK_AUDIT`.
 
+### HTTP spans and `MONOCLE_HTTP_EXCLUDE_PATHS`
+
+Monocle hooks `node:http`, so every request your server handles gets a
+`workflow` + `http.process` span pair, exported like any other span. Nothing to
+enable — this happens as soon as Monocle is set up, and it covers Express,
+Fastify, Koa, NestJS and `next start` alike.
+
+Those spans include the **request body and the response body**. The request body
+is truncated at 1000 characters and the response body at 5000, so a long stream
+simply stops accumulating rather than growing the span.
+
+**Static assets are traced too.** `express.static`, and any middleware like it,
+produces its own `workflow` + `http.process` pair for every file served, and the
+bodies of textual assets — JavaScript, CSS, HTML — are captured up to that same
+5000 characters. Images and other binary content types are skipped. An app that
+serves its front end from the same server as its API will therefore see trace
+volume track total HTTP traffic rather than AI workload.
+
+**Span names are duck-typed from Express's `req.route` and `req.baseUrl`.** A
+framework that does not set them — Fastify, Koa, `next start` — falls back to the
+concrete path, so `/users/12345` and `/users/12346` become two distinct span
+names. On those frameworks, excluding parameterised routes is how you keep
+span-name cardinality bounded.
+
+For both of these, `MONOCLE_HTTP_EXCLUDE_PATHS` is the lever — there is no
+switch that turns HTTP spans off.
+
+**Bodies are not redacted.** Whatever a client posts to your login route — the
+password included — lands in the span, and goes wherever your exporter sends it.
+`MONOCLE_HTTP_EXCLUDE_PATHS` is the mechanism for keeping a sensitive route out
+of tracing entirely:
+
+```
+MONOCLE_HTTP_EXCLUDE_PATHS=/health,/auth/login,/internal/
+```
+
+An excluded request is served exactly as if Monocle were not installed: no spans,
+no body capture, no response patching.
+
+A reasonable starting point, to paste and then prune. Monocle applies none of it
+on your behalf: nothing is excluded until you say so.
+
+```
+MONOCLE_HTTP_EXCLUDE_PATHS=/health,/metrics,/favicon.ico,/static,/_next,/assets
+```
+
+`/_next` covers Next.js build assets, and `/static` and `/assets` the usual
+Express and bundler conventions; drop whichever your app does not serve, and add
+the mount paths it does.
+
+How the list is matched:
+
+- **Comma-separated prefixes, not exact paths.** `/health` excludes `/health`
+  and `/health/ready` — and also `/healthcheck-api`, because the match is on the
+  string, not on path segments. Check what else in your app starts with the same
+  characters before adding a short prefix.
+- **Matched against the original request target**, the path as it arrived on the
+  wire — not the mount-relative path a router or middleware sees. A login route
+  mounted with `app.use("/api", router)` is excluded by `/api/login`, never by
+  `/login`.
+- **A trailing slash narrows it.** `/health/` excludes `/health/ready` and
+  everything else under that subtree, but *not* a bare request to `/health`. Use
+  this when a short prefix would otherwise catch neighbouring routes.
+- **Every prefix must start with `/`.** A prefix written as `health`, or as a
+  full URL like `https://api.example.com/health`, silently never matches an
+  ordinary request: what it is compared against is a path such as `/health`,
+  which starts with neither. There is no warning — the route just keeps getting
+  traced.
+- **Case-insensitive**, and matched against the normalised path: the query string
+  is stripped, percent-encoding is decoded, `//` and `..` segments are resolved,
+  and an absolute-form request target (`GET http://host/health`) is reduced to
+  its path first. So `/login` also covers `/LOGIN`, `/log%69n` and
+  `/x/../login?next=/`.
+- **Unset or empty excludes nothing.** Every request is traced.
+
 ### Returning traces on the HTTP response
 
 A test running outside your server can't see the spans a request produced. Turn on

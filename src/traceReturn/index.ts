@@ -4,8 +4,6 @@
 // Azure Functions, Web Request/Response), where you assemble the trailer.
 
 export { installTraceReturnHttpHook } from "./httpHook";
-export { startTraceReturnRequest } from "./requestSpan";
-export type { TraceReturnRequest, StartTraceReturnRequestOptions } from "./requestSpan";
 
 export { getTraceReturnExporter, TraceReturnSpanExporter } from "./exporter";
 
