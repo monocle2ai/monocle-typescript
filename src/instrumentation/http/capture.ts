@@ -162,6 +162,13 @@ export function appendResponseChunk(res: any, chunk: unknown): void {
     const text =
         typeof chunk === "string" ? chunk
         : Buffer.isBuffer(chunk) ? decodeCapped(chunk, remaining)
+        // A Web ReadableStream yields plain Uint8Arrays, so this is what every
+        // Next.js route handler streaming a Response ends up writing.
+        // Buffer.isBuffer is false for one, and its own toString() would render
+        // "100,97,116,97" rather than text, so it has to go through a Buffer
+        // view - which wraps the same memory rather than copying it.
+        : ArrayBuffer.isView(chunk)
+            ? decodeCapped(Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength), remaining)
         : "";
     if (text.length >= remaining) {
         capture.body += text.slice(0, remaining);

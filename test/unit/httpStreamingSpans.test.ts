@@ -102,6 +102,16 @@ beforeAll(async () => {
             setTimeout(() => res.destroy(new Error("agent exploded")), 20);
             return;
         }
+        if (req.url === "/typed") {
+            // Writes plain Uint8Arrays, which is what a Web ReadableStream
+            // yields and therefore what every Next.js streaming route handler
+            // ends up writing to the socket.
+            res.setHeader("content-type", "text/event-stream");
+            const enc = new TextEncoder();
+            res.write(enc.encode("data: one\n\n"));
+            res.end(enc.encode("data: two\n\n"));
+            return;
+        }
         if (req.url === "/plain") {
             res.writeHead(200, { "content-type": "application/json" });
             res.end(JSON.stringify({ ok: true }));
@@ -236,5 +246,33 @@ describe("a streamed response the server tears down", () => {
     it("still reports the stream shape it managed before failing", () => {
         expect(out.chunk_count).toBe(1);
         expect(typeof out.time_to_first_byte_ms).toBe("number");
+    });
+});
+
+// A Web ReadableStream yields Uint8Array, not Buffer, and Buffer.isBuffer() is
+// false for one. Without handling it the body silently comes back empty for
+// every framework that streams through a Web Response - Next.js route handlers
+// above all. The chunk counter uses ArrayBuffer.isView and always worked, so
+// the two disagreed: chunk_count 3 next to an empty response.
+describe("a stream written as Uint8Array rather than Buffer", () => {
+    let out: Record<string, any>;
+
+    beforeAll(async () => {
+        out = outputAttributes(await spanFor("/typed"));
+    });
+
+    it("captures the body", () => {
+        expect(out.response).toContain("data: one");
+        expect(out.response).toContain("data: two");
+    });
+
+    it("does not render the bytes as numbers", () => {
+        // Uint8Array.toString() gives "100,97,116,97..." - decoding has to go
+        // through a Buffer view, not the array's own toString.
+        expect(out.response).not.toMatch(/^\d+,\d+/);
+    });
+
+    it("counts the chunks as it would for a Buffer", () => {
+        expect(out.chunk_count).toBe(2);
     });
 });
