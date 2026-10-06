@@ -1,5 +1,7 @@
+import { performance } from "perf_hooks";
 import {
     HTTP_CAPTURE_KEY, HTTP_ORIGINAL_URL_KEY, HttpCapture, MAX_DATA_LENGTH, MAX_STREAMING_CAPTURE_LENGTH,
+    StreamEndReason,
 } from "./constants";
 
 // Content types whose bytes are text. An unset content-type counts as textual:
@@ -123,17 +125,33 @@ function isTextualResponse(res: any): boolean {
 // Called from the response patches for every chunk. Copy-and-forward: the
 // caller always writes the chunk on regardless, so streaming is never delayed.
 // The cap is cumulative, so a long SSE stream stops growing the capture.
+// Created on first use rather than at request start: `truncated` is decided by
+// the content-type, which a handler has usually not set yet when the request
+// arrives. Both the body capture and the stream counter come through here, so
+// whichever runs first settles that question for both.
+function ensureCapture(res: any): HttpCapture | undefined {
+    const existing = res[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    if (existing) return existing;
+    const capture: HttpCapture = { body: "", truncated: !isTextualResponse(res), chunks: 0 };
+    try {
+        res[HTTP_CAPTURE_KEY] = capture;
+    } catch {
+        return undefined; // frozen response object: capture nothing, serve normally
+    }
+    return capture;
+}
+
+function chunkHasBytes(chunk: unknown): boolean {
+    if (typeof chunk === "string") return chunk.length > 0;
+    // Covers Buffer, which is a Uint8Array, as well as a bare typed array.
+    if (ArrayBuffer.isView(chunk)) return chunk.byteLength > 0;
+    return false;
+}
+
 export function appendResponseChunk(res: any, chunk: unknown): void {
     if (chunk === undefined || chunk === null || !res) return;
-    let capture = res[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
-    if (!capture) {
-        capture = { body: "", truncated: !isTextualResponse(res) };
-        try {
-            res[HTTP_CAPTURE_KEY] = capture;
-        } catch {
-            return; // frozen response object: capture nothing, serve normally
-        }
-    }
+    const capture = ensureCapture(res);
+    if (!capture) return;
     if (capture.truncated) return;
 
     const remaining = MAX_STREAMING_CAPTURE_LENGTH - capture.body.length;
@@ -151,4 +169,60 @@ export function appendResponseChunk(res: any, chunk: unknown): void {
     } else {
         capture.body += text;
     }
+}
+
+// ---- stream shape -------------------------------------------------------
+// Deliberately NOT folded into appendResponseChunk: that function returns early
+// for a non-textual response, so counting there would lose the shape of every
+// streamed download. A stream is still a stream when we decline to read it.
+
+// One res.write() that carried bytes. The caller decides what counts as a
+// stream write; this only records it.
+export function recordStreamChunk(res: any, chunk: unknown): void {
+    if (!res || !chunkHasBytes(chunk)) return;
+    const capture = ensureCapture(res);
+    if (!capture) return;
+    capture.chunks += 1;
+    if (capture.firstByteAt === undefined) capture.firstByteAt = performance.now();
+}
+
+// "Did the handler stream this response?" - the one question the end-of-request
+// status and the three stream attributes all turn on. A plain res.end(body)
+// never calls recordStreamChunk, so it answers false.
+export function didStream(res: any): boolean {
+    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    return (capture?.chunks ?? 0) > 0;
+}
+
+// Called once from the hook before the metamodel runs. The accessors below are
+// pure reads, so anything derived has to be on the capture by then.
+export function recordStreamEnd(res: any, endReason: StreamEndReason, startedAt: number): void {
+    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    // No capture, or nothing ever written: there is no stream to describe, and
+    // the three attributes stay off the span entirely.
+    if (!capture || capture.chunks === 0) return;
+    capture.endReason = endReason;
+    if (capture.firstByteAt !== undefined) {
+        // Microsecond resolution, not whole milliseconds: processSpan drops
+        // falsy accessor results, so a TTFB that rounded to 0 would silently
+        // vanish from the span. Reaching the first write within 500ns of span
+        // start is not reachable here - span creation and handler dispatch sit
+        // in between - but rounding to integers would make it merely unlikely.
+        capture.timeToFirstByteMs = Math.round((capture.firstByteAt - startedAt) * 1000) / 1000;
+    }
+}
+
+export function getStreamChunkCount(res: any): number | undefined {
+    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    // undefined, not 0: the three stream attributes are emitted as a set or not
+    // at all, and 0 would be dropped by processSpan anyway.
+    return capture?.chunks ? capture.chunks : undefined;
+}
+
+export function getStreamEndReason(res: any): string | undefined {
+    return (res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined)?.endReason;
+}
+
+export function getTimeToFirstByteMs(res: any): number | undefined {
+    return (res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined)?.timeToFirstByteMs;
 }

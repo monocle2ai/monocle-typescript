@@ -12,9 +12,22 @@ export const HTTP_CAPTURE_KEY = Symbol("monocle.httpCapture");
 // rewrite. The hook stashes the original request target here at request start.
 export const HTTP_ORIGINAL_URL_KEY = Symbol("monocle.httpOriginalUrl");
 
+// Why the server ended up finishing the response. Only ever set on a response
+// that streamed - see recordStreamEnd in capture.ts.
+export type StreamEndReason = "complete" | "client_closed";
+
 export interface HttpCapture {
     body: string;
     truncated: boolean;
+    // Stream shape and timing, recorded independently of the body above: a
+    // non-textual response suppresses body capture, but how many chunks it sent
+    // and when the first one left are still worth knowing.
+    chunks: number;
+    firstByteAt?: number;
+    // Derived once at res.end / close, because the metamodel accessors are pure
+    // reads and cannot compute anything themselves.
+    endReason?: StreamEndReason;
+    timeToFirstByteMs?: number;
 }
 
 // Comma-separated path prefixes served with no hook involvement at all. Keeps
