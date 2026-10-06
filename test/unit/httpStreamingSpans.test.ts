@@ -42,6 +42,24 @@ async function spanFor(path: string): Promise<ReadableSpan> {
     return span!;
 }
 
+// spanFor() waits for a clean response; a torn-down one never delivers "end",
+// so this drives the request and waits for the socket to die instead.
+async function spanForBrokenStream(path: string): Promise<ReadableSpan> {
+    finished.length = 0;
+    await new Promise<void>((resolve) => {
+        const req = http.request({ host: "127.0.0.1", port, path, method: "GET" }, (res) => {
+            res.on("data", () => { });
+            res.on("close", () => resolve());
+        });
+        req.on("error", () => resolve());
+        req.end();
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    const span = finished.find((s) => s.attributes["span.type"] === "http.process");
+    expect(span, `no http.process span for ${path}`).toBeDefined();
+    return span!;
+}
+
 beforeAll(async () => {
     const monocle = await import("../../src/index");
     monocle.setupMonocle("http-streaming-demo", [collector]);
@@ -74,6 +92,14 @@ beforeAll(async () => {
             res.statusCode = 200;
             res.write(Buffer.from([1, 2, 3]));
             res.end(Buffer.from([4, 5]));
+            return;
+        }
+        if (req.url === "/explode") {
+            // Starts streaming, then the response is torn down by a server-side
+            // failure rather than by the client going away.
+            res.setHeader("content-type", "text/event-stream");
+            res.write("data: partial\n\n");
+            setTimeout(() => res.destroy(new Error("agent exploded")), 20);
             return;
         }
         if (req.url === "/plain") {
@@ -178,5 +204,37 @@ describe("an ordinary non-streamed response", () => {
     it("is otherwise unchanged", () => {
         expect(out.status_code).toBe("200");
         expect(out.response).toBe('{"ok":true}');
+    });
+});
+
+// A stream torn down by the server is NOT the same as a client hanging up, and
+// res.errored is what tells them apart: Node sets it only in the former case.
+// Without this distinction every server-side streaming failure would be
+// recorded as a healthy client_closed, which is the one way the "a disconnect
+// is not an error" rule could hide a real fault.
+describe("a streamed response the server tears down", () => {
+    let span: ReadableSpan;
+    let out: Record<string, any>;
+
+    beforeAll(async () => {
+        span = await spanForBrokenStream("/explode");
+        out = outputAttributes(span);
+    });
+
+    it("is an error, unlike a client disconnect", () => {
+        expect(span.status.code).toBe(2); // SpanStatusCode.ERROR
+    });
+
+    it("says what went wrong", () => {
+        expect(span.status.message).toContain("agent exploded");
+    });
+
+    it("reports end_reason=error rather than client_closed", () => {
+        expect(out.end_reason).toBe("error");
+    });
+
+    it("still reports the stream shape it managed before failing", () => {
+        expect(out.chunk_count).toBe(1);
+        expect(typeof out.time_to_first_byte_ms).toBe("number");
     });
 });

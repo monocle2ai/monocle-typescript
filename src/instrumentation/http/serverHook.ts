@@ -214,6 +214,21 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
     return ctx;
 }
 
+// Node sets `errored` on a stream destroyed with an error, and leaves it null
+// when the peer merely went away - which is the only signal that separates a
+// server-side streaming failure from an ordinary client disconnect. Verified
+// against node:http rather than assumed. Reads undefined on a runtime or a
+// response double that does not provide it, where behaviour falls back to
+// treating every abort as a disconnect.
+function responseError(res: any): Error | undefined {
+    try {
+        const errored = res?.errored;
+        return errored instanceof Error ? errored : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 function spanName(req: IncomingMessage): string {
     return `${req.method ?? ""} ${getRoute(req)}`.trim();
 }
@@ -234,10 +249,13 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
     // answer - and used by the status rule below as well as the metamodel.
     const streamed = didStream(res);
 
+    const failure = responseError(res);
+
     // Must run before processSpan: the metamodel accessors are pure reads, so
     // end_reason and time_to_first_byte_ms have to be on the capture already.
     try {
-        recordStreamEnd(res, aborted ? "client_closed" : "complete", state.startedAt);
+        const reason = failure ? "error" : aborted ? "client_closed" : "complete";
+        recordStreamEnd(res, reason, state.startedAt);
     } catch (e) {
         consoleLog(`[monocle] http hook: could not record the stream end: ${e}`);
     }
@@ -267,13 +285,21 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
     // Its own try: a throw here must not skip httpSpan.end() below, which would
     // otherwise leave it open the same way an unguarded abort path would.
     try {
+        // Checked first: a response destroyed by a server-side error is a real
+        // failure whether or not it had started streaming, and must not be
+        // absorbed by the disconnect rule below.
+        if (failure) {
+            httpSpan.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: `response failed: ${failure.message}`.slice(0, 200),
+            });
         // A client closing a stream it was reading is how a healthy SSE or
         // chunked response normally ends - the server never calls res.end - so
         // it is not an error. With nothing ever written it is: either the client
         // gave up before any response or the handler hung. The transport cannot
         // tell "finished reading" from "hit stop", so this errs towards OK and
         // leaves end_reason=client_closed on the span for anyone who cares.
-        if (aborted && !streamed) {
+        } else if (aborted && !streamed) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: "client disconnected" });
         } else if (res.statusCode >= 500) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: `HTTP ${res.statusCode}` });

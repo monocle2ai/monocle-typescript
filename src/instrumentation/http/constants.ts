@@ -14,7 +14,12 @@ export const HTTP_ORIGINAL_URL_KEY = Symbol("monocle.httpOriginalUrl");
 
 // Why the server ended up finishing the response. Only ever set on a response
 // that streamed - see recordStreamEnd in capture.ts.
-export type StreamEndReason = "complete" | "client_closed";
+//
+// "error" is distinct from "client_closed" on purpose: a disconnect is normal
+// for a stream and is not reported as a failure, so without separating the two
+// a server-side blow-up mid-stream would be indistinguishable from a reader
+// who simply closed the tab.
+export type StreamEndReason = "complete" | "client_closed" | "error";
 
 export interface HttpCapture {
     body: string;
