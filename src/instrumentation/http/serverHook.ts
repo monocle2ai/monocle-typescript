@@ -1,6 +1,7 @@
 // Static imports: a lazy require() throws in the ESM build (see the same note
 // in instrumentation.ts). Core modules are process singletons, so patching
 // these prototypes reaches every server the app creates.
+import { performance } from "perf_hooks";
 import * as http from "http";
 import * as https from "https";
 import type { IncomingMessage, ServerResponse } from "http";
@@ -16,7 +17,9 @@ import {
     WORKFLOW_TYPE_HOLDER_KEY, createWorkflowTypeHolder, resolveWorkflowType,
 } from "../common/workflowTypeHolder";
 import { HTTP_PROCESS } from "../metamodel/http/entities/httpProcess";
-import { appendResponseChunk, getRoute, rememberOriginalUrl } from "./capture";
+import {
+    appendResponseChunk, didStream, getRoute, recordStreamChunk, recordStreamEnd, rememberOriginalUrl,
+} from "./capture";
 import { isPathExcluded } from "./excludePaths";
 
 const HOOK_INSTALLED = Symbol.for("monocle2ai.httpServerHook");
@@ -174,6 +177,13 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
     const holder = createWorkflowTypeHolder();
     ctx = ctx.setValue(WORKFLOW_TYPE_HOLDER_KEY, holder);
 
+    // One monotonic clock for the whole request: time to first byte is measured
+    // against this rather than against the span's own start time, which is an
+    // hrTime pair on a different clock. Taken immediately before the spans, so
+    // it is the span start to within microseconds. performance.now(), not
+    // Date.now(), which an NTP step can run backwards.
+    const startedAt = performance.now();
+
     // The workflow span is the trace root and the http.process span its child.
     // That ordering is what puts the HTTP attributes at entity.1 rather than
     // entity.3, matching monocle_apptrace.
@@ -199,6 +209,7 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
         holder,
         traceId: httpSpan.spanContext().traceId,
         startName,
+        startedAt,
     });
     return ctx;
 }
@@ -213,10 +224,23 @@ interface RequestState {
     holder: ReturnType<typeof createWorkflowTypeHolder>;
     traceId: string;
     startName: string;
+    startedAt: number;
 }
 
 function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, aborted: boolean): void {
     const { workflowSpan, httpSpan, holder } = state;
+
+    // Read before recordStreamEnd for clarity only - it does not change the
+    // answer - and used by the status rule below as well as the metamodel.
+    const streamed = didStream(res);
+
+    // Must run before processSpan: the metamodel accessors are pure reads, so
+    // end_reason and time_to_first_byte_ms have to be on the capture already.
+    try {
+        recordStreamEnd(res, aborted ? "client_closed" : "complete", state.startedAt);
+    } catch (e) {
+        consoleLog(`[monocle] http hook: could not record the stream end: ${e}`);
+    }
 
     // Routing has run by now, so getRoute resolves the template: GET /users/:id
     // rather than the GET /users/12345 we could only guess at request start.
@@ -243,7 +267,13 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
     // Its own try: a throw here must not skip httpSpan.end() below, which would
     // otherwise leave it open the same way an unguarded abort path would.
     try {
-        if (aborted) {
+        // A client closing a stream it was reading is how a healthy SSE or
+        // chunked response normally ends - the server never calls res.end - so
+        // it is not an error. With nothing ever written it is: either the client
+        // gave up before any response or the handler hung. The transport cannot
+        // tell "finished reading" from "hit stop", so this errs towards OK and
+        // leaves end_reason=client_closed on the span for anyone who cares.
+        if (aborted && !streamed) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: "client disconnected" });
         } else if (res.statusCode >= 500) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: `HTTP ${res.statusCode}` });
@@ -286,6 +316,9 @@ function installResponsePatches(req: IncomingMessage, res: ServerResponse, state
 
     // Pass-through, not buffering: the body streams to the client as normal.
     res.write = function (this: ServerResponse, ...args: any[]) {
+        // A res.write() call is what makes this a stream, so it is counted here
+        // and never in the res.end path below.
+        recordStreamChunk(res, args[0]);
         appendResponseChunk(res, args[0]);
         return (origWrite as any)(...args);
     } as any;
@@ -302,6 +335,11 @@ function installResponsePatches(req: IncomingMessage, res: ServerResponse, state
         // finish() try: a throw here must not skip finish(), or finished would
         // flip true while the spans stay open.
         try {
+            // Only once the response is already a stream: counting the body of a
+            // plain res.end(body) would make every ordinary response look
+            // streamed and flip the status rule in finish(). On a real stream the
+            // final chunk is a chunk the client received, so it counts.
+            if (didStream(res)) recordStreamChunk(res, chunk);
             appendResponseChunk(res, chunk);
         } catch (e) {
             console.warn(`[monocle] http hook: response chunk capture failed: ${e}`);
