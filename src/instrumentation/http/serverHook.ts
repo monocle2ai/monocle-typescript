@@ -28,6 +28,13 @@ export interface HttpRequestHooks {
     onRequestStart?(req: IncomingMessage, res: ServerResponse): void;
     scopesFor?(req: IncomingMessage): Record<string, string | null> | null;
     onBeforeEnd?(req: IncomingMessage, res: ServerResponse, traceId: string): Buffer | null;
+    // Called INSTEAD of onBeforeEnd when the response never reached res.end:
+    // a client that walked away from a stream, or a response the server tore
+    // down. No trailer can be written at that point, so a hook holding state
+    // for this trace has to release it here or nothing ever will. Routine for
+    // streaming, where abandoning the response is how an SSE request normally
+    // ends - not the rare crash it was when every response was buffered.
+    onAbandoned?(req: IncomingMessage, res: ServerResponse, traceId: string): void;
 }
 
 // On globalThis, like TRACE_RETURN_EXPORTER_KEY in traceReturn/exporter.ts: the
@@ -420,6 +427,12 @@ function installResponsePatches(req: IncomingMessage, res: ServerResponse, state
                 finish(req, res, state, true);
             } catch (e) {
                 console.warn(`[monocle] http hook: abort finalisation failed: ${e}`);
+            }
+            // After finish(), never before: ending the spans is what hands them
+            // to the processors, so a hook asked to release them earlier would
+            // find its buffer still filling.
+            for (const hook of registeredHooks()) {
+                safely("onAbandoned", () => hook.onAbandoned?.(req, res, state.traceId));
             }
         });
     } catch (e) {
