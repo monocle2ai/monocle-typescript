@@ -1,26 +1,49 @@
 import { MONOCLE_HTTP_EXCLUDE_PATHS_ENV } from "./constants";
 import { stripQuery } from "./capture";
+import { CompiledPattern, compilePattern } from "./pathPattern";
+import { defaultExcludePatterns, resetDefaultExcludesForTests } from "./defaultExcludes";
 
-// Read once: this runs on every request, and the variable cannot change
-// meaningfully mid-process. resetExcludedPathsForTests clears the cache.
-// Lowercased: Express (our reference framework) routes case-insensitively by
-// default, so a case-sensitive prefix would let "/Login" through unmatched.
-let cached: string[] | null = null;
+// Two deny sources, unioned: the built-in defaults and the user's list. The
+// user's list only ever adds - it cannot rescue a path a default caught. That
+// is the allow list's job, and it is not built yet.
+let userCompiled: CompiledPattern[] | null = null;
+let defaultsSource: readonly string[] | null = null;
+let defaultsCompiled: CompiledPattern[] = [];
 
-// Lowercased only, never further normalised: normalising "/login/" to
-// "/login" here would destroy the trailing-slash escape hatch that narrows a
-// bare prefix's over-match to its own subtree.
-function excludedPrefixes(): string[] {
-    if (cached) return cached;
-    cached = (process.env[MONOCLE_HTTP_EXCLUDE_PATHS_ENV] ?? "")
-        .split(",")
-        .map((p) => p.trim().toLowerCase())
-        .filter((p) => p.length > 0);
-    return cached;
+// Lowercased, never further normalised: normalising "/login/" to "/login"
+// would destroy the trailing-slash escape hatch that narrows a bare prefix's
+// over-match to its own subtree. Unusable entries are dropped.
+function compileAll(patterns: readonly string[]): CompiledPattern[] {
+    return patterns
+        .map((p) => compilePattern(p.toLowerCase()))
+        .filter((m): m is CompiledPattern => m !== null);
+}
+
+// Read once: this runs on every request and the variable cannot change
+// meaningfully mid-process.
+function userPatterns(): CompiledPattern[] {
+    if (!userCompiled) {
+        userCompiled = compileAll((process.env[MONOCLE_HTTP_EXCLUDE_PATHS_ENV] ?? "").split(","));
+    }
+    return userCompiled;
+}
+
+// Recompiled only when the default list itself changes, which happens at most
+// once per process - when a framework is detected and its tier switches on.
+function defaultPatterns(): CompiledPattern[] {
+    const source = defaultExcludePatterns();
+    if (source !== defaultsSource) {
+        defaultsSource = source;
+        defaultsCompiled = compileAll(source);
+    }
+    return defaultsCompiled;
 }
 
 export function resetExcludedPathsForTests(): void {
-    cached = null;
+    userCompiled = null;
+    defaultsSource = null;
+    defaultsCompiled = [];
+    resetDefaultExcludesForTests();
 }
 
 // req.url is "/path" for the common origin-form request target, but RFC 9112
@@ -69,16 +92,29 @@ function normalizePath(url: string): string | null {
 }
 
 // Matched against BOTH the raw target and the normalised path: normalising
-// can shorten a path (a trailing slash, a decoded "..") past a prefix that
-// matched the raw form, so matching only one would stop excluding it. Either
-// matching is monotonic - only adds exclusions - so this is a superset of both.
+// can shorten a path past a pattern that matched the raw form, so matching
+// only one would stop excluding it. Either matching is monotonic - it only
+// adds exclusions - so this is a superset of both.
+function matchesAny(matchers: CompiledPattern[], raw: string, path: string): boolean {
+    return matchers.some((matches) => matches(raw) || matches(path));
+}
+
 export function isPathExcluded(url: string | undefined): boolean {
-    const prefixes = excludedPrefixes();
-    if (!prefixes.length || typeof url !== "string") return false;
+    const defaults = defaultPatterns();
+    const user = userPatterns();
+    if (typeof url !== "string" || (!defaults.length && !user.length)) return false;
+
     const path = normalizePath(url);
-    // Cannot be resolved to a path at all: exclude rather than trace, since
-    // ambiguity should favour keeping a secret out over tracing a request.
-    if (path === null) return true;
+    if (path === null) {
+        // Unresolvable target: exclude only if the user configured a list, since
+        // that list is the lever for keeping a credential endpoint's body out of
+        // an exporter and ambiguity there should favour the secret. The defaults
+        // exist to cut noise, which is no reason to drop an odd request.
+        return user.length > 0;
+    }
+
     const raw = stripQuery(url).toLowerCase();
-    return prefixes.some((prefix) => raw.startsWith(prefix) || path.startsWith(prefix));
+    // The allow list, once it exists, is evaluated here - ahead of both deny
+    // sources, returning false on a match.
+    return matchesAny(defaults, raw, path) || matchesAny(user, raw, path);
 }

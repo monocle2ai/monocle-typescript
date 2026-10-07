@@ -41,6 +41,7 @@ export const MASTRA_EXCLUDE_PATHS: readonly string[] = [
 const MASTRA_PACKAGE = "@mastra/core";
 
 let mastraDetected = false;
+let combined: readonly string[] | null = null;
 
 // hookedPackages fills as each patch fires, so a "no" here only means "not
 // yet". Only the positive is cached; the Set lookup is cheap enough to repeat.
@@ -54,12 +55,15 @@ function isMastraLoaded(): boolean {
     return mastraDetected;
 }
 
+// The returned array is reference-stable for a given detection state, so
+// callers can cache compiled patterns against its identity.
 export function defaultExcludePatterns(): readonly string[] {
-    return isMastraLoaded()
-        ? [...UNIVERSAL_EXCLUDE_PATHS, ...MASTRA_EXCLUDE_PATHS]
-        : UNIVERSAL_EXCLUDE_PATHS;
+    if (!isMastraLoaded()) return UNIVERSAL_EXCLUDE_PATHS;
+    if (!combined) combined = [...UNIVERSAL_EXCLUDE_PATHS, ...MASTRA_EXCLUDE_PATHS];
+    return combined;
 }
 
 export function resetDefaultExcludesForTests(): void {
     mastraDetected = false;
+    combined = null;
 }
