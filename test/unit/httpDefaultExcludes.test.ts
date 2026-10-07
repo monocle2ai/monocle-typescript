@@ -94,3 +94,17 @@ describe("default excludes — what is deliberately absent", () => {
         });
     });
 });
+
+// Detection is a string compare against a name produced elsewhere. If the
+// metamodel is ever repackaged, the Mastra tier would quietly stop applying
+// and the only symptom would be the noise coming back.
+describe("default excludes — detection is wired to the real metamodel", () => {
+    it("watches the bare package name the Mastra metamodel actually hooks", async () => {
+        const { config } = await import("../../src/instrumentation/metamodel/mastra/methods");
+        const { getBarePackageName } = await import("../../src/instrumentation/common/packages");
+        const { MASTRA_PACKAGE } = await import("../../src/instrumentation/http/defaultExcludes");
+
+        const hooked = new Set(config.map((c: any) => getBarePackageName(c.package)));
+        expect([...hooked]).toContain(MASTRA_PACKAGE);
+    });
+});

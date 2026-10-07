@@ -38,7 +38,9 @@ export const MASTRA_EXCLUDE_PATHS: readonly string[] = [
     "/__restart-active-workflow-runs$",
 ];
 
-const MASTRA_PACKAGE = "@mastra/core";
+// The bare name getBarePackageName() derives from the metamodel's
+// "@mastra/core/agent". Pinned by a test, since a rename here fails silent.
+export const MASTRA_PACKAGE = "@mastra/core";
 
 let mastraDetected = false;
 let combined: readonly string[] | null = null;
