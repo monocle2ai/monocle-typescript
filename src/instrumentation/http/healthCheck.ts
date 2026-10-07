@@ -1,7 +1,6 @@
 // Health check span sampling, ported from monocle_apptrace's HttpSpanHandler.
 // Pure string functions plus the counter state - reading the span is the
 // handler's job, so nothing here imports OpenTelemetry.
-import { consoleLog } from "../../common/logging";
 
 export const MONOCLE_SAMPLE_HEALTH_CHECKS_ENV = "MONOCLE_SAMPLE_HEALTH_CHECKS";
 export const MONOCLE_HEALTH_CHECK_ROUTES_ENV = "MONOCLE_HEALTH_CHECK_ROUTES";
@@ -49,9 +48,14 @@ export function healthCheckSampleRate(): number {
         cachedRate = DEFAULT_SAMPLE_RATE;
         return cachedRate;
     }
-    const parsed = Number(raw);
+    // Blank counts as unparseable: Number("") is 0, which is finite, so an
+    // empty value left in a .env file would otherwise disable sampling
+    // entirely and say nothing. console.warn, not consoleLog, because
+    // consoleLog is gated behind MONOCLE_DEBUG and a misconfigured rate is
+    // exactly what someone needs told without opting in to debug output.
+    const parsed = raw.trim() === "" ? NaN : Number(raw);
     if (!Number.isFinite(parsed)) {
-        consoleLog(
+        console.warn(
             `[monocle] ${MONOCLE_HEALTH_CHECK_SAMPLE_RATE_ENV}="${raw}" is not a number; using ${DEFAULT_SAMPLE_RATE}`,
         );
         cachedRate = DEFAULT_SAMPLE_RATE;
@@ -61,22 +65,31 @@ export function healthCheckSampleRate(): number {
     return cachedRate;
 }
 
-// Exact or suffix, so /actuator/health matches /health. An empty route is not
-// a probe: getRoute() degrades to "" when the target cannot be resolved, and
-// matching that would sample away traffic nobody configured.
-export function isHealthCheckRoute(route: string): boolean {
-    if (typeof route !== "string" || route.length === 0) return false;
+// The configured route a path matched, or null. Exact or suffix, so
+// /actuator/health matches /health. An empty route is not a probe: getRoute()
+// degrades to "" when the target cannot be resolved, and matching that would
+// sample away traffic nobody configured.
+//
+// Returns the matched route rather than a boolean because it is also the
+// counter key - see takeSample.
+export function matchedHealthCheckRoute(route: string): string | null {
+    if (typeof route !== "string" || route.length === 0) return null;
     const path = normalize(route);
-    return routes().some((known) => path === known || path.endsWith(known));
+    return routes().find((known) => path === known || path.endsWith(known)) ?? null;
+}
+
+export function isHealthCheckRoute(route: string): boolean {
+    return matchedHealthCheckRoute(route) !== null;
 }
 
 // true means "export this one" - deterministic, exactly one in every `rate`.
 // The first call for a key always returns true, so a route never looks dead
 // while it waits for its first sample.
 //
-// `key` is the route for a configured probe and "" for everything else, which
-// bounds this map by the route list rather than by the number of paths a
-// crawler can invent.
+// `key` is the MATCHED configured route, or "" for everything else, so the map
+// is bounded by the route list. Keying on the request path instead would let
+// /tenant-1/health, /tenant-2/health ... grow it without bound - and hand each
+// one a free first-request export, defeating the sampler as it went.
 export function takeSample(key: string): boolean {
     const rate = healthCheckSampleRate();
     if (rate < 2) return true;

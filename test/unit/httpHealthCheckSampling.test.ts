@@ -49,8 +49,8 @@ beforeAll(async () => {
 
     server = http.createServer((req, res) => {
         if (req.url === "/healthz") { res.statusCode = 200; res.end(); return; }
-        // A route ending in a known one, answering with a failure.
-        if (req.url === "/healthz-failing") { res.statusCode = 503; res.end(); return; }
+        // Genuinely ends with a known route, so it IS a probe - and fails.
+        if (req.url === "/api/v1/healthz") { res.statusCode = 503; res.end(); return; }
         res.setHeader("content-type", "application/json");
         res.end('{"ok":true}');
     });
@@ -92,7 +92,7 @@ describe("a probed health route", () => {
 
 describe("failures are never sampled away", () => {
     it("exports every failing probe", async () => {
-        for (let i = 0; i < 11; i++) await get("/healthz-failing");
+        for (let i = 0; i < 11; i++) await get("/api/v1/healthz");
         await settle();
         expect(named("http.process").length).toBe(11);
     });

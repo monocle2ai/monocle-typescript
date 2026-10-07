@@ -307,8 +307,12 @@ targets a known probe route: `/health`, `/healthz`, `/healthcheck`,
 `/_health`, and anything ending in one of those, such as `/actuator/health`.
 
 Everything else exports at full rate — a failing probe, a `POST`, a request with
-parameters, a stream that did not end cleanly. The first request to each route
-is always exported, so a route never looks dead waiting for its first sample.
+parameters, a stream that did not end cleanly.
+
+Each **probe route** counts separately, and the first request to one is always
+exported, so a route never looks dead waiting for its first sample. Contentless
+responses on routes that are *not* on the list are sampled too, but they share a
+single counter between them.
 
 `/` is deliberately not a default probe route, since many apps serve real
 traffic there. List it to opt in.
@@ -323,8 +327,12 @@ This is not `MONOCLE_HTTP_EXCLUDE_PATHS`, and the difference matters: an exclude
 path produces no span at all, so a failure on it is invisible. Use exclusion for
 paths you never want traced, and leave probes to sampling.
 
-One consequence: a request to a probe route that asks for its traces back over
-HTTP gets none, 99 times in 100 — the spans it wants were not exported.
+Two consequences worth knowing. A request to a probe route that asks for its
+traces back over HTTP gets none, 99 times in 100 — the spans it wants were not
+exported. And if a probe does instrumented work of its own, say a readiness
+check that calls a traced dependency, those child spans have already been
+exported by the time the probe is sampled away, so they arrive with no parent.
+Exclude such a route instead if that matters.
 
 **Static assets are traced too.** `express.static`, and any middleware like it,
 produces its own `workflow` + `http.process` pair for every file served, and the

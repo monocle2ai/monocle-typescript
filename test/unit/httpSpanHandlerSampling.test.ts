@@ -122,3 +122,40 @@ describe("robustness", () => {
         expect(handler.shouldSample({ span: {} as any })).toBe(true);
     });
 });
+
+// C1: the counter is keyed by route, so if that key is the raw request path
+// rather than the route it matched, every /tenant-N/health invents a new key -
+// unbounded memory, and a free export each time that defeats the sampler.
+describe("counter keys are bounded by the configured route list", () => {
+    it("shares one counter across every path matching the same route", () => {
+        expect(handler.shouldSample({ span: probeSpan({ route: "/tenant-1/health" }) })).toBe(true);
+        expect(handler.shouldSample({ span: probeSpan({ route: "/tenant-2/health" }) })).toBe(false);
+        expect(handler.shouldSample({ span: probeSpan({ route: "/tenant-3/health" }) })).toBe(false);
+    });
+
+    it("does not let case or a trailing slash invent new counters", () => {
+        expect(handler.shouldSample({ span: probeSpan({ route: "/readyz" }) })).toBe(true);
+        expect(handler.shouldSample({ span: probeSpan({ route: "/READYZ" }) })).toBe(false);
+        expect(handler.shouldSample({ span: probeSpan({ route: "/readyz/" }) })).toBe(false);
+    });
+});
+
+// I1: with the "" key untouched, this assertion passed with the clause under
+// test deleted - the first call on any key always exports. The paired negative
+// is what makes it fail for the right reason.
+describe("the response-on-an-unlisted-route clause", () => {
+    beforeEach(() => {
+        // Burn the shared non-probe key too, so neither case gets a free pass.
+        handler.shouldSample({ span: probeSpan({ route: "/api/burn" }) });
+    });
+
+    it("exports an unlisted route that answers with a body", () => {
+        expect(handler.shouldSample({
+            span: probeSpan({ route: "/api/orders", response: '{"orders":[]}' }),
+        })).toBe(true);
+    });
+
+    it("samples the same route when it answers with nothing", () => {
+        expect(handler.shouldSample({ span: probeSpan({ route: "/api/orders" }) })).toBe(false);
+    });
+});

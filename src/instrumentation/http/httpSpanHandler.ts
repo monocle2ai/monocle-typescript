@@ -8,7 +8,7 @@ import { SpanStatusCode } from "@opentelemetry/api";
 import { consoleLog } from "../../common/logging";
 import { Span } from "../common/opentelemetryUtils";
 import { DefaultSpanHandler } from "../common/spanHandler";
-import { isHealthCheckRoute, isHealthCheckSamplingEnabled, takeSample } from "./healthCheck";
+import { isHealthCheckSamplingEnabled, matchedHealthCheckRoute, takeSample } from "./healthCheck";
 
 const SAMPLED_METHODS = new Set(["get", "head"]);
 
@@ -54,14 +54,14 @@ function decide(span: any): boolean {
     // No upstream counterpart - monocle_apptrace has no streaming fields.
     if (output.end_reason !== undefined && output.end_reason !== "complete") return true;
 
-    const route = String(attributes["entity.1.route"] ?? "");
-    const isProbe = isHealthCheckRoute(route);
+    const matched = matchedHealthCheckRoute(String(attributes["entity.1.route"] ?? ""));
 
     // A contentless GET still looks like a probe on an unlisted route; one
     // that answers with content does not, unless we already know it is a
     // probe. That last clause is upstream's PR #792.
-    if (output.response && !isProbe) return true;
+    if (output.response && matched === null) return true;
 
-    // Configured probes get their own counter, everything else shares one.
-    return takeSample(isProbe ? route : "");
+    // Keyed on the matched route, not the request path: one counter per
+    // configured probe, one shared for everything else.
+    return takeSample(matched ?? "");
 }

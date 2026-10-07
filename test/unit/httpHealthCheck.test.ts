@@ -141,6 +141,16 @@ describe("MONOCLE_HEALTH_CHECK_SAMPLE_RATE", () => {
         expect(healthCheckSampleRate()).toBe(100);
     });
 
+    // Number("") is 0, which is finite, so a blank value slipped past the
+    // unparseable branch and turned sampling off with no warning.
+    it("falls back to 100 when blank or whitespace", () => {
+        for (const value of ["", "   "]) {
+            process.env.MONOCLE_HEALTH_CHECK_SAMPLE_RATE = value;
+            resetHealthCheckStateForTests();
+            expect(healthCheckSampleRate(), JSON.stringify(value)).toBe(100);
+        }
+    });
+
     it("exports everything when set below 2", () => {
         for (const value of ["1", "0", "-5"]) {
             process.env.MONOCLE_HEALTH_CHECK_SAMPLE_RATE = value;
