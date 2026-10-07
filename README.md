@@ -362,23 +362,42 @@ MONOCLE_HTTP_EXCLUDE_PATHS=/health,/auth/login,/internal/
 An excluded request is served exactly as if Monocle were not installed: no spans,
 no body capture, no response patching.
 
-A reasonable starting point, to paste and then prune. Monocle applies none of it
-on your behalf: nothing is excluded until you say so.
+#### What is excluded before you configure anything
 
-```
-MONOCLE_HTTP_EXCLUDE_PATHS=/health,/metrics,/favicon.ico,/static,/_next,/assets
-```
+Monocle ships a built-in list, and your entries are **added** to it — the two are
+unioned, never replaced.
 
-`/_next` covers Next.js build assets, and `/static` and `/assets` the usual
-Express and bundler conventions; drop whichever your app does not serve, and add
-the mount paths it does.
+Always excluded: `/_next/`, `/__nextjs`, `/assets/`, `/.well-known/` and
+`/favicon.ico` — framework build output, dev tooling and browser incidentals,
+none of which ever carry instrumented work.
 
-How the list is matched:
+When `@mastra/core` is loaded, Mastra's playground API is excluded too:
+`/api/agents`, `/api/memory/`, `/api/editor/`, `/api/system/`, `/api/scores/`,
+`/api/tools`, `/api/workflows`, `/api/processors`, `/api/auth/capabilities`,
+`/api/mcp/v0/servers`, `/__refresh` and `/__restart-active-workflow-runs`. The
+agent routes are excluded by depth, so `/api/agents/<id>/send-message` — the one
+that carries real agent work — keeps reporting. These apply only when Mastra is
+actually in the process, since `/api/agents` is a plausible real route elsewhere.
+
+On real traces that takes a Mastra playground session from 48 spans to 2, and a
+Next.js app from 151 to 39.
+
+`/` is never excluded by default: too many apps serve real traffic there.
+
+There is currently no way to un-exclude a built-in entry. An allow list, which
+will take precedence over every exclusion, is the planned answer.
+
+#### How the list is matched
 
 - **Comma-separated prefixes, not exact paths.** `/health` excludes `/health`
   and `/health/ready` — and also `/healthcheck-api`, because the match is on the
   string, not on path segments. Check what else in your app starts with the same
   characters before adding a short prefix.
+- **`$` makes an entry exact.** `/api/orders$` excludes `/api/orders` and
+  nothing beneath it, so `/api/orders/42` keeps reporting.
+- **`*` matches exactly one path segment.** `/api/users/*/avatar$` excludes that
+  route for every user id. Without a trailing `$` the pattern still matches
+  anything deeper.
 - **Matched against the original request target**, the path as it arrived on the
   wire — not the mount-relative path a router or middleware sees. A login route
   mounted with `app.use("/api", router)` is excluded by `/api/login`, never by
@@ -396,7 +415,7 @@ How the list is matched:
   and an absolute-form request target (`GET http://host/health`) is reduced to
   its path first. So `/login` also covers `/LOGIN`, `/log%69n` and
   `/x/../login?next=/`.
-- **Unset or empty excludes nothing.** Every request is traced.
+- **Unset or empty leaves the built-in list in force**, and excludes nothing else.
 
 ### Returning traces on the HTTP response
 
