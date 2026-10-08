@@ -8,36 +8,36 @@ import { getInstrumentor, setInstrumentor } from "../../src/instrumentation/comm
 // having: the defaults were derived from these corpora, so a change that
 // quietly stops covering one of them fails here.
 
-const MASTRA_PLAYGROUND = [
-    "/api/editor/builder/settings",
-    "/api/editor/builder/models/available",
-    "/api/system/packages",
-    "/api/agents",
-    "/api/agents/providers",
-    "/api/agents/weather-agent",
-    "/api/agents/weather-agent/voice/speakers",
-    "/api/agents/weather-agent/send-message",
-    "/api/memory/threads",
-    "/api/memory/threads/136f975f-0041-4f6c-aff4-942a03e2e763",
-    "/api/memory/threads/136f975f-0041-4f6c-aff4-942a03e2e763/messages",
-    "/api/memory/threads/136f975f-0041-4f6c-aff4-942a03e2e763/working-memory",
-    "/api/memory/status",
-    "/api/memory/config",
-    "/api/mcp/v0/servers",
-    "/api/workflows",
-    "/api/tools",
-    "/api/scores/scorers",
-    "/api/processors",
-    "/api/auth/capabilities",
-    "/assets/style-jfo8f4wv.css",
-    "/assets/preload-helper-PPVm8Dsz.js",
-    "/assets/main-v7G9bA48.js",
-    "/assets/index-oV0vDRdi.js",
-    "/assets/MonaSans-VariableFont_wdth-wght-CX-7s9jm.ttf",
-    "/assets/CommitMono-400-Regular-DzkyLZ26.woff2",
-    "/__restart-active-workflow-runs",
-    "/__refresh",
-    "/",
+const MASTRA_PLAYGROUND: [string, string][] = [
+    ["GET", "/"],
+    ["GET", "/api/agents"],
+    ["GET", "/api/agents/providers"],
+    ["GET", "/api/agents/weather-agent"],
+    ["GET", "/api/agents/weather-agent/voice/speakers"],
+    ["GET", "/api/auth/capabilities"],
+    ["GET", "/api/channels/platforms"],
+    ["GET", "/api/editor/builder/settings"],
+    ["GET", "/api/editor/builder/models/available"],
+    ["GET", "/api/mcp/v0/servers"],
+    ["GET", "/api/memory/config"],
+    ["GET", "/api/memory/status"],
+    ["GET", "/api/memory/threads"],
+    ["GET", "/api/memory/threads/136f975f-0041-4f6c-aff4-942a03e2e763"],
+    ["GET", "/api/memory/threads/136f975f-0041-4f6c-aff4-942a03e2e763/messages"],
+    ["GET", "/api/memory/threads/136f975f-0041-4f6c-aff4-942a03e2e763/working-memory"],
+    ["GET", "/api/processors"],
+    ["GET", "/api/scores/scorers"],
+    ["GET", "/api/system/packages"],
+    ["GET", "/api/tools"],
+    ["GET", "/api/workflows"],
+    ["GET", "/api/workspaces"],
+    ["GET", "/assets/style-jfo8f4wv.css"],
+    ["GET", "/assets/main-v7G9bA48.js"],
+    ["GET", "/assets/CommitMono-400-Regular-DzkyLZ26.woff2"],
+    ["GET", "/mastra-dark-tile.svg"],
+    ["POST", "/__refresh"],
+    ["POST", "/__restart-active-workflow-runs"],
+    ["POST", "/api/agents/weather-agent/send-message"],
 ];
 
 const NEXT_TRAVEL_APP = [
@@ -60,6 +60,10 @@ const NEXT_TRAVEL_APP = [
 
 function survivors(routes: string[]): string[] {
     return routes.filter((route) => !isPathExcluded(route));
+}
+
+function survivingRequests(requests: [string, string][]): string[] {
+    return requests.filter(([method, route]) => !isPathExcluded(route, method)).map(([, r]) => r);
 }
 
 function withMastra(fn: () => void) {
@@ -85,22 +89,31 @@ function withoutMastra(fn: () => void) {
 afterEach(() => resetExcludedPathsForTests());
 
 describe("exclude replay — Mastra playground corpus", () => {
-    it("keeps only the agent call and the root page", () => {
+    // One real span in the whole session. Everything else the playground
+    // issues is a GET; the only non-GET noise is the two dev endpoints.
+    it("keeps only the agent call", () => {
         withMastra(() => {
-            expect(survivors(MASTRA_PLAYGROUND)).toEqual([
+            expect(survivingRequests(MASTRA_PLAYGROUND)).toEqual([
                 "/api/agents/weather-agent/send-message",
-                "/",
             ]);
         });
     });
 
-    it("keeps the whole corpus when Mastra is not loaded, bar the universal noise", () => {
+    it("keeps the playground API when Mastra is not loaded, bar the universal noise", () => {
         withoutMastra(() => {
-            const kept = survivors(MASTRA_PLAYGROUND);
+            const kept = survivingRequests(MASTRA_PLAYGROUND);
             expect(kept).toContain("/api/agents");
             expect(kept).toContain("/api/agents/weather-agent/send-message");
-            // /assets/ is universal, so it goes regardless of framework.
             expect(kept).not.toContain("/assets/main-v7G9bA48.js");
+        });
+    });
+
+    // The agent call sits underneath an excluded GET prefix, so only the
+    // method keeps it alive.
+    it("excludes a GET to the same path it keeps a POST to", () => {
+        withMastra(() => {
+            expect(isPathExcluded("/api/agents/weather-agent/send-message", "GET")).toBe(true);
+            expect(isPathExcluded("/api/agents/weather-agent/send-message", "POST")).toBe(false);
         });
     });
 });

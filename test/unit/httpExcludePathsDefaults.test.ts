@@ -87,12 +87,24 @@ describe("exclude defaults — Mastra tier is gated on Mastra being loaded", () 
 
     it("excludes the playground API once Mastra is loaded", () => {
         withMastra(() => {
-            expect(isPathExcluded("/api/agents")).toBe(true);
-            expect(isPathExcluded("/api/agents/weather-agent")).toBe(true);
-            expect(isPathExcluded("/api/agents/weather-agent/voice/speakers")).toBe(true);
-            expect(isPathExcluded("/api/memory/threads")).toBe(true);
-            expect(isPathExcluded("/api/editor/builder/settings")).toBe(true);
+            expect(isPathExcluded("/api/agents", "GET")).toBe(true);
+            expect(isPathExcluded("/api/agents/weather-agent", "GET")).toBe(true);
+            expect(isPathExcluded("/api/agents/weather-agent/voice/speakers", "GET")).toBe(true);
+            expect(isPathExcluded("/api/memory/threads", "GET")).toBe(true);
+            expect(isPathExcluded("/api/editor/builder/settings", "GET")).toBe(true);
+            // A route the sampled corpus never contained: the GET rule covers
+            // it anyway, which enumerating paths did not.
+            expect(isPathExcluded("/api/workspaces", "GET")).toBe(true);
+            expect(isPathExcluded("/api/channels/platforms", "GET")).toBe(true);
+            // Dev endpoints stay method-blind.
             expect(isPathExcluded("/__refresh")).toBe(true);
+        });
+    });
+
+    it("leaves a POST to the playground API traced, since that is real work", () => {
+        withMastra(() => {
+            expect(isPathExcluded("/api/agents/weather-agent/send-message", "POST")).toBe(false);
+            expect(isPathExcluded("/api/workflows/my-flow/start", "POST")).toBe(false);
         });
     });
 

@@ -16,24 +16,17 @@ export const UNIVERSAL_EXCLUDE_PATHS: readonly string[] = [
 
 // Mastra's playground/studio API. Gated on Mastra actually being loaded,
 // because "/api/agents" and "/api/tools" are plausible real routes elsewhere.
-//
-// The agent routes are the reason the grammar has * and $: the agent id is a
-// path parameter, so noise and signal interleave under one prefix.
-// /api/agents/*$ catches the detail GET at exactly that depth, which leaves
-// /api/agents/<id>/send-message - the only real span in the trace set - alone.
 export const MASTRA_EXCLUDE_PATHS: readonly string[] = [
-    "/api/agents$",
-    "/api/agents/*$",
-    "/api/agents/*/voice/speakers$",
-    "/api/memory/",
-    "/api/editor/",
-    "/api/system/",
-    "/api/scores/",
-    "/api/workflows$",
-    "/api/tools$",
-    "/api/processors$",
-    "/api/auth/capabilities$",
-    "/api/mcp/v0/servers$",
+    // Mastra's server declares 336 routes across 23 groups, all under /api.
+    // Every one of them is playground/management traffic read with a GET; the
+    // agent and workflow calls worth tracing are POSTs to paths underneath.
+    // Enumerating the GET paths was tried first and leaked a new route each
+    // time the playground touched a group the sample had not covered.
+    "GET /api/",
+    "GET /$",        // the playground UI itself
+    "GET /mastra-",  // root-level branded assets, e.g. /mastra-dark-tile.svg
+    // Dev-server endpoints. Left method-blind: they are unambiguous paths and
+    // nothing else should ever serve them.
     "/__refresh$",
     "/__restart-active-workflow-runs$",
 ];

@@ -371,18 +371,18 @@ Always excluded: `/_next/`, `/__nextjs`, `/assets/`, `/.well-known/` and
 `/favicon.ico` — framework build output, dev tooling and browser incidentals,
 none of which ever carry instrumented work.
 
-When `@mastra/core` is loaded, Mastra's playground API is excluded too:
-`/api/agents`, `/api/memory/`, `/api/editor/`, `/api/system/`, `/api/scores/`,
-`/api/tools`, `/api/workflows`, `/api/processors`, `/api/auth/capabilities`,
-`/api/mcp/v0/servers`, `/__refresh` and `/__restart-active-workflow-runs`. The
-agent routes are excluded by depth, so `/api/agents/<id>/send-message` — the one
-that carries real agent work — keeps reporting. These apply only when Mastra is
-actually in the process, since `/api/agents` is a plausible real route elsewhere.
+When `@mastra/core` is loaded, **`GET` requests to `/api/`, to `/`, and to
+`/mastra-*` are excluded**, along with `/__refresh` and
+`/__restart-active-workflow-runs`. Mastra's server declares 336 routes across 23
+groups and every one of them is playground or management traffic read with a
+`GET`; the agent and workflow calls worth tracing are `POST`s to paths
+underneath, so `POST /api/agents/<id>/send-message` keeps reporting while the
+listing above it does not. This applies only when Mastra is in the process.
 
-On real traces that takes a Mastra playground session from 48 spans to 2, and a
+On real traces that takes a Mastra playground session from 48 spans to 1, and a
 Next.js app from 151 to 39.
 
-`/` is never excluded by default: too many apps serve real traffic there.
+Outside Mastra, `/` is never excluded: too many apps serve real traffic there.
 
 There is currently no way to un-exclude a built-in entry. An allow list, which
 will take precedence over every exclusion, is the planned answer.
@@ -393,6 +393,9 @@ will take precedence over every exclusion, is the planned answer.
   and `/health/ready` — and also `/healthcheck-api`, because the match is on the
   string, not on path segments. Check what else in your app starts with the same
   characters before adding a short prefix.
+- **A leading method narrows an entry to it.** `GET /api/internal/` excludes
+  only reads of that subtree, leaving writes traced. Without one, an entry
+  matches every method.
 - **`$` makes an entry exact.** `/api/orders$` excludes `/api/orders` and
   nothing beneath it, so `/api/orders/42` keeps reporting.
 - **`*` matches exactly one path segment.** `/api/users/*/avatar$` excludes that

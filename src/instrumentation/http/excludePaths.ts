@@ -95,11 +95,13 @@ function normalizePath(url: string): string | null {
 // can shorten a path past a pattern that matched the raw form, so matching
 // only one would stop excluding it. Either matching is monotonic - it only
 // adds exclusions - so this is a superset of both.
-function matchesAny(matchers: CompiledPattern[], raw: string, path: string): boolean {
-    return matchers.some((matches) => matches(raw) || matches(path));
+function matchesAny(
+    matchers: CompiledPattern[], raw: string, path: string, method?: string,
+): boolean {
+    return matchers.some((matches) => matches(raw, method) || matches(path, method));
 }
 
-export function isPathExcluded(url: string | undefined): boolean {
+export function isPathExcluded(url: string | undefined, method?: string): boolean {
     const defaults = defaultPatterns();
     const user = userPatterns();
     if (typeof url !== "string" || (!defaults.length && !user.length)) return false;
@@ -116,5 +118,5 @@ export function isPathExcluded(url: string | undefined): boolean {
     const raw = stripQuery(url).toLowerCase();
     // The allow list, once it exists, is evaluated here - ahead of both deny
     // sources, returning false on a match.
-    return matchesAny(defaults, raw, path) || matchesAny(user, raw, path);
+    return matchesAny(defaults, raw, path, method) || matchesAny(user, raw, path, method);
 }

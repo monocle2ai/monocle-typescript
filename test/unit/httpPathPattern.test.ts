@@ -88,3 +88,46 @@ describe("path pattern — inputs that are not patterns", () => {
         expect(match("  /health  ", "/health")).toBe(true);
     });
 });
+
+// Mastra's playground noise is entirely GET while the real agent call is a
+// POST to a path underneath it, so path alone cannot separate them.
+describe("path pattern — an optional leading method", () => {
+    function matchM(pattern: string, path: string, method?: string): boolean {
+        const compiled = compilePattern(pattern);
+        if (!compiled) throw new Error(`pattern did not compile: ${JSON.stringify(pattern)}`);
+        return compiled(path, method);
+    }
+
+    it("matches only that method", () => {
+        expect(matchM("get /api/", "/api/agents", "GET")).toBe(true);
+        expect(matchM("get /api/", "/api/agents", "POST")).toBe(false);
+    });
+
+    it("compares the method case-insensitively", () => {
+        expect(matchM("get /api/", "/api/agents", "get")).toBe(true);
+    });
+
+    it("keeps the real agent call while excluding the listing above it", () => {
+        expect(matchM("get /api/", "/api/agents/weather-agent/send-message", "POST")).toBe(false);
+        expect(matchM("get /api/", "/api/agents", "GET")).toBe(true);
+    });
+
+    it("still applies the rest of the grammar after the method", () => {
+        expect(matchM("get /$", "/", "GET")).toBe(true);
+        expect(matchM("get /$", "/api", "GET")).toBe(false);
+    });
+
+    // An unknown method must not satisfy a method-qualified pattern: excluding
+    // on a guess would drop a span we cannot prove is noise.
+    it("does not match when the request method is unknown", () => {
+        expect(matchM("get /api/", "/api/agents", undefined)).toBe(false);
+    });
+
+    // Every pattern written before this existed has no method and must keep
+    // matching regardless of one.
+    it("matches any method when the pattern does not name one", () => {
+        expect(matchM("/api/", "/api/agents", "GET")).toBe(true);
+        expect(matchM("/api/", "/api/agents", "DELETE")).toBe(true);
+        expect(matchM("/api/", "/api/agents", undefined)).toBe(true);
+    });
+});

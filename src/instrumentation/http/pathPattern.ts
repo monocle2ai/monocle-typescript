@@ -9,7 +9,11 @@
 //
 // Patterns are compiled once; the returned predicate runs on every request.
 
-export type CompiledPattern = (path: string) => boolean;
+export type CompiledPattern = (path: string, method?: string) => boolean;
+
+// An optional "GET " in front of the path. Patterns are paths, so they always
+// begin with "/" - a bare word before whitespace can only be a method.
+const METHOD_PREFIX = /^([a-zA-Z]+)\s+(\/.*)$/;
 
 function segments(path: string): string[] {
     return path.split("/").filter((s) => s.length > 0);
@@ -38,8 +42,20 @@ function segmentMatcher(body: string, exact: boolean): CompiledPattern {
 export function compilePattern(raw: string): CompiledPattern | null {
     const trimmed = raw.trim();
     if (!trimmed) return null;
-    const exact = trimmed.endsWith("$");
-    const body = exact ? trimmed.slice(0, -1) : trimmed;
+    const withMethod = METHOD_PREFIX.exec(trimmed);
+    const method = withMethod ? withMethod[1].toLowerCase() : null;
+    const rest = withMethod ? withMethod[2] : trimmed;
+
+    const exact = rest.endsWith("$");
+    const body = exact ? rest.slice(0, -1) : rest;
     if (!body) return null;
-    return body.includes("*") ? segmentMatcher(body, exact) : stringMatcher(body, exact);
+    const matchesPath = body.includes("*") ? segmentMatcher(body, exact) : stringMatcher(body, exact);
+
+    if (!method) return matchesPath;
+    // An unknown method never satisfies a method-qualified pattern: excluding
+    // on a guess would drop a span we cannot show is noise.
+    return (path, requestMethod) =>
+        typeof requestMethod === "string" &&
+        requestMethod.toLowerCase() === method &&
+        matchesPath(path);
 }
