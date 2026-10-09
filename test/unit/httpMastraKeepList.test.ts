@@ -343,3 +343,40 @@ describe("Mastra keep-list", () => {
         });
     });
 });
+
+// The keep-list is a built-in default. MONOCLE_HTTP_EXCLUDE_PATHS is explicit
+// user intent, and the only lever for keeping an endpoint's body out of an
+// exporter, since bodies are captured unredacted. A default that overrode it
+// would silently export the one route the user asked to protect.
+describe("Mastra keep-list — the user's exclude list outranks it", () => {
+    function withEnv(value: string, fn: () => void) {
+        const previous = process.env.MONOCLE_HTTP_EXCLUDE_PATHS;
+        process.env.MONOCLE_HTTP_EXCLUDE_PATHS = value;
+        resetExcludedPathsForTests();
+        try { fn(); } finally {
+            if (previous === undefined) delete process.env.MONOCLE_HTTP_EXCLUDE_PATHS;
+            else process.env.MONOCLE_HTTP_EXCLUDE_PATHS = previous;
+            resetExcludedPathsForTests();
+        }
+    }
+
+    it("excludes a kept execution route the user listed", () => {
+        withEnv("/api/agents/secret-agent", () => {
+            withMastra(() => {
+                process.env.MONOCLE_HTTP_EXCLUDE_PATHS = "/api/agents/secret-agent";
+                resetExcludedPathsForTests();
+                expect(isPathExcluded("/api/agents/secret-agent/send-message", "POST")).toBe(true);
+            });
+        });
+    });
+
+    it("still keeps execution routes the user did not list", () => {
+        withEnv("/api/agents/secret-agent", () => {
+            withMastra(() => {
+                process.env.MONOCLE_HTTP_EXCLUDE_PATHS = "/api/agents/secret-agent";
+                resetExcludedPathsForTests();
+                expect(isPathExcluded("/api/agents/public-agent/send-message", "POST")).toBe(false);
+            });
+        });
+    });
+});

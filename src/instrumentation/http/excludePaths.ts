@@ -129,8 +129,18 @@ export function isPathExcluded(url: string | undefined, method?: string): boolea
     }
 
     const raw = stripQuery(url).toLowerCase();
-    // Allow wins over every exclusion. The user-facing allow list will be
-    // evaluated here too, alongside the framework one.
+
+    // Precedence, strongest first. Explicit user configuration outranks every
+    // built-in list, in both directions - a default that could override it
+    // would silently export the one route the user asked to protect, and the
+    // bodies here are unredacted.
+    //
+    //   1. user exclude      MONOCLE_HTTP_EXCLUDE_PATHS
+    //   2. framework keep    the Mastra execution routes
+    //   3. framework exclude the built-in defaults
+    //
+    // The user-facing allow list, when it lands, goes in above all three.
+    if (matchesAny(user, raw, path, method)) return true;
     if (matchesAny(allowPatterns(), raw, path, method)) return false;
-    return matchesAny(defaults, raw, path, method) || matchesAny(user, raw, path, method);
+    return matchesAny(defaults, raw, path, method);
 }

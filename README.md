@@ -377,6 +377,11 @@ the endpoints that actually run something are kept** — `send-message`,
 the rest, 52 routes in all. Also excluded: `/`, `/mastra-*`, `/__refresh` and
 `/__restart-active-workflow-runs`.
 
+Your `MONOCLE_HTTP_EXCLUDE_PATHS` still wins over all of it. Listing
+`/api/agents/secret-agent` keeps that agent's `send-message` out of tracing even
+though the built-in list would otherwise keep it — explicit configuration
+outranks every default, in both directions.
+
 This is the one place Monocle keeps a list of what to trace rather than what to
 drop, and it is safe here for a specific reason: Mastra owns `/api` outright.
 Routes you register with `registerApiRoute()` mount at the **root**, so nothing
