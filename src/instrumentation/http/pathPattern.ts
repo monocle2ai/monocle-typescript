@@ -27,12 +27,19 @@ function stringMatcher(body: string, exact: boolean): CompiledPattern {
 
 function segmentMatcher(body: string, exact: boolean): CompiledPattern {
     const pattern = segments(body);
+    const last = pattern.length - 1;
     return (path) => {
         const actual = segments(path);
         // Without $ the pattern is a prefix, so trailing segments are allowed;
         // with it the depth has to agree exactly.
         if (exact ? actual.length !== pattern.length : actual.length < pattern.length) return false;
-        return pattern.every((seg, i) => seg === "*" || seg === actual[i]);
+        return pattern.every((seg, i) => {
+            if (seg === "*") return true;
+            // A $-less pattern is a prefix, and that reaches into its final
+            // segment: /api/agents/*/stream has to cover stream-legacy and
+            // streamVNext, which are siblings rather than children.
+            return !exact && i === last ? actual[i].startsWith(seg) : seg === actual[i];
+        });
     };
 }
 

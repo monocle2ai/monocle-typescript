@@ -108,12 +108,15 @@ describe("exclude replay — Mastra playground corpus", () => {
         });
     });
 
-    // The agent call sits underneath an excluded GET prefix, so only the
-    // method keeps it alive.
-    it("excludes a GET to the same path it keeps a POST to", () => {
+    // /api is denied wholesale; the keep-list is what brings the agent call
+    // back. It is method-blind on purpose, since some Mastra execution routes
+    // are GET (an agent-controller session stream, for one).
+    it("keeps the execution route while excluding the listing above it", () => {
         withMastra(() => {
-            expect(isPathExcluded("/api/agents/weather-agent/send-message", "GET")).toBe(true);
             expect(isPathExcluded("/api/agents/weather-agent/send-message", "POST")).toBe(false);
+            expect(isPathExcluded("/api/agents/weather-agent/send-message", "GET")).toBe(false);
+            expect(isPathExcluded("/api/agents", "GET")).toBe(true);
+            expect(isPathExcluded("/api/agents/weather-agent", "GET")).toBe(true);
         });
     });
 });

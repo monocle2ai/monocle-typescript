@@ -371,13 +371,19 @@ Always excluded: `/_next/`, `/__nextjs`, `/assets/`, `/.well-known/` and
 `/favicon.ico` — framework build output, dev tooling and browser incidentals,
 none of which ever carry instrumented work.
 
-When `@mastra/core` is loaded, **`GET` requests to `/api/`, to `/`, and to
-`/mastra-*` are excluded**, along with `/__refresh` and
-`/__restart-active-workflow-runs`. Mastra's server declares 336 routes across 23
-groups and every one of them is playground or management traffic read with a
-`GET`; the agent and workflow calls worth tracing are `POST`s to paths
-underneath, so `POST /api/agents/<id>/send-message` keeps reporting while the
-listing above it does not. This applies only when Mastra is in the process.
+When `@mastra/core` is loaded, **the whole `/api` namespace is excluded, then
+the endpoints that actually run something are kept** — `send-message`,
+`generate`, `stream`, `resume`, `network`, tool `execute`, workflow `start`, and
+the rest, 52 routes in all. Also excluded: `/`, `/mastra-*`, `/__refresh` and
+`/__restart-active-workflow-runs`.
+
+This is the one place Monocle keeps a list of what to trace rather than what to
+drop, and it is safe here for a specific reason: Mastra owns `/api` outright.
+Routes you register with `registerApiRoute()` mount at the **root**, so nothing
+you write can land under `/api`, and adding agents or workflows adds `:agentId`
+values rather than endpoints. Mastra's own surface is 280 management routes
+against 52 execution ones, and the management side grows with every playground
+feature — so listing the noise is the losing side of that trade.
 
 On real traces that takes a Mastra playground session from 48 spans to 1, and a
 Next.js app from 151 to 39.

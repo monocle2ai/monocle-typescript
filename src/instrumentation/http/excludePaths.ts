@@ -1,7 +1,7 @@
 import { MONOCLE_HTTP_EXCLUDE_PATHS_ENV } from "./constants";
 import { stripQuery } from "./capture";
 import { CompiledPattern, compilePattern } from "./pathPattern";
-import { defaultExcludePatterns, resetDefaultExcludesForTests } from "./defaultExcludes";
+import { defaultAllowPatterns, defaultExcludePatterns, resetDefaultExcludesForTests } from "./defaultExcludes";
 
 // Two deny sources, unioned: the built-in defaults and the user's list. The
 // user's list only ever adds - it cannot rescue a path a default caught. That
@@ -9,6 +9,8 @@ import { defaultExcludePatterns, resetDefaultExcludesForTests } from "./defaultE
 let userCompiled: CompiledPattern[] | null = null;
 let defaultsSource: readonly string[] | null = null;
 let defaultsCompiled: CompiledPattern[] = [];
+let allowSource: readonly string[] | null = null;
+let allowCompiled: CompiledPattern[] = [];
 
 // Lowercased, never further normalised: normalising "/login/" to "/login"
 // would destroy the trailing-slash escape hatch that narrows a bare prefix's
@@ -39,10 +41,21 @@ function defaultPatterns(): CompiledPattern[] {
     return defaultsCompiled;
 }
 
+function allowPatterns(): CompiledPattern[] {
+    const source = defaultAllowPatterns();
+    if (source !== allowSource) {
+        allowSource = source;
+        allowCompiled = compileAll(source);
+    }
+    return allowCompiled;
+}
+
 export function resetExcludedPathsForTests(): void {
     userCompiled = null;
     defaultsSource = null;
     defaultsCompiled = [];
+    allowSource = null;
+    allowCompiled = [];
     resetDefaultExcludesForTests();
 }
 
@@ -116,7 +129,8 @@ export function isPathExcluded(url: string | undefined, method?: string): boolea
     }
 
     const raw = stripQuery(url).toLowerCase();
-    // The allow list, once it exists, is evaluated here - ahead of both deny
-    // sources, returning false on a match.
+    // Allow wins over every exclusion. The user-facing allow list will be
+    // evaluated here too, alongside the framework one.
+    if (matchesAny(allowPatterns(), raw, path, method)) return false;
     return matchesAny(defaults, raw, path, method) || matchesAny(user, raw, path, method);
 }

@@ -131,3 +131,25 @@ describe("path pattern — an optional leading method", () => {
         expect(matchM("/api/", "/api/agents", undefined)).toBe(true);
     });
 });
+
+// Without $, a pattern is a prefix. In segment mode that has to reach into
+// the final segment too, or /api/agents/*/stream cannot cover the seven
+// stream variants Mastra declares (stream-legacy, streamVNext, stream/ui...).
+describe("path pattern — segment mode ends in a character prefix", () => {
+    it("matches a final segment that merely starts with the pattern's", () => {
+        expect(match("/api/agents/*/stream", "/api/agents/x/stream")).toBe(true);
+        expect(match("/api/agents/*/stream", "/api/agents/x/stream-legacy")).toBe(true);
+        expect(match("/api/agents/*/stream", "/api/agents/x/streamVNext")).toBe(true);
+        expect(match("/api/agents/*/stream", "/api/agents/x/stream/vnext/ui")).toBe(true);
+    });
+
+    it("still requires earlier segments to match whole", () => {
+        expect(match("/api/agents/*/stream", "/api/agentsx/y/stream")).toBe(false);
+        expect(match("/api/agents/*/stream", "/api/agents/x/threads/subscribe")).toBe(false);
+    });
+
+    it("keeps $ meaning the whole final segment and depth", () => {
+        expect(match("/api/agents/*/stream$", "/api/agents/x/stream")).toBe(true);
+        expect(match("/api/agents/*/stream$", "/api/agents/x/stream-legacy")).toBe(false);
+    });
+});
