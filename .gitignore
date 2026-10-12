@@ -31,3 +31,5 @@ yarn-error.log*
 
 .monocle/
 monocle_trace**.json
+.env
+.env.monocle
