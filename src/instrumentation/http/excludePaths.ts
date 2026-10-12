@@ -1,4 +1,4 @@
-import { MONOCLE_HTTP_EXCLUDE_PATHS_ENV } from "./constants";
+import { MONOCLE_HTTP_ALLOW_PATHS_ENV, MONOCLE_HTTP_EXCLUDE_PATHS_ENV } from "./constants";
 import { stripQuery } from "./capture";
 import { CompiledPattern, compilePattern } from "./pathPattern";
 import { defaultAllowPatterns, defaultExcludePatterns, resetDefaultExcludesForTests } from "./defaultExcludes";
@@ -6,6 +6,7 @@ import { defaultAllowPatterns, defaultExcludePatterns, resetDefaultExcludesForTe
 // Two deny sources, unioned: the built-in defaults and the user's list. The
 // user's list only ever adds - it cannot rescue a path a default caught. That
 // is the allow list's job, and it is not built yet.
+let userAllowCompiled: CompiledPattern[] | null = null;
 let userCompiled: CompiledPattern[] | null = null;
 let defaultsSource: readonly string[] | null = null;
 let defaultsCompiled: CompiledPattern[] = [];
@@ -30,6 +31,15 @@ function userPatterns(): CompiledPattern[] {
     return userCompiled;
 }
 
+// The user's own allow list. Outranks everything, including their exclude
+// list: between two explicit instructions, the one that keeps data wins.
+function userAllowPatterns(): CompiledPattern[] {
+    if (!userAllowCompiled) {
+        userAllowCompiled = compileAll((process.env[MONOCLE_HTTP_ALLOW_PATHS_ENV] ?? "").split(","));
+    }
+    return userAllowCompiled;
+}
+
 // Recompiled only when the default list itself changes, which happens at most
 // once per process - when a framework is detected and its tier switches on.
 function defaultPatterns(): CompiledPattern[] {
@@ -51,6 +61,7 @@ function allowPatterns(): CompiledPattern[] {
 }
 
 export function resetExcludedPathsForTests(): void {
+    userAllowCompiled = null;
     userCompiled = null;
     defaultsSource = null;
     defaultsCompiled = [];
@@ -135,11 +146,11 @@ export function isPathExcluded(url: string | undefined, method?: string): boolea
     // would silently export the one route the user asked to protect, and the
     // bodies here are unredacted.
     //
-    //   1. user exclude      MONOCLE_HTTP_EXCLUDE_PATHS
-    //   2. framework keep    the Mastra execution routes
-    //   3. framework exclude the built-in defaults
-    //
-    // The user-facing allow list, when it lands, goes in above all three.
+    //   1. user allow        MONOCLE_HTTP_ALLOW_PATHS
+    //   2. user exclude      MONOCLE_HTTP_EXCLUDE_PATHS
+    //   3. framework keep    the Mastra execution routes
+    //   4. framework exclude the built-in defaults
+    if (matchesAny(userAllowPatterns(), raw, path, method)) return false;
     if (matchesAny(user, raw, path, method)) return true;
     if (matchesAny(allowPatterns(), raw, path, method)) return false;
     return matchesAny(defaults, raw, path, method);
