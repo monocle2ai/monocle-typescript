@@ -257,158 +257,58 @@ hooked — usually because it was bundled/inlined and can't be traced — Monocl
 one-time warning telling you to externalize it. Silence or tune it with
 `MONOCLE_DISABLE_HOOK_AUDIT` / `MONOCLE_HOOK_AUDIT_DELAY_MS` / `MONOCLE_FORCE_HOOK_AUDIT`.
 
-### HTTP spans and `MONOCLE_HTTP_EXCLUDE_PATHS`
+### HTTP spans
 
-Monocle hooks `node:http`, so every request your server handles gets a
-`workflow` + `http.process` span pair, exported like any other span. Nothing to
-enable — this happens as soon as Monocle is set up, and it covers Express,
-Fastify, Koa, NestJS and `next start` alike.
+Monocle hooks `node:http`, so every request gets a `workflow` + `http.process` span
+pair. Nothing to enable, and it covers Express, Fastify, Koa, NestJS and `next start`
+alike.
 
-Those spans include the **request body and the response body**. The request body
-is truncated at 1000 characters and the response body at 5000, so a long stream
-simply stops accumulating rather than growing the span.
+Spans include the **request and response bodies**, truncated at 1000 and 5000
+characters. Binary content types are skipped.
 
-**Streamed responses carry three extra fields** in their `data.output` event:
-`time_to_first_byte_ms`, `chunk_count`, and `end_reason` (`complete`,
-`client_closed`, or `error`). "Streamed" means the handler called `res.write()` — a response
-delivered in one piece through `res.end(body)` carries none of them. Time to
-first byte is the field worth having: span duration on its own cannot separate
-an agent that was slow to start answering from one that was slow to finish.
+**Streamed responses** (the handler called `res.write()`) carry three extra fields in
+`data.output`: `time_to_first_byte_ms`, `chunk_count` and `end_reason`. TTFB is the one
+worth having — span duration alone can't separate an agent slow to *start* answering
+from one slow to finish.
 
-A client closing a stream it was reading is **not** treated as an error. That is
-how a healthy SSE response ends — the server never calls `res.end` — so the span
-stays OK and records `end_reason=client_closed`. A client that disconnects
-before a single byte was written is still an error. The trade-off is deliberate:
-a user who hits stop mid-answer is indistinguishable at the transport layer from
-one who read to the end, and this errs towards not reporting false failures.
+`end_reason` is `complete`, `client_closed` or `error`. A client closing a stream it was
+reading is **not** an error: that's how a healthy SSE response ends, so the span stays
+OK. A client that disconnects before any byte was written still is. A stream the
+**server** tears down reports `error`, distinguished by Node's `res.errored`.
 
-A stream the **server** tears down is a different matter, and is reported as an
-error with `end_reason=error`. Node sets `res.errored` when a response is
-destroyed with an error and leaves it unset when the peer merely goes away,
-which is what keeps a genuine mid-stream failure from hiding behind the rule
-above.
+One case is invisible by design: a handler that catches its own failure, reports it
+inside the stream and ends normally has completed a successful HTTP exchange. The span
+says `complete` — the failure is application-level and lives in the body.
 
-One case stays invisible by nature: a handler that catches its own failure,
-reports it inside the stream (an SSE `error` event, say) and then ends the
-response normally has completed a successful HTTP exchange. The span records
-`complete` and OK, because at the transport layer that is the truth — the
-failure is application-level and lives in the body.
+#### What is excluded out of the box
 
-### Health check sampling
+**Always:** `/_next/`, `/__nextjs`, `/assets/`, `/.well-known/`, `/favicon.ico` — build
+output, dev tooling and browser incidentals.
 
-Probes every few seconds would otherwise fill your trace with spans carrying no
-information, so Monocle exports **one in every hundred** — and **never samples
-away a failure**.
+**When `@mastra/core` is loaded:** the whole `/api` namespace, then the endpoints that
+actually run something are kept — `send-message`, `generate`, `stream`, `resume`,
+`network`, tool `execute`, workflow `start` and the rest, 52 routes. Also `/`,
+`/mastra-*`, `/__refresh` and `/__restart-active-workflow-runs`.
 
-A span counts as a health check when it is a `GET`/`HEAD` with no query string
-and no body, returning a success status, and either has an empty response or
-targets a known probe route: `/health`, `/healthz`, `/healthcheck`,
-`/health-check`, `/livez`, `/liveness`, `/readyz`, `/readiness`, `/ping`,
-`/_health`, and anything ending in one of those, such as `/actuator/health`.
+This is the one place Monocle lists what to *trace* rather than what to drop, and it's
+safe because Mastra owns `/api` outright: routes you register with `registerApiRoute()`
+mount at the **root**, and adding agents adds `:agentId` values rather than endpoints.
+Mastra's surface is 280 management routes against 52 execution ones, and the management
+side grows with every playground feature.
 
-Everything else exports at full rate — a failing probe, a `POST`, a request with
-parameters, a stream that did not end cleanly.
+On real traces that takes a Mastra playground session from 48 spans to 1, and a Next.js
+app from 151 to 39. Outside Mastra, `/` is never excluded — too many apps serve real
+traffic there.
 
-Each **probe route** counts separately, and the first request to one is always
-exported, so a route never looks dead waiting for its first sample. Contentless
-responses on routes that are *not* on the list are sampled too, but they share a
-single counter between them.
-
-`/` is deliberately not a default probe route, since many apps serve real
-traffic there. List it to opt in.
-
-```bash
-export MONOCLE_SAMPLE_HEALTH_CHECKS=false     # export every health span
-export MONOCLE_HEALTH_CHECK_ROUTES=/health,/status-check   # replaces the defaults
-export MONOCLE_HEALTH_CHECK_SAMPLE_RATE=20    # one in 20 instead of one in 100
-```
-
-This is not `MONOCLE_HTTP_EXCLUDE_PATHS`, and the difference matters: an excluded
-path produces no span at all, so a failure on it is invisible. Use exclusion for
-paths you never want traced, and leave probes to sampling.
-
-Two consequences worth knowing. A request to a probe route that asks for its
-traces back over HTTP gets none, 99 times in 100 — the spans it wants were not
-exported. And if a probe does instrumented work of its own, say a readiness
-check that calls a traced dependency, those child spans have already been
-exported by the time the probe is sampled away, so they arrive with no parent.
-Exclude such a route instead if that matters.
-
-**Static assets are traced too.** `express.static`, and any middleware like it,
-produces its own `workflow` + `http.process` pair for every file served, and the
-bodies of textual assets — JavaScript, CSS, HTML — are captured up to that same
-5000 characters. Images and other binary content types are skipped. An app that
-serves its front end from the same server as its API will therefore see trace
-volume track total HTTP traffic rather than AI workload.
-
-**Span names are duck-typed from Express's `req.route` and `req.baseUrl`.** A
-framework that does not set them — Fastify, Koa, `next start` — falls back to the
-concrete path, so `/users/12345` and `/users/12346` become two distinct span
-names. On those frameworks, excluding parameterised routes is how you keep
-span-name cardinality bounded.
-
-For both of these, `MONOCLE_HTTP_EXCLUDE_PATHS` is the lever — there is no
-switch that turns HTTP spans off.
-
-**Bodies are not redacted.** Whatever a client posts to your login route — the
-password included — lands in the span, and goes wherever your exporter sends it.
-`MONOCLE_HTTP_EXCLUDE_PATHS` is the mechanism for keeping a sensitive route out
-of tracing entirely:
+#### Configuring it
 
 ```
-MONOCLE_HTTP_EXCLUDE_PATHS=/health,/auth/login,/internal/
+MONOCLE_HTTP_EXCLUDE_PATHS=/auth/login,/internal/   # never trace these
+MONOCLE_HTTP_ALLOW_PATHS=/assets/report.json$       # trace despite any exclusion
 ```
 
-An excluded request is served exactly as if Monocle were not installed: no spans,
-no body capture, no response patching.
-
-#### What is excluded before you configure anything
-
-Monocle ships a built-in list, and your entries are **added** to it — the two are
-unioned, never replaced.
-
-Always excluded: `/_next/`, `/__nextjs`, `/assets/`, `/.well-known/` and
-`/favicon.ico` — framework build output, dev tooling and browser incidentals,
-none of which ever carry instrumented work.
-
-When `@mastra/core` is loaded, **the whole `/api` namespace is excluded, then
-the endpoints that actually run something are kept** — `send-message`,
-`generate`, `stream`, `resume`, `network`, tool `execute`, workflow `start`, and
-the rest, 52 routes in all. Also excluded: `/`, `/mastra-*`, `/__refresh` and
-`/__restart-active-workflow-runs`.
-
-Your `MONOCLE_HTTP_EXCLUDE_PATHS` still wins over all of it. Listing
-`/api/agents/secret-agent` keeps that agent's `send-message` out of tracing even
-though the built-in list would otherwise keep it — explicit configuration
-outranks every default, in both directions.
-
-This is the one place Monocle keeps a list of what to trace rather than what to
-drop, and it is safe here for a specific reason: Mastra owns `/api` outright.
-Routes you register with `registerApiRoute()` mount at the **root**, so nothing
-you write can land under `/api`, and adding agents or workflows adds `:agentId`
-values rather than endpoints. Mastra's own surface is 280 management routes
-against 52 execution ones, and the management side grows with every playground
-feature — so listing the noise is the losing side of that trade.
-
-On real traces that takes a Mastra playground session from 48 spans to 1, and a
-Next.js app from 151 to 39.
-
-Outside Mastra, `/` is never excluded: too many apps serve real traffic there.
-
-#### Un-excluding a path with `MONOCLE_HTTP_ALLOW_PATHS`
-
-`MONOCLE_HTTP_EXCLUDE_PATHS` only ever adds exclusions. To take one *back* —
-whether it came from a built-in default, from Mastra's tier, or from your own
-exclude list — use the allow list:
-
-```
-MONOCLE_HTTP_ALLOW_PATHS=/$                    # trace the root page again
-MONOCLE_HTTP_ALLOW_PATHS=GET /api/workspaces$  # trace one Mastra playground route
-MONOCLE_HTTP_ALLOW_PATHS=/assets/report.json$  # one file out of the /assets/ default
-```
-
-It uses the same grammar as the exclude list, `$`, `*` and a method prefix
-included. Precedence, first match wins:
+An excluded request is served exactly as if Monocle weren't installed: no span, no body
+capture, no response patching. Precedence, first match wins:
 
 | | | |
 |---|---|---|
@@ -418,98 +318,112 @@ included. Precedence, first match wins:
 | 4 | the built-in defaults | excluded |
 | 5 | nothing matched | **traced** |
 
-Both of your levers outrank both built-in lists, and within each pair the one
-that keeps data wins.
+Both of your levers outrank both built-in lists, and within each pair the one that keeps
+data wins. Your exclude list is additive to the defaults; the allow list is how you take
+an exclusion *back*, whether it came from a default, from Mastra's tier or from your own
+list.
 
-Two things to know before using it:
+#### Pattern grammar
 
-**Allowing a path restores its unredacted body capture.** An excluded request is
-served with no span and no capture at all; allowing it back puts its request and
-response bodies into your traces. Allow a narrow path, not a broad prefix that
-might cover a credential endpoint.
+Both variables take a comma-separated list and share one grammar. Entries are
+case-insensitive and matched against the original request target — the path as it
+arrived on the wire, not the mount-relative path a router sees, so a route mounted at
+`app.use("/api", router)` needs `/api/login`, never `/login`.
 
-**Sampling still applies.** The allow list governs exclusion, not health check
-sampling — the two are independent. A contentless `GET` that you allow is still
-exported one time in a hundred, so `MONOCLE_HTTP_ALLOW_PATHS=/$` on a Next.js
-app gives you 1 span in 100 rather than all of them. Pair it with
-`MONOCLE_SAMPLE_HEALTH_CHECKS=false` if you want every one.
+| pattern | matches |
+|---|---|
+| `/health` | `/health`, `/health/ready` — and `/healthcheck-api`, since it's a **character** prefix |
+| `/health/` | the subtree only, not a bare `/health` |
+| `/api/orders$` | `/api/orders` exactly; `/api/orders/42` still reported |
+| `/api/users/*/avatar$` | one path segment per `*`, any user id |
+| `GET /api/internal/` | reads of that subtree; writes still traced |
 
-#### How the list is matched
+Every entry must start with `/`. One written as `health`, or as a full URL, silently
+never matches — there is no warning. The path is normalised before comparison (query
+stripped, percent-encoding decoded, `//` and `..` resolved), so `/login` also covers
+`/LOGIN`, `/log%69n` and `/x/../login?next=/`.
 
-- **Comma-separated prefixes, not exact paths.** `/health` excludes `/health`
-  and `/health/ready` — and also `/healthcheck-api`, because the match is on the
-  string, not on path segments. Check what else in your app starts with the same
-  characters before adding a short prefix.
-- **A leading method narrows an entry to it.** `GET /api/internal/` excludes
-  only reads of that subtree, leaving writes traced. Without one, an entry
-  matches every method.
-- **`$` makes an entry exact.** `/api/orders$` excludes `/api/orders` and
-  nothing beneath it, so `/api/orders/42` keeps reporting.
-- **`*` matches exactly one path segment.** `/api/users/*/avatar$` excludes that
-  route for every user id. Without a trailing `$` the pattern still matches
-  anything deeper.
-- **Matched against the original request target**, the path as it arrived on the
-  wire — not the mount-relative path a router or middleware sees. A login route
-  mounted with `app.use("/api", router)` is excluded by `/api/login`, never by
-  `/login`.
-- **A trailing slash narrows it.** `/health/` excludes `/health/ready` and
-  everything else under that subtree, but *not* a bare request to `/health`. Use
-  this when a short prefix would otherwise catch neighbouring routes.
-- **Every prefix must start with `/`.** A prefix written as `health`, or as a
-  full URL like `https://api.example.com/health`, silently never matches an
-  ordinary request: what it is compared against is a path such as `/health`,
-  which starts with neither. There is no warning — the route just keeps getting
-  traced.
-- **Case-insensitive**, and matched against the normalised path: the query string
-  is stripped, percent-encoding is decoded, `//` and `..` segments are resolved,
-  and an absolute-form request target (`GET http://host/health`) is reduced to
-  its path first. So `/login` also covers `/LOGIN`, `/log%69n` and
-  `/x/../login?next=/`.
-- **Unset or empty leaves the built-in list in force**, and excludes nothing else.
+#### Health check sampling
+
+Probes every few seconds would fill your trace with spans carrying no information, so
+Monocle exports **one in a hundred** — and **never samples away a failure**.
+
+A span counts as a health check when it's a `GET`/`HEAD` with no query string and no
+body, returns success, and either has an empty response or targets a known probe route:
+`/health`, `/healthz`, `/healthcheck`, `/health-check`, `/livez`, `/liveness`,
+`/readyz`, `/readiness`, `/ping`, `/_health`, plus anything ending in one of those such
+as `/actuator/health`. Everything else exports at full rate.
+
+Each probe route counts separately and the first request to one always exports, so a
+route never looks dead awaiting its first sample. Contentless responses on unlisted
+routes are sampled too, sharing one counter.
+
+```
+MONOCLE_SAMPLE_HEALTH_CHECKS=false                      # export every health span
+MONOCLE_HEALTH_CHECK_ROUTES=/health,/status-check       # replaces the defaults
+MONOCLE_HEALTH_CHECK_SAMPLE_RATE=20                     # one in 20
+```
+
+Sampling and exclusion are independent: an excluded path produces no span at all, so a
+failure on it is invisible, while a sampled one still reports failures. Use exclusion
+for paths you never want traced and leave probes to sampling. `MONOCLE_HTTP_ALLOW_PATHS`
+overrides exclusion but **not** sampling, so allowing a contentless `GET` still gives 1
+span in 100 unless you also set `MONOCLE_SAMPLE_HEALTH_CHECKS=false`.
+
+#### Worth knowing
+
+- **Bodies are not redacted.** Whatever a client posts to your login route — password
+  included — lands in the span and goes wherever your exporter sends it.
+  `MONOCLE_HTTP_EXCLUDE_PATHS` is the lever; there's no switch that turns HTTP spans
+  off. Conversely, allowing a path back restores its capture, so keep allow entries
+  narrow.
+- **Static assets are traced.** `express.static` produces a span pair per file served,
+  so an app serving its front end from the API server sees trace volume track total HTTP
+  traffic rather than AI workload.
+- **Span names are duck-typed** from Express's `req.route`/`req.baseUrl`. Frameworks
+  that don't set them — Fastify, Koa, `next start` — fall back to the concrete path, so
+  `/users/12345` and `/users/12346` become distinct span names. Exclude parameterised
+  routes there to bound cardinality.
+- **A sampled-away probe that does instrumented work** leaves its child spans parentless,
+  since they were exported before the decision. Exclude such a route instead.
 
 ### Returning traces on the HTTP response
 
-A test running outside your server can't see the spans a request produced. Turn on
-trace return and the server appends them to the response it was already sending:
-the spans travel with the answer, so there's no backend, shared database or log
-scraping in the loop.
+A test running outside your server can't see the spans a request produced. Turn on trace
+return and the server appends them to the response it was already sending — no backend,
+shared database or log scraping in the loop.
 
-Set both variables in `.env.monocle` **before the process starts** — the tracer
-provider fixes its span processors at construction, so flipping this later does
-nothing:
+Set both in `.env.monocle` **before the process starts**; the tracer provider fixes its
+span processors at construction, so flipping this later does nothing:
 
+```
 MONOCLE_ENABLE_TRACE_RETURN=true
 MONOCLE_TRACE_RETRIEVAL_DEFAULT_KEY=some-shared-secret
+```
 
+Nothing in your app changes. A client asks for traces by sending the key:
 
-Nothing in your app changes. Monocle hooks `node:http`, which covers Express,
-Fastify, Koa, NestJS and `next start` alike.
-
-A client asks for traces by sending the key:
-
+```
 curl -H "x-monocle-retrieve-traces: some-shared-secret" localhost:3000/chat
-
+```
 
 The response comes back as `<your body><delimiter><base64(gzip(spans))>`, with
-`x-monocle-traces: v1; delim=<delimiter>` in the headers. The client cuts the body
-at the delimiter to recover the untouched response plus the spans.
-[monocle_test_tools](https://docs.okahu.ai/monocle_test_tools/) `HttpRunner` does
-this for you and runs assertions against the spans.
+`x-monocle-traces: v1; delim=<delimiter>` in the headers; the client cuts the body at
+the delimiter to recover the untouched response plus the spans.
+[monocle_test_tools](https://docs.okahu.ai/monocle_test_tools/) `HttpRunner` does this
+for you and runs assertions against the spans.
 
-It is off by default and gated twice — master switch, then a per-request key check
-with `crypto.timingSafeEqual`. Every failure path serves a completely normal
-response, so a misconfigured server leaks nothing. Requests that don't ask for
-traces are untouched and pay one env read and one header lookup.
+It's off by default and gated twice — master switch, then a per-request key check with
+`crypto.timingSafeEqual`. Every failure path serves a completely normal response, so a
+misconfigured server leaks nothing.
 
-Notes:
-- An authorized request is served uncompressed. Monocle strips `accept-encoding`
-  so a compression middleware can't gzip the response out from under the trailer.
-  Other clients still get compression as usual.
-- `Content-Length` is dropped on a traced response, which falls back to chunked
-  encoding. That keeps streaming and SSE working without buffering the body.
-- `MONOCLE_TRACE_RETRIEVAL_CALLBACK` (`"module:export"`) replaces the key check with
-  your own synchronous `(headers) => boolean`. See [.env.example](.env.example).
-
+- An authorized request is served uncompressed; Monocle strips `accept-encoding` so a
+  compression middleware can't gzip the response out from under the trailer. Other
+  clients still get compression.
+- `Content-Length` is dropped on a traced response, falling back to chunked encoding,
+  which keeps streaming and SSE working without buffering.
+- `MONOCLE_TRACE_RETRIEVAL_CALLBACK` (`"module:export"`) replaces the key check with your
+  own synchronous `(headers) => boolean`.
 
 ### Configuration
 
