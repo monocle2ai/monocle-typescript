@@ -6,6 +6,7 @@ import { Span } from "./opentelemetryUtils";
 import { MONOCLE_VERSION } from './monocle_version';
 import { consoleLog } from "../../common/logging";
 import { MonocleSpanException } from "../metamodel/utils";
+import { recordWorkflowType, WORKFLOW_TYPE_HOLDER_KEY, WorkflowTypeHolder } from "./workflowTypeHolder";
 export interface SpanHandler {
     setDefaultMonocleAttributes({ span, instance, args, element, sourcePath }: {
         span: Span;
@@ -418,7 +419,14 @@ export function attachWorkflowType(element?: WrapperArguments) {
         return activeContext;
     }
     if (!currentWorkflowType || currentWorkflowType === WORKFLOW_TYPE_GENERIC) {
-        activeContext = context.active().setValue(WORKFLOW_TYPE_KEY_SYMBOL, getWorkflowType(element?.package));
+        const resolved = getWorkflowType(element?.package);
+        // The HTTP hook's workflow span is already open and cannot read this
+        // context, so hand the type to its holder as well.
+        recordWorkflowType(
+            activeContext.getValue(WORKFLOW_TYPE_HOLDER_KEY) as WorkflowTypeHolder | undefined,
+            resolved,
+        );
+        activeContext = context.active().setValue(WORKFLOW_TYPE_KEY_SYMBOL, resolved);
     }
 
     return activeContext;

@@ -8,7 +8,7 @@ const noop: SpanProcessor = {
     shutdown() { return Promise.resolve(); }, forceFlush() { return Promise.resolve(); },
 };
 const KEY = "test-key";
-let port = 0, server: any, codec: any;
+let port = 0, server: any, codec: any, exporter: any;
 
 // Raw socket read, not fetch(): fetch transparently decodes content-encoding,
 // which would hide exactly the bug this file exists to catch.
@@ -38,6 +38,7 @@ beforeAll(async () => {
     const monocle = await import("../../src/index");
     monocle.setupMonocle("http-hook-demo", [noop]);
     codec = await import("../../src/traceReturn/codec");
+    exporter = (await import("../../src/traceReturn/exporter")).getTraceReturnExporter();
     const { getPatchedMain } = await import("../../src/instrumentation/common/wrapper");
     const { getInstrumentor } = await import("../../src/instrumentation/common/utils");
 
@@ -81,21 +82,27 @@ beforeAll(async () => {
 afterAll(() => server?.close());
 
 describe("untouched paths", () => {
+    // Each of these also asserts the exporter buffer stays empty. Without the
+    // scope an unauthorized request buffers spans nothing ever pops, and the
+    // absent response header alone would not catch it.
     it("a request without the header gets a normal response", async () => {
         const r = await raw("/chat");
         expect(r.headers["x-monocle-traces"]).toBeUndefined();
         expect(JSON.parse(r.body.toString())).toEqual({ answer: "42" });
+        expect(exporter.pendingTraceCount).toBe(0);
     });
 
     it("a request with the wrong key gets a normal response", async () => {
         const r = await raw("/chat", { "x-monocle-retrieve-traces": "nope" });
         expect(r.headers["x-monocle-traces"]).toBeUndefined();
         expect(JSON.parse(r.body.toString())).toEqual({ answer: "42" });
+        expect(exporter.pendingTraceCount).toBe(0);
     });
 
     it("a normal client still gets its response compressed", async () => {
         const r = await raw("/chat", { "accept-encoding": "gzip" });
         expect(r.headers["content-encoding"]).toBe("gzip");
+        expect(exporter.pendingTraceCount).toBe(0);
     });
 });
 
@@ -132,10 +139,12 @@ describe("authorized requests", () => {
         expect(spans).toHaveLength(3);
     });
 
-    it("returns just the root span for a route that traces nothing", async () => {
+    // The hook opens workflow + http.process for every request, so even a route
+    // that triggers no instrumented call returns that pair.
+    it("returns the request's own span pair for a route that traces nothing", async () => {
         const r = await raw("/plain", { "x-monocle-retrieve-traces": KEY });
         const { clean, spans } = split(r);
         expect(clean.toString()).toBe("hello");
-        expect(spans).toHaveLength(1);
+        expect(spans.map((s: any) => s.name).sort()).toEqual(["GET /plain", "workflow"]);
     });
 });
