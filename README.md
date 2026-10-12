@@ -395,8 +395,44 @@ Next.js app from 151 to 39.
 
 Outside Mastra, `/` is never excluded: too many apps serve real traffic there.
 
-There is currently no way to un-exclude a built-in entry. An allow list, which
-will take precedence over every exclusion, is the planned answer.
+#### Un-excluding a path with `MONOCLE_HTTP_ALLOW_PATHS`
+
+`MONOCLE_HTTP_EXCLUDE_PATHS` only ever adds exclusions. To take one *back* —
+whether it came from a built-in default, from Mastra's tier, or from your own
+exclude list — use the allow list:
+
+```
+MONOCLE_HTTP_ALLOW_PATHS=/$                    # trace the root page again
+MONOCLE_HTTP_ALLOW_PATHS=GET /api/workspaces$  # trace one Mastra playground route
+MONOCLE_HTTP_ALLOW_PATHS=/assets/report.json$  # one file out of the /assets/ default
+```
+
+It uses the same grammar as the exclude list, `$`, `*` and a method prefix
+included. Precedence, first match wins:
+
+| | | |
+|---|---|---|
+| 1 | `MONOCLE_HTTP_ALLOW_PATHS` | **traced** |
+| 2 | `MONOCLE_HTTP_EXCLUDE_PATHS` | excluded |
+| 3 | Mastra's execution routes | **traced** |
+| 4 | the built-in defaults | excluded |
+| 5 | nothing matched | **traced** |
+
+Both of your levers outrank both built-in lists, and within each pair the one
+that keeps data wins.
+
+Two things to know before using it:
+
+**Allowing a path restores its unredacted body capture.** An excluded request is
+served with no span and no capture at all; allowing it back puts its request and
+response bodies into your traces. Allow a narrow path, not a broad prefix that
+might cover a credential endpoint.
+
+**Sampling still applies.** The allow list governs exclusion, not health check
+sampling — the two are independent. A contentless `GET` that you allow is still
+exported one time in a hundred, so `MONOCLE_HTTP_ALLOW_PATHS=/$` on a Next.js
+app gives you 1 span in 100 rather than all of them. Pair it with
+`MONOCLE_SAMPLE_HEALTH_CHECKS=false` if you want every one.
 
 #### How the list is matched
 
