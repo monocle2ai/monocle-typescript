@@ -440,8 +440,12 @@ Goal of Monocle is to support tracing for apps written in *any language* with *a
 
 Current version supports: 
 - Language: (🟢) Typescript
-- LLM-frameworks: (🟢) Langchain, (🟢) Llamaindex, (🟢) OpenAI, 
-- Exporter: (🟢) stdout, (🟢) file, (🟢) Azure Blob Storage, (🟢) AWS S3
+- Agentic frameworks: (🟢) Mastra, (🟢) Google ADK, (🟢) OpenAI Agents, (🟢) LangChain, (🟢) LlamaIndex, (🟢) Vercel AI SDK, (🟢) Teams AI
+- Model inference: (🟢) OpenAI, (🟢) Anthropic, (🟢) Google Gemini, (🟢) AWS Bedrock, (🟢) AWS SageMaker
+- Protocols: (🟢) MCP, (🟢) A2A
+- Vector stores: (🟢) OpenSearch
+- HTTP servers: (🟢) Express, (🟢) Fastify, (🟢) Koa, (🟢) NestJS, (🟢) Next.js — via `node:http`
+- Exporter: (🟢) stdout, (🟢) file, (🟢) AWS S3, (🟢) Azure Blob Storage, (🟢) Okahu
 
 
 ## Get involved
