@@ -28,12 +28,9 @@ export interface HttpRequestHooks {
     onRequestStart?(req: IncomingMessage, res: ServerResponse): void;
     scopesFor?(req: IncomingMessage): Record<string, string | null> | null;
     onBeforeEnd?(req: IncomingMessage, res: ServerResponse, traceId: string): Buffer | null;
-    // Called INSTEAD of onBeforeEnd when the response never reached res.end:
-    // a client that walked away from a stream, or a response the server tore
-    // down. No trailer can be written at that point, so a hook holding state
-    // for this trace has to release it here or nothing ever will. Routine for
-    // streaming, where abandoning the response is how an SSE request normally
-    // ends - not the rare crash it was when every response was buffered.
+    // Called INSTEAD of onBeforeEnd when the response never reached res.end.
+    // No trailer can be written then, so a hook holding state for this trace
+    // must release it here. Routine for streaming, not a rare crash.
     onAbandoned?(req: IncomingMessage, res: ServerResponse, traceId: string): void;
 }
 
@@ -118,15 +115,14 @@ function safely<T>(what: string, fn: () => T): T | undefined {
     }
 }
 
-// Monocle scopes are server-side state, never client input. getScopesInternal()
-// copies every monocle.scope.* baggage entry onto every span, so an extracted
-// one would let a caller forge a scope - monocle_trace_return included, whose
-// spans would then buffer unclaimed. traceparent continuation is untouched.
+// Scopes are server-side state, never client input: getScopesInternal() copies
+// every monocle.scope.* baggage entry onto every span, so an extracted one would
+// let a caller forge a scope - monocle_trace_return included, whose spans would
+// then buffer unclaimed. traceparent continuation is untouched.
 //
-// Compared against the server's own baggage, snapshotted before extract:
-// with no global propagator registered (the default) extract is a no-op, so
-// everything it returns is ambient server state, and dropping it all would
-// delete the application's own scopes from every span.
+// Compared against baggage snapshotted before extract, because with no global
+// propagator (the default) extract is a no-op and dropping everything it returns
+// would delete the application's own scopes.
 function stripImportedScopes(ambient: Context, ctx: Context): Context {
     const extracted = propagation.getBaggage(ctx);
     if (!extracted) return ctx;
@@ -184,11 +180,9 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
     const holder = createWorkflowTypeHolder();
     ctx = ctx.setValue(WORKFLOW_TYPE_HOLDER_KEY, holder);
 
-    // One monotonic clock for the whole request: time to first byte is measured
-    // against this rather than against the span's own start time, which is an
-    // hrTime pair on a different clock. Taken immediately before the spans, so
-    // it is the span start to within microseconds. performance.now(), not
-    // Date.now(), which an NTP step can run backwards.
+    // TTFB is measured against this, not the span's hrTime start, which is a
+    // different clock. performance.now() because an NTP step can run Date.now()
+    // backwards.
     const startedAt = performance.now();
 
     // The workflow span is the trace root and the http.process span its child.
@@ -221,12 +215,9 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
     return ctx;
 }
 
-// Node sets `errored` on a stream destroyed with an error, and leaves it null
-// when the peer merely went away - which is the only signal that separates a
-// server-side streaming failure from an ordinary client disconnect. Verified
-// against node:http rather than assumed. Reads undefined on a runtime or a
-// response double that does not provide it, where behaviour falls back to
-// treating every abort as a disconnect.
+// The only signal separating a server-side streaming failure from an ordinary
+// client disconnect. Undefined on a runtime or test double that omits it, where
+// every abort then reads as a disconnect.
 function responseError(res: any): Error | undefined {
     try {
         const errored = res?.errored;
@@ -300,12 +291,8 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
                 code: SpanStatusCode.ERROR,
                 message: `response failed: ${failure.message}`.slice(0, 200),
             });
-        // A client closing a stream it was reading is how a healthy SSE or
-        // chunked response normally ends - the server never calls res.end - so
-        // it is not an error. With nothing ever written it is: either the client
-        // gave up before any response or the handler hung. The transport cannot
-        // tell "finished reading" from "hit stop", so this errs towards OK and
-        // leaves end_reason=client_closed on the span for anyone who cares.
+        // Aborting a stream is how SSE normally ends, so only an abort with
+        // nothing ever written is an error.
         } else if (aborted && !streamed) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: "client disconnected" });
         } else if (res.statusCode >= 500) {

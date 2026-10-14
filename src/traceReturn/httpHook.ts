@@ -70,14 +70,10 @@ function onBeforeEnd(_req: IncomingMessage, res: ServerResponse, traceId: string
     return buildTrailerBytes(spans, delimiter);
 }
 
-// The response never reached res.end, so no trailer can be sent and nothing
-// will ever call popSpansForTrace for this trace. Releasing the spans here is
-// the difference between a bounded buffer and one that fills with abandoned
-// streams until MAX_PENDING_TRACES starts evicting live traces to make room.
-//
-// The caller that asked for these spans is by definition gone - it hung up, or
-// the response died - so there is nobody to send them to. They have already
-// been exported through the application's own exporter.
+// Nothing will ever call popSpansForTrace for this trace, so releasing here is
+// what keeps the buffer bounded rather than filling with abandoned streams until
+// MAX_PENDING_TRACES evicts live ones. Discarded rather than sent: the caller is
+// gone, and the spans already went out through the app's own exporter.
 function onAbandoned(_req: IncomingMessage, _res: ServerResponse, traceId: string): void {
     const spans = getTraceReturnExporter().popSpansForTrace(traceId);
     if (spans.length) {

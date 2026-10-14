@@ -102,9 +102,14 @@ export function getStatusCode(res: any): string {
     return typeof code === "number" && code > 0 ? String(code) : "";
 }
 
+// The capture hangs off the response object under a symbol. Every reader goes
+// through here so the cast lives in one place.
+function getCapture(res: any): HttpCapture | undefined {
+    return res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+}
+
 export function getResponseBody(res: any): string {
-    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
-    return capture?.body ?? "";
+    return getCapture(res)?.body ?? "";
 }
 
 function isTextualResponse(res: any): boolean {
@@ -130,7 +135,7 @@ function isTextualResponse(res: any): boolean {
 // arrives. Both the body capture and the stream counter come through here, so
 // whichever runs first settles that question for both.
 function ensureCapture(res: any): HttpCapture | undefined {
-    const existing = res[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    const existing = getCapture(res);
     if (existing) return existing;
     const capture: HttpCapture = { body: "", truncated: !isTextualResponse(res), chunks: 0 };
     try {
@@ -197,14 +202,13 @@ export function recordStreamChunk(res: any, chunk: unknown): void {
 // status and the three stream attributes all turn on. A plain res.end(body)
 // never calls recordStreamChunk, so it answers false.
 export function didStream(res: any): boolean {
-    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
-    return (capture?.chunks ?? 0) > 0;
+    return (getCapture(res)?.chunks ?? 0) > 0;
 }
 
 // Called once from the hook before the metamodel runs. The accessors below are
 // pure reads, so anything derived has to be on the capture by then.
 export function recordStreamEnd(res: any, endReason: StreamEndReason, startedAt: number): void {
-    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    const capture = getCapture(res);
     // No capture, or nothing ever written: there is no stream to describe, and
     // the three attributes stay off the span entirely.
     if (!capture || capture.chunks === 0) return;
@@ -220,16 +224,16 @@ export function recordStreamEnd(res: any, endReason: StreamEndReason, startedAt:
 }
 
 export function getStreamChunkCount(res: any): number | undefined {
-    const capture = res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined;
+    const capture = getCapture(res);
     // undefined, not 0: the three stream attributes are emitted as a set or not
     // at all, and 0 would be dropped by processSpan anyway.
     return capture?.chunks ? capture.chunks : undefined;
 }
 
 export function getStreamEndReason(res: any): string | undefined {
-    return (res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined)?.endReason;
+    return getCapture(res)?.endReason;
 }
 
 export function getTimeToFirstByteMs(res: any): number | undefined {
-    return (res?.[HTTP_CAPTURE_KEY] as HttpCapture | undefined)?.timeToFirstByteMs;
+    return getCapture(res)?.timeToFirstByteMs;
 }
