@@ -1,6 +1,7 @@
 import { SPAN_TYPES } from "../../../common/constants";
 import {
-    getMethod, getParams, getRequestBody, getResponseBody, getRoute, getStatusCode, getUrl,
+    getMethod, getParams, getRequestBody, getResponseBody, getRoute, getStatusCode,
+    getStreamChunkCount, getStreamEndReason, getTimeToFirstByteMs, getUrl,
 } from "../../../http/capture";
 
 // Entity accessors receive `output` for the response, event accessors receive
@@ -68,6 +69,30 @@ export const HTTP_PROCESS = {
                     "attribute": "response",
                     "accessor": function ({ response }: any) {
                         return getResponseBody(response);
+                    },
+                },
+                // The three below describe a streamed response and are absent
+                // from every other span: a plain res.end(body) leaves the span
+                // exactly as it was before streaming was addressed at all.
+                {
+                    "_comment": "ms from span start to the first body byte, streamed responses only",
+                    "attribute": "time_to_first_byte_ms",
+                    "accessor": function ({ response }: any) {
+                        return getTimeToFirstByteMs(response);
+                    },
+                },
+                {
+                    "_comment": "body chunks the client received, absent unless the handler called res.write()",
+                    "attribute": "chunk_count",
+                    "accessor": function ({ response }: any) {
+                        return getStreamChunkCount(response);
+                    },
+                },
+                {
+                    "_comment": "complete when the server ended the response, client_closed when the client went away first",
+                    "attribute": "end_reason",
+                    "accessor": function ({ response }: any) {
+                        return getStreamEndReason(response);
                     },
                 },
             ],
