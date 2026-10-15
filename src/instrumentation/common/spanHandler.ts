@@ -57,6 +57,10 @@ export interface SpanHandler {
         parentSpan?: Span;
     }): void;
 
+    // Optional so a hand-rolled handler passed via element.spanHandler still
+    // compiles. Mirrors monocle_apptrace's SpanHandler.should_sample.
+    shouldSample?({ span }: { span: Span }): boolean;
+
     preTracing(element: WrapperArguments, currentContext?: any, thisArg?: any, callArgs?: any): any;
 
     resolveCompletion?({ returnValue }: { returnValue: any }): Promise<any> | null;
@@ -166,6 +170,12 @@ export class DefaultSpanHandler implements SpanHandler {
             setSpanStatus(span);
         }
 
+    }
+
+    // Export everything. HttpSpanHandler is the only handler with a reason to
+    // drop a span, as upstream's base does the same.
+    shouldSample(_: { span: Span }): boolean {
+        return true;
     }
 
     processSpan({ span, instance, args, returnValue, outputProcessor, exception, parentSpan }: {

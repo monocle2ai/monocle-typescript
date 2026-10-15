@@ -6,7 +6,7 @@ import * as http from "http";
 import * as https from "https";
 import type { IncomingMessage, ServerResponse } from "http";
 import {
-    Context, SpanKind, SpanStatusCode, context as contextApi, propagation, trace,
+    Context, SpanKind, SpanStatusCode, TraceFlags, context as contextApi, propagation, trace,
 } from "@opentelemetry/api";
 import { consoleLog } from "../../common/logging";
 import { Span as MonocleSpan } from "../common/opentelemetryUtils";
@@ -17,6 +17,7 @@ import {
     WORKFLOW_TYPE_HOLDER_KEY, createWorkflowTypeHolder, resolveWorkflowType,
 } from "../common/workflowTypeHolder";
 import { HTTP_PROCESS } from "../metamodel/http/entities/httpProcess";
+import { HttpSpanHandler } from "./httpSpanHandler";
 import {
     appendResponseChunk, didStream, getRoute, recordStreamChunk, recordStreamEnd, rememberOriginalUrl,
 } from "./capture";
@@ -227,6 +228,23 @@ function responseError(res: any): Error | undefined {
     }
 }
 
+// How upstream suppresses a span, and what every OpenTelemetry processor
+// already honours: SimpleSpanProcessor and BatchSpanProcessorBase both return
+// early on (traceFlags & SAMPLED) === 0. No custom processor, no marker.
+//
+// This mutates the object spanContext() returns, relying on it being the live
+// one - as upstream relies on assigning span._context. If a future SDK returns
+// a copy this stops suppressing silently, which is what the "suppression
+// mechanism itself" test exists to catch.
+function dropFromExport(span: any): void {
+    try {
+        const spanContext = span?.spanContext?.();
+        if (spanContext) spanContext.traceFlags = TraceFlags.NONE;
+    } catch (e) {
+        consoleLog(`[monocle] http hook: could not drop the span from export: ${e}`);
+    }
+}
+
 function spanName(req: IncomingMessage): string {
     return `${req.method ?? ""} ${getRoute(req)}`.trim();
 }
@@ -267,8 +285,9 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
         consoleLog(`[monocle] http hook: could not rename the span: ${e}`);
     }
 
+    const handler = new HttpSpanHandler();
     try {
-        new DefaultSpanHandler().processSpan({
+        handler.processSpan({
             span: httpSpan,
             instance: req,
             args: [req] as any,
@@ -303,6 +322,15 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
     } catch (e) {
         consoleLog(`[monocle] http hook: could not set the http span status: ${e}`);
     }
+    // Last, because it reads the status and events just written - and before
+    // either end(), because a processor reads the flag in onEnd. Both spans or
+    // neither: dropping only the child would leave the workflow span as a
+    // trace root with nothing under it.
+    if (!handler.shouldSample({ span: httpSpan })) {
+        dropFromExport(httpSpan);
+        dropFromExport(workflowSpan);
+    }
+
     try {
         httpSpan.end();
     } catch (e) {
