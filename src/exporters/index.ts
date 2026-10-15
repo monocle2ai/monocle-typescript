@@ -25,8 +25,7 @@ function getMonocleExporters(exporter_list: string = null, options: GetMonocleEx
         consoleLog('getMonocleExporters| Using LambdaExportTaskProcessor for AWS Lambda environment');
         getMonocleExporterOptions.taskProcessor = new LambdaExportTaskProcessor();
     }
-   
-    const exporterNameList = (exporter_list || process.env.MONOCLE_EXPORTER || 'file').split(',');
+    const exporterNameList = (exporter_list || process.env.MONOCLE_EXPORTER || 'console').split(',');
     consoleLog(`getMonocleExporters| Initializing exporters with config: ${exporterNameList}`);
 
     let exporters = [];

@@ -441,12 +441,12 @@ describe('Mastra TOOL schema', () => {
     });
 
     it('records the model-produced args as data.input', () => {
-        const acc = eventAccessor(TOOL, 'data.input', 'Inputs');
+        const acc = eventAccessor(TOOL, 'data.input', 'input');
         expect(acc({ args: [{ location: 'Tokyo' }] })).toEqual([JSON.stringify({ location: 'Tokyo' })]);
     });
 
     it('records an empty input when the tool takes no args', () => {
-        expect(eventAccessor(TOOL, 'data.input', 'Inputs')({ args: [] })).toEqual(['']);
+        expect(eventAccessor(TOOL, 'data.input', 'input')({ args: [] })).toEqual(['']);
     });
 
     it('records the tool result as data.output', () => {
