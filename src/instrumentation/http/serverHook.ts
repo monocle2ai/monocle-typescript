@@ -1,6 +1,7 @@
 // Static imports: a lazy require() throws in the ESM build (see the same note
 // in instrumentation.ts). Core modules are process singletons, so patching
 // these prototypes reaches every server the app creates.
+import { performance } from "perf_hooks";
 import * as http from "http";
 import * as https from "https";
 import type { IncomingMessage, ServerResponse } from "http";
@@ -16,7 +17,9 @@ import {
     WORKFLOW_TYPE_HOLDER_KEY, createWorkflowTypeHolder, resolveWorkflowType,
 } from "../common/workflowTypeHolder";
 import { HTTP_PROCESS } from "../metamodel/http/entities/httpProcess";
-import { appendResponseChunk, getRoute, rememberOriginalUrl } from "./capture";
+import {
+    appendResponseChunk, didStream, getRoute, recordStreamChunk, recordStreamEnd, rememberOriginalUrl,
+} from "./capture";
 import { isPathExcluded } from "./excludePaths";
 
 const HOOK_INSTALLED = Symbol.for("monocle2ai.httpServerHook");
@@ -25,6 +28,10 @@ export interface HttpRequestHooks {
     onRequestStart?(req: IncomingMessage, res: ServerResponse): void;
     scopesFor?(req: IncomingMessage): Record<string, string | null> | null;
     onBeforeEnd?(req: IncomingMessage, res: ServerResponse, traceId: string): Buffer | null;
+    // Called INSTEAD of onBeforeEnd when the response never reached res.end.
+    // No trailer can be written then, so a hook holding state for this trace
+    // must release it here. Routine for streaming, not a rare crash.
+    onAbandoned?(req: IncomingMessage, res: ServerResponse, traceId: string): void;
 }
 
 // On globalThis, like TRACE_RETURN_EXPORTER_KEY in traceReturn/exporter.ts: the
@@ -108,15 +115,14 @@ function safely<T>(what: string, fn: () => T): T | undefined {
     }
 }
 
-// Monocle scopes are server-side state, never client input. getScopesInternal()
-// copies every monocle.scope.* baggage entry onto every span, so an extracted
-// one would let a caller forge a scope - monocle_trace_return included, whose
-// spans would then buffer unclaimed. traceparent continuation is untouched.
+// Scopes are server-side state, never client input: getScopesInternal() copies
+// every monocle.scope.* baggage entry onto every span, so an extracted one would
+// let a caller forge a scope - monocle_trace_return included, whose spans would
+// then buffer unclaimed. traceparent continuation is untouched.
 //
-// Compared against the server's own baggage, snapshotted before extract:
-// with no global propagator registered (the default) extract is a no-op, so
-// everything it returns is ambient server state, and dropping it all would
-// delete the application's own scopes from every span.
+// Compared against baggage snapshotted before extract, because with no global
+// propagator (the default) extract is a no-op and dropping everything it returns
+// would delete the application's own scopes.
 function stripImportedScopes(ambient: Context, ctx: Context): Context {
     const extracted = propagation.getBaggage(ctx);
     if (!extracted) return ctx;
@@ -174,6 +180,11 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
     const holder = createWorkflowTypeHolder();
     ctx = ctx.setValue(WORKFLOW_TYPE_HOLDER_KEY, holder);
 
+    // TTFB is measured against this, not the span's hrTime start, which is a
+    // different clock. performance.now() because an NTP step can run Date.now()
+    // backwards.
+    const startedAt = performance.now();
+
     // The workflow span is the trace root and the http.process span its child.
     // That ordering is what puts the HTTP attributes at entity.1 rather than
     // entity.3, matching monocle_apptrace.
@@ -199,8 +210,21 @@ function startRequest(req: IncomingMessage, res: ServerResponse): Context | null
         holder,
         traceId: httpSpan.spanContext().traceId,
         startName,
+        startedAt,
     });
     return ctx;
+}
+
+// The only signal separating a server-side streaming failure from an ordinary
+// client disconnect. Undefined on a runtime or test double that omits it, where
+// every abort then reads as a disconnect.
+function responseError(res: any): Error | undefined {
+    try {
+        const errored = res?.errored;
+        return errored instanceof Error ? errored : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 function spanName(req: IncomingMessage): string {
@@ -213,10 +237,26 @@ interface RequestState {
     holder: ReturnType<typeof createWorkflowTypeHolder>;
     traceId: string;
     startName: string;
+    startedAt: number;
 }
 
 function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, aborted: boolean): void {
     const { workflowSpan, httpSpan, holder } = state;
+
+    // Read before recordStreamEnd for clarity only - it does not change the
+    // answer - and used by the status rule below as well as the metamodel.
+    const streamed = didStream(res);
+
+    const failure = responseError(res);
+
+    // Must run before processSpan: the metamodel accessors are pure reads, so
+    // end_reason and time_to_first_byte_ms have to be on the capture already.
+    try {
+        const reason = failure ? "error" : aborted ? "client_closed" : "complete";
+        recordStreamEnd(res, reason, state.startedAt);
+    } catch (e) {
+        consoleLog(`[monocle] http hook: could not record the stream end: ${e}`);
+    }
 
     // Routing has run by now, so getRoute resolves the template: GET /users/:id
     // rather than the GET /users/12345 we could only guess at request start.
@@ -243,7 +283,17 @@ function finish(req: IncomingMessage, res: ServerResponse, state: RequestState, 
     // Its own try: a throw here must not skip httpSpan.end() below, which would
     // otherwise leave it open the same way an unguarded abort path would.
     try {
-        if (aborted) {
+        // Checked first: a response destroyed by a server-side error is a real
+        // failure whether or not it had started streaming, and must not be
+        // absorbed by the disconnect rule below.
+        if (failure) {
+            httpSpan.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: `response failed: ${failure.message}`.slice(0, 200),
+            });
+        // Aborting a stream is how SSE normally ends, so only an abort with
+        // nothing ever written is an error.
+        } else if (aborted && !streamed) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: "client disconnected" });
         } else if (res.statusCode >= 500) {
             httpSpan.setStatus({ code: SpanStatusCode.ERROR, message: `HTTP ${res.statusCode}` });
@@ -286,6 +336,9 @@ function installResponsePatches(req: IncomingMessage, res: ServerResponse, state
 
     // Pass-through, not buffering: the body streams to the client as normal.
     res.write = function (this: ServerResponse, ...args: any[]) {
+        // A res.write() call is what makes this a stream, so it is counted here
+        // and never in the res.end path below.
+        recordStreamChunk(res, args[0]);
         appendResponseChunk(res, args[0]);
         return (origWrite as any)(...args);
     } as any;
@@ -302,6 +355,11 @@ function installResponsePatches(req: IncomingMessage, res: ServerResponse, state
         // finish() try: a throw here must not skip finish(), or finished would
         // flip true while the spans stay open.
         try {
+            // Only once the response is already a stream: counting the body of a
+            // plain res.end(body) would make every ordinary response look
+            // streamed and flip the status rule in finish(). On a real stream the
+            // final chunk is a chunk the client received, so it counts.
+            if (didStream(res)) recordStreamChunk(res, chunk);
             appendResponseChunk(res, chunk);
         } catch (e) {
             console.warn(`[monocle] http hook: response chunk capture failed: ${e}`);
@@ -356,6 +414,12 @@ function installResponsePatches(req: IncomingMessage, res: ServerResponse, state
                 finish(req, res, state, true);
             } catch (e) {
                 console.warn(`[monocle] http hook: abort finalisation failed: ${e}`);
+            }
+            // After finish(), never before: ending the spans is what hands them
+            // to the processors, so a hook asked to release them earlier would
+            // find its buffer still filling.
+            for (const hook of registeredHooks()) {
+                safely("onAbandoned", () => hook.onAbandoned?.(req, res, state.traceId));
             }
         });
     } catch (e) {

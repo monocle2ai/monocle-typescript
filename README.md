@@ -268,6 +268,32 @@ Those spans include the **request body and the response body**. The request body
 is truncated at 1000 characters and the response body at 5000, so a long stream
 simply stops accumulating rather than growing the span.
 
+**Streamed responses carry three extra fields** in their `data.output` event:
+`time_to_first_byte_ms`, `chunk_count`, and `end_reason` (`complete`,
+`client_closed`, or `error`). "Streamed" means the handler called `res.write()` — a response
+delivered in one piece through `res.end(body)` carries none of them. Time to
+first byte is the field worth having: span duration on its own cannot separate
+an agent that was slow to start answering from one that was slow to finish.
+
+A client closing a stream it was reading is **not** treated as an error. That is
+how a healthy SSE response ends — the server never calls `res.end` — so the span
+stays OK and records `end_reason=client_closed`. A client that disconnects
+before a single byte was written is still an error. The trade-off is deliberate:
+a user who hits stop mid-answer is indistinguishable at the transport layer from
+one who read to the end, and this errs towards not reporting false failures.
+
+A stream the **server** tears down is a different matter, and is reported as an
+error with `end_reason=error`. Node sets `res.errored` when a response is
+destroyed with an error and leaves it unset when the peer merely goes away,
+which is what keeps a genuine mid-stream failure from hiding behind the rule
+above.
+
+One case stays invisible by nature: a handler that catches its own failure,
+reports it inside the stream (an SSE `error` event, say) and then ends the
+response normally has completed a successful HTTP exchange. The span records
+`complete` and OK, because at the transport layer that is the truth — the
+failure is application-level and lives in the body.
+
 **Static assets are traced too.** `express.static`, and any middleware like it,
 produces its own `workflow` + `http.process` pair for every file served, and the
 bodies of textual assets — JavaScript, CSS, HTML — are captured up to that same

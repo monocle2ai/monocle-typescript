@@ -17,7 +17,7 @@ export function installTraceReturnHttpHook(): void {
     if (g[HOOK_INSTALLED]) return;
     g[HOOK_INSTALLED] = true;
 
-    registerHttpRequestHooks({ onRequestStart, scopesFor: traceReturnScopes, onBeforeEnd });
+    registerHttpRequestHooks({ onRequestStart, scopesFor: traceReturnScopes, onBeforeEnd, onAbandoned });
     installHttpServerHook();
     consoleLog("[monocle] trace return: trailer hooks registered");
 }
@@ -68,6 +68,19 @@ function onBeforeEnd(_req: IncomingMessage, res: ServerResponse, traceId: string
         return null;
     }
     return buildTrailerBytes(spans, delimiter);
+}
+
+// Nothing will ever call popSpansForTrace for this trace, so releasing here is
+// what keeps the buffer bounded rather than filling with abandoned streams until
+// MAX_PENDING_TRACES evicts live ones. Discarded rather than sent: the caller is
+// gone, and the spans already went out through the app's own exporter.
+function onAbandoned(_req: IncomingMessage, _res: ServerResponse, traceId: string): void {
+    const spans = getTraceReturnExporter().popSpansForTrace(traceId);
+    if (spans.length) {
+        consoleLog(
+            `[monocle] trace return: released ${spans.length} span(s) for a response that never ended`,
+        );
+    }
 }
 
 // Appending past a declared Content-Length truncates the response. Dropping it
