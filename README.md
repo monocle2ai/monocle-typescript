@@ -369,17 +369,20 @@ Set both variables in `.env.monocle` **before the process starts** — the trace
 provider fixes its span processors at construction, so flipping this later does
 nothing:
 
+```
+# .env.monocle
 MONOCLE_ENABLE_TRACE_RETURN=true
 MONOCLE_TRACE_RETRIEVAL_DEFAULT_KEY=some-shared-secret
-
+```
 
 Nothing in your app changes. Monocle hooks `node:http`, which covers Express,
 Fastify, Koa, NestJS and `next start` alike.
 
 A client asks for traces by sending the key:
 
+```bash
 curl -H "x-monocle-retrieve-traces: some-shared-secret" localhost:3000/chat
-
+```
 
 The response comes back as `<your body><delimiter><base64(gzip(spans))>`, with
 `x-monocle-traces: v1; delim=<delimiter>` in the headers. The client cuts the body
