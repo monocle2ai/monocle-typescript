@@ -3,6 +3,8 @@ import { MonocleConsoleSpanExporter } from './monocle/MonocleConsoleSpanExporter
 import { OkahuSpanExporter } from './okahu/OkahuSpanExporter';
 import { AWSS3SpanExporter } from './aws/AWSS3SpanExporter';
 import { AzureBlobSpanExporter } from './azure/AzureBlobSpanExporter'
+import { GenaiSemconvSpanExporter } from './otlp/GenaiSemconvSpanExporter';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { consoleLog } from '../common/logging';
 import { ExportTaskProcessor, LambdaExportTaskProcessor } from './taskProcessor';
 import { isAwsLambdaEnvironment } from '../instrumentation/common/utils';
@@ -17,6 +19,10 @@ const monocleExporters = {
     "okahu": (options: GetMonocleExportersOptions = {}) => new OkahuSpanExporter({ taskProcessor: options.taskProcessor }),
     "file": (options: GetMonocleExportersOptions = {}) => new FileSpanExporter({ taskProcessor: options.taskProcessor }),
     "console": (options: GetMonocleExportersOptions = {}) => new MonocleConsoleSpanExporter({ taskProcessor: options.taskProcessor }),
+    // Endpoint, headers and timeout come from the standard OTEL_EXPORTER_OTLP_* env vars.
+    "otlp": () => new OTLPTraceExporter(),
+    // Same OTLP endpoint; adds gen_ai.* attributes to the exported copies only.
+    "otlp-genai-semconv": () => new GenaiSemconvSpanExporter(new OTLPTraceExporter()),
 };
 
 function getMonocleExporters(exporter_list: string = null, options: GetMonocleExportersOptions = {}) {
