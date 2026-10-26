@@ -409,17 +409,20 @@ Set both variables in `.env.monocle` **before the process starts** — the trace
 provider fixes its span processors at construction, so flipping this later does
 nothing:
 
+```
+# .env.monocle
 MONOCLE_ENABLE_TRACE_RETURN=true
 MONOCLE_TRACE_RETRIEVAL_DEFAULT_KEY=some-shared-secret
-
+```
 
 Nothing in your app changes. Monocle hooks `node:http`, which covers Express,
 Fastify, Koa, NestJS and `next start` alike.
 
 A client asks for traces by sending the key:
 
+```bash
 curl -H "x-monocle-retrieve-traces: some-shared-secret" localhost:3000/chat
-
+```
 
 The response comes back as `<your body><delimiter><base64(gzip(spans))>`, with
 `x-monocle-traces: v1; delim=<delimiter>` in the headers. The client cuts the body
@@ -442,10 +445,35 @@ Notes:
   your own synchronous `(headers) => boolean`. See [.env.example](.env.example).
 
 
+### Sending traces to an OpenTelemetry backend
+
+`MONOCLE_EXPORTER=otlp` sends spans over OTLP/HTTP to any OpenTelemetry backend
+or collector. Endpoint, headers and timeout use the standard `OTEL_EXPORTER_OTLP_*`
+variables (percent-encode spaces in header values):
+
+```
+# .env.monocle
+MONOCLE_EXPORTER=okahu,otlp
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://observability.example.com/v1/traces
+OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Bearer%20your-token,X-Tenant-ID=your-tenant
+```
+
+Backends built on the OpenTelemetry
+[GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+read `gen_ai.*` attributes, not Monocle's `entity.*` ones. Use
+`MONOCLE_EXPORTER=otlp-genai-semconv` for those: same endpoint, but each span it
+sends also carries `gen_ai.operation.name` (`chat`, `embeddings`, `retrieval`,
+`execute_tool`, `invoke_agent`), `gen_ai.request.model`, `gen_ai.provider.name`,
+`gen_ai.usage.input_tokens` / `output_tokens`, and the tool or agent name.
+
+The attributes are added at export time, to that exporter's copy of each span only.
+Every other exporter — including `otlp`, `okahu` and `file` — gets the trace
+unchanged, and an existing `gen_ai.*` attribute is never overwritten.
+
 ### Configuration
 
 See [.env.example](.env.example) for all environment variables — exporters
-(console/file/S3/Azure/Okahu), output paths, preload, hook audit, and debug.
+(console/file/S3/Azure/Okahu/OTLP), output paths, preload, hook audit, and debug.
 
 Everything except `NODE_OPTIONS` belongs in `.env.monocle`, which Monocle reads for
 itself. Its values take precedence over the environment, so the same settings apply

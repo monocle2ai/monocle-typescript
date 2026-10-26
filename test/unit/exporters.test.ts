@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as http from 'http';
+import { AddressInfo } from 'net';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { getMonocleExporters } from '../../src/exporters';
+import { GenaiSemconvSpanExporter } from '../../src/exporters/otlp/GenaiSemconvSpanExporter';
 import { MonocleConsoleSpanExporter } from '../../src/exporters/monocle/MonocleConsoleSpanExporter';
 import { FileSpanExporter } from '../../src/exporters/file/FileSpanExporter';
 import { OkahuSpanExporter } from '../../src/exporters/okahu/OkahuSpanExporter';
@@ -105,5 +110,97 @@ describe('getMonocleExporters', () => {
         expect(exporters[0]).toBeInstanceOf(MonocleConsoleSpanExporter);
         expect(exporters[1]).toBeInstanceOf(FileSpanExporter);
         expect(exporters[2]).toBeInstanceOf(OkahuSpanExporter);
+    });
+
+    it('should return OTLP exporter when MONOCLE_EXPORTER=otlp', () => {
+        process.env.MONOCLE_EXPORTER = 'otlp';
+        const exporters = getMonocleExporters();
+        expect(exporters).toHaveLength(1);
+        expect(exporters[0]).toBeInstanceOf(OTLPTraceExporter);
+    });
+
+    it('should return GenAI semconv exporter when MONOCLE_EXPORTER=otlp-genai-semconv', () => {
+        process.env.MONOCLE_EXPORTER = 'otlp-genai-semconv';
+        const exporters = getMonocleExporters();
+        expect(exporters).toHaveLength(1);
+        expect(exporters[0]).toBeInstanceOf(GenaiSemconvSpanExporter);
+    });
+});
+
+describe('OTLP exporters against a live endpoint', () => {
+    const originalEnv = process.env;
+    let server: http.Server;
+    let received: { url?: string; headers?: http.IncomingHttpHeaders; body?: any };
+
+    beforeEach(async () => {
+        received = {};
+        server = http.createServer((req, res) => {
+            let body = '';
+            req.on('data', (chunk) => (body += chunk));
+            req.on('end', () => {
+                received = { url: req.url, headers: req.headers, body: JSON.parse(body) };
+                res.writeHead(200).end();
+            });
+        });
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const { port } = server.address() as AddressInfo;
+        process.env = { ...originalEnv };
+        process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = `http://127.0.0.1:${port}/v1/traces`;
+        process.env.OTEL_EXPORTER_OTLP_TRACES_HEADERS = 'Authorization=Bearer%20test-token,X-Tenant-ID=test-tenant';
+    });
+
+    afterEach(async () => {
+        process.env = originalEnv;
+        await new Promise((resolve) => server.close(resolve));
+    });
+
+    function inferenceSpan() {
+        const memory = new InMemorySpanExporter();
+        const tracer = new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(memory)] }).getTracer('test');
+        const span = tracer.startSpan('inference');
+        span.setAttributes({
+            'span.type': 'inference',
+            'entity.2.name': 'gemini-2.5-flash',
+            'entity.2.type': 'model.llm.gemini-2.5-flash',
+        });
+        span.end();
+        return memory.getFinishedSpans()[0];
+    }
+
+    async function exportWith(exporterName: string, span: any) {
+        const [exporter] = getMonocleExporters(exporterName);
+        const result = await new Promise<any>((resolve) => exporter.export([span], resolve));
+        await exporter.shutdown();
+        expect(result.code).toBe(0);
+        const sent = received.body.resourceSpans[0].scopeSpans[0].spans[0].attributes;
+        return Object.fromEntries(sent.map((a: any) => [a.key, Object.values(a.value)[0]]));
+    }
+
+    it('sends to the configured endpoint with decoded auth headers', async () => {
+        await exportWith('otlp', inferenceSpan());
+
+        expect(received.url).toBe('/v1/traces');
+        expect(received.headers?.authorization).toBe('Bearer test-token');
+        expect(received.headers?.['x-tenant-id']).toBe('test-tenant');
+    });
+
+    it('otlp sends spans as they are, without gen_ai attributes', async () => {
+        const sent = await exportWith('otlp', inferenceSpan());
+
+        expect(sent['span.type']).toBe('inference');
+        expect(Object.keys(sent).some((key) => key.startsWith('gen_ai.'))).toBe(false);
+    });
+
+    it('otlp-genai-semconv sends gen_ai attributes and leaves the original span untouched', async () => {
+        const span = inferenceSpan();
+        const before = { ...span.attributes };
+
+        const sent = await exportWith('otlp-genai-semconv', span);
+
+        expect(received.url).toBe('/v1/traces');
+        expect(sent['span.type']).toBe('inference');
+        expect(sent['gen_ai.operation.name']).toBe('chat');
+        expect(sent['gen_ai.request.model']).toBe('gemini-2.5-flash');
+        expect(span.attributes).toEqual(before);
     });
 });
