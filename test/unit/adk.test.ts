@@ -287,7 +287,7 @@ describe('ADK TOOL schema', () => {
     });
 
     describe('data.input event', () => {
-        const inputs = (args: any[]) => eventAccessor(TOOL, 'data.input', 'Inputs')({ args });
+        const inputs = (args: any[]) => eventAccessor(TOOL, 'data.input', 'input')({ args });
 
         it('serializes the validated tool args', () => {
             const args = [{ args: { from: 'SFO', to: 'BOM' } }];
