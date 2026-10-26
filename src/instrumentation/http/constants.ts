@@ -39,3 +39,8 @@ export interface HttpCapture {
 // probe traffic out of the trace, and is the only lever for keeping a
 // credential endpoint's body out of an exporter, since bodies are not redacted.
 export const MONOCLE_HTTP_EXCLUDE_PATHS_ENV = "MONOCLE_HTTP_EXCLUDE_PATHS";
+
+// The counterpart, and the strongest signal in the chain: it rescues a path
+// from the exclude list above and from the built-in defaults alike. Rescuing
+// one also restores its unredacted body capture.
+export const MONOCLE_HTTP_ALLOW_PATHS_ENV = "MONOCLE_HTTP_ALLOW_PATHS";

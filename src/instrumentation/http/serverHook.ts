@@ -79,7 +79,7 @@ function patchEmit(proto: any): void {
         // extraction, no response patches, no registered-hook callbacks. This is
         // the only lever for keeping a credential endpoint's body out of an
         // exporter, since bodies are captured unredacted.
-        if (isPathExcluded(req?.url)) return passthrough();
+        if (isPathExcluded(req?.url, req?.method)) return passthrough();
 
         // Only startRequest is guarded. Wrapping the passthrough too would make a
         // handler that throws synchronously run a second time from the catch.
