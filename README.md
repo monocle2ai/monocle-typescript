@@ -294,6 +294,46 @@ response normally has completed a successful HTTP exchange. The span records
 `complete` and OK, because at the transport layer that is the truth — the
 failure is application-level and lives in the body.
 
+### Health check sampling
+
+Probes every few seconds would otherwise fill your trace with spans carrying no
+information, so Monocle exports **one in every hundred** — and **never samples
+away a failure**.
+
+A span counts as a health check when it is a `GET`/`HEAD` with no query string
+and no body, returning a success status, and either has an empty response or
+targets a known probe route: `/health`, `/healthz`, `/healthcheck`,
+`/health-check`, `/livez`, `/liveness`, `/readyz`, `/readiness`, `/ping`,
+`/_health`, and anything ending in one of those, such as `/actuator/health`.
+
+Everything else exports at full rate — a failing probe, a `POST`, a request with
+parameters, a stream that did not end cleanly.
+
+Each **probe route** counts separately, and the first request to one is always
+exported, so a route never looks dead waiting for its first sample. Contentless
+responses on routes that are *not* on the list are sampled too, but they share a
+single counter between them.
+
+`/` is deliberately not a default probe route, since many apps serve real
+traffic there. List it to opt in.
+
+```bash
+export MONOCLE_SAMPLE_HEALTH_CHECKS=false     # export every health span
+export MONOCLE_HEALTH_CHECK_ROUTES=/health,/status-check   # replaces the defaults
+export MONOCLE_HEALTH_CHECK_SAMPLE_RATE=20    # one in 20 instead of one in 100
+```
+
+This is not `MONOCLE_HTTP_EXCLUDE_PATHS`, and the difference matters: an excluded
+path produces no span at all, so a failure on it is invisible. Use exclusion for
+paths you never want traced, and leave probes to sampling.
+
+Two consequences worth knowing. A request to a probe route that asks for its
+traces back over HTTP gets none, 99 times in 100 — the spans it wants were not
+exported. And if a probe does instrumented work of its own, say a readiness
+check that calls a traced dependency, those child spans have already been
+exported by the time the probe is sampled away, so they arrive with no parent.
+Exclude such a route instead if that matters.
+
 **Static assets are traced too.** `express.static`, and any middleware like it,
 produces its own `workflow` + `http.process` pair for every file served, and the
 bodies of textual assets — JavaScript, CSS, HTML — are captured up to that same
