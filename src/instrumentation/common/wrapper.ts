@@ -389,7 +389,7 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
 }
 
 function getSpanName(element: WrapperArguments): string {
-    return element.spanName || (element.package || '' + element.object || '' + element.method || '');
+    return element.spanName || [element.package, element.object, element.method].filter(Boolean).join('.');
 }
 
 function postProcessSpanData({ instance, spanHandler, span, returnValue, element, args, sourcePath, exception, parentSpan, currentContext }: { instance: () => any, spanHandler: SpanHandler, span: Span, returnValue: any, element: WrapperArguments, args: any, sourcePath: string, exception: any, parentSpan: Span | null, currentContext: any }) {
