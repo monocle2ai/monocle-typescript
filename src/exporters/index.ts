@@ -3,6 +3,7 @@ import { MonocleConsoleSpanExporter } from './monocle/MonocleConsoleSpanExporter
 import { OkahuSpanExporter } from './okahu/OkahuSpanExporter';
 import { AWSS3SpanExporter } from './aws/AWSS3SpanExporter';
 import { AzureBlobSpanExporter } from './azure/AzureBlobSpanExporter'
+import { PaygenticSpanExporter } from './paygentic/PaygenticSpanExporter';
 import { consoleLog } from '../common/logging';
 import { ExportTaskProcessor, LambdaExportTaskProcessor } from './taskProcessor';
 import { isAwsLambdaEnvironment } from '../instrumentation/common/utils';
@@ -15,6 +16,7 @@ const monocleExporters = {
     "s3": (options: GetMonocleExportersOptions = {}) => new AWSS3SpanExporter({ taskProcessor: options.taskProcessor }),
     "blob": (options: GetMonocleExportersOptions = {}) => new AzureBlobSpanExporter({ taskProcessor: options.taskProcessor }),
     "okahu": (options: GetMonocleExportersOptions = {}) => new OkahuSpanExporter({ taskProcessor: options.taskProcessor }),
+    "paygentic": (options: GetMonocleExportersOptions = {}) => new PaygenticSpanExporter({ taskProcessor: options.taskProcessor }),
     "file": (options: GetMonocleExportersOptions = {}) => new FileSpanExporter({ taskProcessor: options.taskProcessor }),
     "console": (options: GetMonocleExportersOptions = {}) => new MonocleConsoleSpanExporter({ taskProcessor: options.taskProcessor }),
 };
