@@ -442,10 +442,54 @@ Notes:
   your own synchronous `(headers) => boolean`. See [.env.example](.env.example).
 
 
+### Paygentic usage tracking
+
+[Paygentic](https://paygentic.io) is a usage-based billing and metering platform.
+With `MONOCLE_EXPORTER=paygentic`, Monocle sends the token usage of every inference
+span to Paygentic as a billing event for the customer who made the call.
+
+You need a Paygentic account, an API key from the Paygentic dashboard, and a
+customer scope on every traced call.
+
+```bash
+MONOCLE_EXPORTER=paygentic
+PAYGENTIC_API_KEY=your-paygentic-api-key
+```
+
+| Variable | Description |
+|----------|-------------|
+| `PAYGENTIC_API_KEY` | Paygentic API key. Required. |
+| `PAYGENTIC_SANDBOX` | `true` sends events to the sandbox API. |
+| `PAYGENTIC_EVENT_ENDPOINT` | Overrides the endpoint. Default `https://api.paygentic.io/v0/events`. |
+| `PAYGENTIC_TIMEOUT` | Request timeout in seconds. Default 15. |
+| `PAYGENTIC_SOURCE` | The events' source. Default `monocle`. |
+| `PAYGENTIC_NAMESPACE` | Organization to record events under. Defaults to the API key's organization. |
+
+Set one of these scopes: `customerId` or `externalCustomerId`. `customerId` takes
+precedence if both are provided. Put your own customer ID in `externalCustomerId`.
+Paygentic matches it against the customer's `externalId`. Monocle drops a span with
+neither scope and logs an error.
+
+```ts
+import { setScopes } from "monocle2ai";
+
+await setScopes({ customerId: "cus_123456" }, async () => {
+  // Your instrumented code here
+});
+
+// Or, with your own customer ID:
+await setScopes({ externalCustomerId: "acme-42" }, async () => {
+  // ...
+});
+```
+
+See the [Monocle integration guide](https://docs.paygentic.io/integrations/monocle)
+in the Paygentic docs.
+
 ### Configuration
 
 See [.env.example](.env.example) for all environment variables — exporters
-(console/file/S3/Azure/Okahu), output paths, preload, hook audit, and debug.
+(console/file/S3/Azure/Okahu/Paygentic), output paths, preload, hook audit, and debug.
 
 Everything except `NODE_OPTIONS` belongs in `.env.monocle`, which Monocle reads for
 itself. Its values take precedence over the environment, so the same settings apply
@@ -458,7 +502,7 @@ Goal of Monocle is to support tracing for apps written in *any language* with *a
 Current version supports: 
 - Language: (🟢) Typescript
 - LLM-frameworks: (🟢) Langchain, (🟢) Llamaindex, (🟢) OpenAI, 
-- Exporter: (🟢) stdout, (🟢) file, (🟢) Azure Blob Storage, (🟢) AWS S3
+- Exporter: (🟢) stdout, (🟢) file, (🟢) Azure Blob Storage, (🟢) AWS S3, (🟢) Paygentic
 
 
 ## Get involved
