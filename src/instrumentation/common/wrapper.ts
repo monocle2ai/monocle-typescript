@@ -277,6 +277,7 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
             catch (error) {
                 ex = error;
                 consoleLog(`Error in span processing: ${error}`);
+                span.setStatus({ code: 2, message: error?.message || "Error occurred" });
                 throw error;
             }
             finally {
