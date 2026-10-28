@@ -23,6 +23,9 @@ const MONOCLE_INTERNAL_FRAME_NAMES = [
     'monocleWorkflowIteratorWrapper',
     'processMultipleElementsWithTracing',
     'processElementsRecursively',
+    'monocleRunInSpan',
+    'monocleTracedMethod',
+    'monocleTrace',
 ];
 
 // Returns "<file>:<line>" of the caller that invoked the wrapped method.
