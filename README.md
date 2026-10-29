@@ -296,6 +296,37 @@ setupMonocle("my-app", [], [{
 }]);
 ```
 
+#### From a config file, without code changes
+
+List the methods in `.monocle/custom_instrumentation.yaml` at the project root. Monocle
+reads it at startup and traces them like `traceMethod`. Set
+`MONOCLE_CUSTOM_INSTRUMENTATION_FILE_PATH` to use another folder.
+
+```yaml
+instrument:
+  - package: ./src/hotelService   # project file (extension optional) or npm package
+    class: HotelService           # leave out for an exported function
+    method: findRoom
+    span_name: hotel.findRoom     # optional
+  - package: ./src/hotelService
+    method: confirmBooking
+    exclude: [inputs]             # optional: inputs, outputs
+```
+
+An entry that can't be traced logs a warning when its file loads, or when the app exits
+normally if the file never loaded. The app keeps running either way.
+
+| App | Config file |
+|---|---|
+| CommonJS (`node`, `tsx`), including the `NODE_OPTIONS` preload | ✅ |
+| ESM via `tsx --import monocle2ai/register` or `monocle2ai run` | ✅ |
+| ESM `.ts` with the preload in `NODE_OPTIONS` | ❌ Node resolves the file before tsx can |
+| ESM `.ts` under Node's built-in type stripping | ❌ |
+| Bundled apps (`mastra dev`, Next.js) | ❌ your code is merged into bundle files |
+| Exported functions in CommonJS `.ts` under tsx | ❌ tsx makes exports read-only |
+
+Where it doesn't work, use `traceMethod` or `@monocleTraceMethod` in code instead.
+
 ### Hook audit
 
 Under a bundler (Next.js), if an instrumented dependency is installed but never gets
