@@ -5,6 +5,9 @@ import * as path from 'path';
 import { createRequire } from 'module';
 import { InMemorySpanExporter, SimpleSpanProcessor, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { setupMonocle } from '../../src/instrumentation/common/instrumentation';
+import { registerModule } from '../../src/instrumentation/common/esmModule';
+
+vi.mock('../../src/instrumentation/common/esmModule', () => ({ registerModule: vi.fn() }));
 
 // End to end for CommonJS: a config file names methods in project files, and
 // requiring those files after setupMonocle traces them.
@@ -65,7 +68,7 @@ afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe('custom instrumentation config (CommonJS)', () => {
+describe("custom instrumentation config", () => {
     it('traces a class method named in the config', () => {
         setup(`
 instrument:
@@ -141,5 +144,15 @@ instrument:
         instrumentor.auditCustomInstrumentation();
 
         expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('hands project files, not npm packages, to the ESM loader', () => {
+        setup(`
+instrument:
+  - { package: ./src/booking.js, class: BookingService, method: reserveSeat }
+  - { package: some-sdk, class: Client, method: send }
+`);
+
+        expect(registerModule).toHaveBeenLastCalledWith([fs.realpathSync(path.join(dir, 'src/booking.js'))]);
     });
 });

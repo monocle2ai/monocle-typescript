@@ -269,8 +269,11 @@ class MonocleInstrumentation extends InstrumentationBase {
                     const target = el.object ? exports?.[el.object]?.prototype : exports;
                     // Skip modules without the target; __wrapped guards against
                     // double-wrapping (the class fires from both chunk and barrel).
-                    if (!target || typeof target[el.method] !== "function") return exports;
-                    if ((target[el.method] as any).__wrapped) return exports;
+                    // A configured project file is hooked alone, so a missing
+                    // target is a config mistake: patch anyway to report it.
+                    const projectFile = el.fromConfigFile && path.isAbsolute(el.package);
+                    if (!projectFile && (!target || typeof target[el.method] !== "function")) return exports;
+                    if ((target?.[el.method] as any)?.__wrapped) return exports;
                     module.moduleExports = exports;
                     module.patch(exports, module.moduleVersion);
                 } catch (err) {
@@ -445,7 +448,10 @@ const setupMonocle = (
             );
             return existing;
         }
-        registerModule();
+        // Read before the ESM loader is registered: it must let the config's
+        // project files through its TypeScript exclusion.
+        const customMethods = loadCustomInstrumentation();
+        registerModule(customMethods.map(m => m.package).filter(p => path.isAbsolute(p)));
 
         const resource = resourceFromAttributes({
             SERVICE_NAME: workflowName
@@ -492,7 +498,7 @@ const setupMonocle = (
                 userWrapperMethods.push({ ...wrapperMethod })
             }
         })
-        userWrapperMethods.push(...loadCustomInstrumentation())
+        userWrapperMethods.push(...customMethods)
         const monocleInstrumentation = new MonocleInstrumentation({
             userWrapperMethods
         });
