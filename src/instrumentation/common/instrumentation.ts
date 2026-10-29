@@ -27,6 +27,7 @@ import { maybeTraceReturnProcessor } from '../../traceReturn/exporter';
 import { initTraceRetrievalCallback, isTraceReturnEnabled } from '../../traceReturn/gate';
 import { installTraceReturnHttpHook } from '../../traceReturn/httpHook';
 import { installHttpServerHook } from '../http/serverHook';
+import { loadCustomInstrumentation } from './customInstrumentation';
 
 
 class MonocleInstrumentation extends InstrumentationBase {
@@ -34,7 +35,9 @@ class MonocleInstrumentation extends InstrumentationBase {
     // after super()/init() and wipe the Sets init() populates. Created in init().
     declare instrumentedPackages: Set<string>;   // configured to instrument
     declare hookedPackages: Set<string>;          // actually hooked (a patch fired)
+    declare loadedConfigPackages: Set<string>;    // config-file packages whose module loaded
     declare _auditDone?: boolean;
+    declare _customAuditDone?: boolean;
 
     constructor(config = {}) {
         super('MonocleInstrumentation', "1.0", config)
@@ -85,6 +88,22 @@ class MonocleInstrumentation extends InstrumentationBase {
         }
     }
 
+    // Warn about config-file entries whose module never loaded: a typo, a
+    // bundled app, or a file loaded before Monocle. Runs once, at exit.
+    public auditCustomInstrumentation() {
+        if (this._customAuditDone) return;
+        this._customAuditDone = true;
+        // @ts-ignore: custom field access
+        const entries: MethodConfig[] = (this._config.userWrapperMethods || []).filter((m: MethodConfig) => m.fromConfigFile);
+        const missing = entries.filter(m => !this.loadedConfigPackages.has(getBarePackageName(m.package)));
+        if (missing.length) {
+            console.warn(
+                `[monocle] Custom instrumentation never loaded: ${missing.map(m => `${m.package} (${m.method})`).join(', ')}. ` +
+                `The module was not imported, was bundled, or loaded before Monocle started.`
+            );
+        }
+    }
+
     /**
      * Init method will be called when the plugin is constructed.
      * It returns an `InstrumentationNodeModuleDefinition` which describes
@@ -96,6 +115,7 @@ class MonocleInstrumentation extends InstrumentationBase {
         consoleLog('Initializing MonocleInstrumentation');
         this.instrumentedPackages = new Set();
         this.hookedPackages = new Set();
+        this.loadedConfigPackages = new Set();
         const modules: any[] = []
         const scopeMethodsForInstrumentation = load_scopes();
 
@@ -283,7 +303,9 @@ class MonocleInstrumentation extends InstrumentationBase {
     }
 
     _getOnPatchMain(elements: MethodConfig[]): (moduleExports: any, moduleVersion?: string) => any {
+        const first = elements[0];
         return (moduleExports) => {
+            if (first.fromConfigFile) this.loadedConfigPackages.add(getBarePackageName(first.package));
             try {
                 // Handle single or multiple elements
                 // const packageName = elements[0].package;
@@ -329,10 +351,25 @@ class MonocleInstrumentation extends InstrumentationBase {
                         );
                     }
                 }
+                // shimmer only logs a missing method, and a read-only export can
+                // fail to change, so confirm config-file wraps actually took.
+                if (first.fromConfigFile) {
+                    const target = first.object ? moduleExports?.[first.object]?.prototype : moduleExports;
+                    if (!target?.[first.method]?.__wrapped) {
+                        throw new Error(`${first.method} could not be replaced`);
+                    }
+                }
                 // Record a successful wrap for the hook audit.
                 this.hookedPackages.add(getBarePackageName(elements[0].package));
                 return moduleExports;
             } catch (e) {
+                if (first.fromConfigFile) {
+                    const name = first.object ? `${first.object}.${first.method}` : first.method;
+                    console.warn(
+                        `[monocle] Could not trace ${name} in ${first.package}: ${e.message}. ` +
+                        `Wrap it in code with traceMethod or @monocleTraceMethod instead.`
+                    );
+                }
                 consoleLog('Error in _getOnPatchMain', {
                     package: elements[0].package,
                     elements: elements.length,
@@ -455,6 +492,7 @@ const setupMonocle = (
                 userWrapperMethods.push({ ...wrapperMethod })
             }
         })
+        userWrapperMethods.push(...loadCustomInstrumentation())
         const monocleInstrumentation = new MonocleInstrumentation({
             userWrapperMethods
         });
@@ -471,6 +509,9 @@ const setupMonocle = (
             const timer = setTimeout(() => monocleInstrumentation.auditHooks(), delayMs);
             if (typeof (timer as any).unref === 'function') (timer as any).unref();
             process.on('beforeExit', () => monocleInstrumentation.auditHooks());
+            // Exit only: a timer would also fire in a tsx parent process, which
+            // loads the preload but never the app's modules.
+            process.on('beforeExit', () => monocleInstrumentation.auditCustomInstrumentation());
         }
 
         consoleLog('Monocle setup completed');
