@@ -284,8 +284,7 @@ describe('Wrapper Functions', () => {
       wrappedFn.call({}, 'arg1', 'arg2');
 
       // Assert
-      // The getSpanName function should concatenate these values
-      expect(mockTracer.startActiveSpan).toHaveBeenCalled();
+      expect(mockTracer.startActiveSpan).toHaveBeenCalledWith('test-package.test-object.test-method', expect.any(Function));
     });
   });
 

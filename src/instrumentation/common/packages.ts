@@ -1,3 +1,4 @@
+import * as path from "path";
 import { config as langchainPackages } from "../metamodel/langchain/methods";
 import { config as llamaindexPackages } from "../metamodel/llamaindex/methods";
 import { config as openaiPackages } from "../metamodel/openai/methods";
@@ -37,7 +38,11 @@ export const combinedPackages: MethodConfig[] = [
 
 // Bare package name from a possibly-subpath specifier.
 // "@mastra/core/agent" -> "@mastra/core"; "openai/resources/..." -> "openai".
+// An absolute file path (a project file) is already exact and is kept as is.
 export function getBarePackageName(spec: string): string {
+  if (path.isAbsolute(spec)) {
+    return spec;
+  }
   if (spec.startsWith("@")) {
     return spec.split("/").slice(0, 2).join("/");
   }

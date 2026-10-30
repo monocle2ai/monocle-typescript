@@ -250,6 +250,97 @@ startup — no `--env-file` flag needed here, unlike a script you launch with
 NODE_OPTIONS=--import monocle2ai/register
 ```
 
+### Tracing your own code
+
+Monocle traces frameworks on its own. To also see your own functions in the trace,
+wrap them. Each call becomes a `custom` span with the arguments in `data.input` and
+the return value (or `error_code`) in `data.output`.
+
+```ts
+import { traceMethod, monocleTraceMethod, monocleTrace } from "monocle2ai";
+
+// Any function: wrap it where it is defined.
+export const quoteFare = traceMethod(
+  async (from: string, to: string) => ({ from, to, fare: 422 }),
+  { spanName: "travel.quoteFare" },
+);
+
+// Class methods: use the decorator (TypeScript or Babel).
+class Payments {
+  @monocleTraceMethod({ exclude: "inputs" }) // keep card numbers out of the trace
+  async charge(card: string, amount: number) { /* ... */ }
+}
+
+// A block of code: groups the spans inside it. No input/output is captured.
+await monocleTrace("checkout", async () => {
+  const quote = await quoteFare("SFO", "BOM");
+  await new Payments().charge(card, quote.fare);
+}, { attributes: { "travel.route": "SFO-BOM" } });
+```
+
+- The span name defaults to the function or method name.
+- `exclude` takes `"inputs"`, `"outputs"` or both. `error_code` is always kept.
+- Errors mark the span as failed and are re-thrown unchanged.
+- Wrapping before `setupMonocle` is fine. Without Monocle set up, the function just
+  runs.
+
+To trace a method you can't edit, such as a class method in an npm package, pass it
+to `setupMonocle` with the same processor:
+
+```ts
+import { setupMonocle, CUSTOM_SPAN_PROCESSOR } from "monocle2ai";
+
+setupMonocle("my-app", [], [{
+  package: "some-sdk", object: "Client", method: "send", // exports.Client.prototype.send
+  spanName: "sdk.send", output_processor: [CUSTOM_SPAN_PROCESSOR],
+}]);
+```
+
+#### From a config file, without code changes
+
+List the methods in `.monocle/custom_instrumentation.yaml` at the project root. Monocle
+reads it at startup and traces them like `traceMethod`. Set
+`MONOCLE_CUSTOM_INSTRUMENTATION_FILE_PATH` to use another folder.
+
+```yaml
+instrument:
+  - package: ./src/hotelService   # project file (extension optional) or npm package
+    class: HotelService           # leave out for an exported function
+    method: findRoom
+    span_name: hotel.findRoom     # optional
+  - package: ./src/hotelService
+    method: confirmBooking
+    exclude: [inputs]             # optional: inputs, outputs
+```
+
+An entry that can't be traced logs a warning when its file loads, or when the app exits
+normally if the file never loaded. The app keeps running either way.
+
+| App | Config file |
+|---|---|
+| CommonJS (`node`, `tsx`), including the `NODE_OPTIONS` preload | ✅ |
+| ESM via `tsx --import monocle2ai/register` or `monocle2ai run` | ✅ |
+| ESM `.ts` with the preload in `NODE_OPTIONS` | ❌ pass the flag to tsx instead (below) |
+| ESM `.ts` under Node's built-in type stripping | ❌ |
+| Bundled apps (`mastra dev`, Next.js) | ❌ your code is merged into bundle files |
+| Exported functions in CommonJS `.ts` under tsx | ❌ tsx makes exports read-only |
+
+**ESM TypeScript apps:** start Monocle from the tsx command, not from `.env`. tsx has
+to load before Monocle, and `NODE_OPTIONS` always loads first. If `.env` already has
+`NODE_OPTIONS=--import monocle2ai/register`, remove that line. Monocle starts once
+per process, so if the line stays, it still loads first and the config file is
+ignored.
+
+```jsonc
+// package.json
+"start": "tsx --import monocle2ai/register src/app.ts"   // or: monocle2ai run src/app.ts
+```
+
+Keep `--env-file=.env` only if your app reads its own variables from `.env`.
+CommonJS apps can keep the `.env` setup.
+
+Where it doesn't work, use `traceMethod` or `@monocleTraceMethod` in code instead.
+
 ### Hook audit
 
 Under a bundler (Next.js), if an instrumented dependency is installed but never gets

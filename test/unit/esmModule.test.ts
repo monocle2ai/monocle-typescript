@@ -101,3 +101,28 @@ describe('registerModule - openai runtime shims are excluded', () => {
     expect(matches('file:///app/node_modules/other/_shims/registry.mjs')).toBe(false);
   });
 });
+
+// Files named in the custom instrumentation config are the exception: they
+// must reach IITM to be wrapped, even when they are TypeScript.
+describe('registerModule - configured TypeScript files are let through', () => {
+  beforeEach(() => {
+    registerMock.mockClear();
+    registerModule(['/app/src/booking service.ts', '/app/src/fares.mts']);
+  });
+
+  it('does NOT exclude a configured .ts file', () => {
+    expect(matches('file:///app/src/booking%20service.ts')).toBe(false);
+  });
+
+  it('does NOT exclude a configured .mts file loaded with a query string', () => {
+    expect(matches('file:///app/src/fares.mts?v=2')).toBe(false);
+  });
+
+  it('still excludes other .ts files', () => {
+    expect(matches('file:///app/src/other.ts')).toBe(true);
+  });
+
+  it('still excludes a file whose path only starts like a configured one', () => {
+    expect(matches('file:///app/src/fares.mts.bak.ts')).toBe(true);
+  });
+});
