@@ -320,10 +320,24 @@ normally if the file never loaded. The app keeps running either way.
 |---|---|
 | CommonJS (`node`, `tsx`), including the `NODE_OPTIONS` preload | ✅ |
 | ESM via `tsx --import monocle2ai/register` or `monocle2ai run` | ✅ |
-| ESM `.ts` with the preload in `NODE_OPTIONS` | ❌ Node resolves the file before tsx can |
+| ESM `.ts` with the preload in `NODE_OPTIONS` | ❌ pass the flag to tsx instead (below) |
 | ESM `.ts` under Node's built-in type stripping | ❌ |
 | Bundled apps (`mastra dev`, Next.js) | ❌ your code is merged into bundle files |
 | Exported functions in CommonJS `.ts` under tsx | ❌ tsx makes exports read-only |
+
+**ESM TypeScript apps:** start Monocle from the tsx command, not from `.env`. tsx has
+to load before Monocle, and `NODE_OPTIONS` always loads first. If `.env` already has
+`NODE_OPTIONS=--import monocle2ai/register`, remove that line. Monocle starts once
+per process, so if the line stays, it still loads first and the config file is
+ignored.
+
+```jsonc
+// package.json
+"start": "tsx --import monocle2ai/register src/app.ts"   // or: monocle2ai run src/app.ts
+```
+
+Keep `--env-file=.env` only if your app reads its own variables from `.env`.
+CommonJS apps can keep the `.env` setup.
 
 Where it doesn't work, use `traceMethod` or `@monocleTraceMethod` in code instead.
 
