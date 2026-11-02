@@ -17,6 +17,10 @@ export const MONOCLE_SCOPE_NAME_PREFIX = 'monocle.scope.';
 export const SCOPE_METHOD_FILE = process.env.SCOPE_METHOD_FILE || 'monocle_scopes.json';
 export const SCOPE_CONFIG_PATH = process.env.SCOPE_CONFIG_PATH
 
+// Custom instrumentation config, same location as Python's.
+export const CUSTOM_INSTRUMENTATION_PATH_ENV = 'MONOCLE_CUSTOM_INSTRUMENTATION_FILE_PATH';
+export const CUSTOM_INSTRUMENTATION_DIR = '.monocle';
+export const CUSTOM_INSTRUMENTATION_FILE = 'custom_instrumentation.yaml';
 
 
 export interface MethodConfig {
@@ -30,6 +34,8 @@ export interface MethodConfig {
   scopeValue?: string | ((...args: any[]) => string);
   scopeValues?: Record<string, string> | (( {currentArgs, element}: {currentArgs: any[], element: MethodConfig}) => Record<string, string>);
   skipSpan?: boolean;
+  // Set for entries from the custom instrumentation file; enables user-facing warnings.
+  fromConfigFile?: boolean;
 }
 export interface WrapperArguments extends MethodConfig {
     tracer: Tracer, 
