@@ -63,10 +63,11 @@ describe('typesafe systemOne metamodel', () => {
     expect(events['metadata']).toMatchObject({ prompt_tokens: 401, completion_tokens: 69, total_tokens: 470, cost: 0.000016842 });
   });
 
-  it('replaces images in state with a placeholder', () => {
-    class Image { bytes = new Uint8Array([1, 2, 3]); }
-    const attrs = config.events[0].attributes[0].accessor({ args: [{ state: { photo: new Image() }, questions: {} }] });
-    expect(attrs[0]).toBe('{"state":{"photo":"[image]"}}');
+  it('keeps the SDK serialization for images in state', () => {
+    // The SDK's Image serializes itself via toJSON; the span must not alter it.
+    const photo = { toJSON: () => '<image:abc123>' };
+    const attrs = config.events[0].attributes[0].accessor({ args: [{ state: photo, questions: {} }] });
+    expect(attrs[0]).toBe('{"state":"<image:abc123>"}');
   });
 
   it('records the error message on exception', () => {

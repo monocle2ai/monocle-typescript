@@ -2,14 +2,6 @@ import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 
 const SYSTEM_ONE_PATH = "/v1/systemone";
 
-// Image/binary values in state would bloat the span; keep a placeholder.
-function safeStringify(value: any): string {
-  return JSON.stringify(value, (_key, val) => {
-    if (val instanceof Uint8Array || val?.constructor?.name === "Image") return "[image]";
-    return val;
-  });
-}
-
 function getModel({ instance, args, output }: any): string | undefined {
   return output?.model ?? args?.[0]?.model ?? instance?.defaultModel;
 }
@@ -17,7 +9,7 @@ function getModel({ instance, args, output }: any): string | undefined {
 function extractInput(args: any): string[] {
   const request = args?.[0];
   if (!request) return [];
-  return [safeStringify({ state: request.state }), safeStringify({ questions: request.questions })];
+  return [JSON.stringify({ state: request.state }), JSON.stringify({ questions: request.questions })];
 }
 
 function getUsage(response: any): Record<string, number> | null {
@@ -82,7 +74,7 @@ export const config = {
           _comment: "typed answers with probabilities (no free text)",
           attribute: "response",
           accessor: ({ response, exception }: any) =>
-            exception ? getExceptionMessage({ exception }) : safeStringify(response?.answers),
+            exception ? getExceptionMessage({ exception }) : JSON.stringify(response?.answers),
         },
         {
           attribute: "status",
