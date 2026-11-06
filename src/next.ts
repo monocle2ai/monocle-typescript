@@ -38,6 +38,7 @@ export const MONOCLE_INSTRUMENTED_PACKAGES = [
     "@a2a-js/sdk",
     "@opensearch-project/opensearch",
     "@microsoft/teams-ai",
+    "@typesafe-ai/sdk",
 ];
 
 // Instrumented but framework-coupled (client/RSC) — can break when externalized,
