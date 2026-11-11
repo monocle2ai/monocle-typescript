@@ -1,5 +1,7 @@
+import { mapDecisionFinishReasonToFinishType } from "../../finishType";
 import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 
+const PROVIDER = "typesafe";
 const SYSTEM_ONE_PATH = "/v1/systemone";
 
 // Model differs by route: direct returns e.g. "jev-1.14.0", OpenRouter returns
@@ -8,10 +10,20 @@ function getModel({ instance, args, output }: any): string | undefined {
   return output?.model ?? args?.[0]?.model ?? instance?.defaultModel;
 }
 
+// One entry for the state, then one per named question.
 function extractInput(args: any): string[] {
   const request = args?.[0];
   if (!request) return [];
-  return [JSON.stringify({ state: request.state }), JSON.stringify({ questions: request.questions })];
+  const entries = [JSON.stringify({ state: request.state })];
+  for (const [name, question] of Object.entries(request.questions ?? {})) {
+    entries.push(JSON.stringify({ [name]: question }));
+  }
+  return entries;
+}
+
+// A decision response has no finish reason: success on return, error on exception.
+function getFinishReason(exception: any): string {
+  return exception ? "error" : "success";
 }
 
 // Token usage is returned by both routes. Everything else below is added only
@@ -47,7 +59,11 @@ export const config = {
       {
         _comment: "provider type, inference_endpoint",
         attribute: "type",
-        accessor: () => "inference.typesafe",
+        accessor: () => "inference." + PROVIDER,
+      },
+      {
+        attribute: "provider_name",
+        accessor: () => PROVIDER,
       },
       {
         attribute: "inference_endpoint",
@@ -66,7 +82,7 @@ export const config = {
         attribute: "type",
         accessor: (params: any) => {
           const model = getModel(params);
-          return model ? "model.llm." + model : undefined;
+          return model ? "model.decision." + model : undefined;
         },
       },
     ],
@@ -107,6 +123,15 @@ export const config = {
         {
           _comment: "token usage, cost and provider extras",
           accessor: ({ response }: any) => getMetadata(response),
+        },
+        {
+          attribute: "finish_reason",
+          accessor: ({ exception }: any) => getFinishReason(exception),
+        },
+        {
+          attribute: "finish_type",
+          accessor: ({ exception }: any) =>
+            mapDecisionFinishReasonToFinishType(getFinishReason(exception)),
         },
       ],
     },
