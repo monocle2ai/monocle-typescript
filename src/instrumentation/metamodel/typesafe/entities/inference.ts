@@ -2,6 +2,8 @@ import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 
 const SYSTEM_ONE_PATH = "/v1/systemone";
 
+// Model differs by route: direct returns e.g. "jev-1.14.0", OpenRouter returns
+// "typesafe/jev-1.14-20261014". Fall back to the requested alias on errors.
 function getModel({ instance, args, output }: any): string | undefined {
   return output?.model ?? args?.[0]?.model ?? instance?.defaultModel;
 }
@@ -12,7 +14,9 @@ function extractInput(args: any): string[] {
   return [JSON.stringify({ state: request.state }), JSON.stringify({ questions: request.questions })];
 }
 
-// Token usage plus extras OpenRouter adds (cost, byok flag, cost breakdown, ids).
+// Token usage is returned by both routes. Everything else below is added only
+// by OpenRouter and is absent on direct TypeSafe calls, so spans from the two
+// routes differ by design: cost, is_byok, cost_details.*, response_id, provider.
 // Event attributes must be flat strings/numbers (the handler drops the whole
 // event otherwise), so cost_details is flattened and is_byok is a string.
 function getMetadata(response: any): Record<string, number | string> | null {
@@ -25,6 +29,7 @@ function getMetadata(response: any): Record<string, number | string> | null {
     completion_tokens: completion,
     total_tokens: prompt + completion,
   };
+  // OpenRouter only from here down.
   if (usage.cost !== undefined) result.cost = usage.cost;
   if (usage.is_byok !== undefined) result.is_byok = String(usage.is_byok);
   for (const [key, value] of Object.entries(usage.cost_details ?? {})) {
@@ -46,6 +51,7 @@ export const config = {
       },
       {
         attribute: "inference_endpoint",
+        // Derived from the client: the response says provider "TypeSafe" on both routes.
         accessor: ({ instance }: any) =>
           instance?.baseURL ? instance.baseURL + SYSTEM_ONE_PATH : undefined,
       },
