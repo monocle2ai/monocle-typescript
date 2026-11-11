@@ -63,6 +63,39 @@ describe('typesafe systemOne metamodel', () => {
     expect(events['metadata']).toMatchObject({ prompt_tokens: 401, completion_tokens: 69, total_tokens: 470, cost: 0.000016842 });
   });
 
+  it('records OpenRouter extras flattened, when present', () => {
+    const viaOpenRouter = {
+      ...response,
+      id: 'gen-dec-1',
+      usage: {
+        ...response.usage,
+        is_byok: false,
+        cost_details: {
+          upstream_inference_cost: 0.000033264,
+          upstream_inference_prompt_cost: 0.000033264,
+          upstream_inference_completions_cost: 0,
+        },
+      },
+    };
+    expect(run(viaOpenRouter).events['metadata']).toEqual({
+      prompt_tokens: 401,
+      completion_tokens: 69,
+      total_tokens: 470,
+      cost: 0.000016842,
+      is_byok: 'false',
+      upstream_inference_cost: 0.000033264,
+      upstream_inference_prompt_cost: 0.000033264,
+      upstream_inference_completions_cost: 0,
+      response_id: 'gen-dec-1',
+      provider: 'TypeSafe',
+    });
+  });
+
+  it('adds no extras on the direct route', () => {
+    const direct = { model: 'jev-1.14.0', answers: response.answers, usage: { input_tokens: 401, output_tokens: 69 } };
+    expect(run(direct).events['metadata']).toEqual({ prompt_tokens: 401, completion_tokens: 69, total_tokens: 470 });
+  });
+
   it('keeps the SDK serialization for images in state', () => {
     // The SDK's Image serializes itself via toJSON; the span must not alter it.
     const photo = { toJSON: () => '<image:abc123>' };
