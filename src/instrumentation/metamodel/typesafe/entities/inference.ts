@@ -1,3 +1,4 @@
+import { DECISION_MODEL_PREFIX, MODEL_TYPE_ATTRIBUTE, MODEL_TYPE_DECISION } from "../../../common/constants";
 import { mapDecisionFinishReasonToFinishType } from "../../finishType";
 import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 
@@ -82,8 +83,13 @@ export const config = {
         attribute: "type",
         accessor: (params: any) => {
           const model = getModel(params);
-          return model ? "model.decision." + model : undefined;
+          return model ? DECISION_MODEL_PREFIX + model : undefined;
         },
+      },
+      {
+        _comment: "decision model, not an LLM",
+        attribute: MODEL_TYPE_ATTRIBUTE,
+        accessor: () => MODEL_TYPE_DECISION,
       },
     ],
   ],

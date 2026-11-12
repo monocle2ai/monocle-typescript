@@ -47,11 +47,13 @@ describe('typesafe systemOne metamodel', () => {
     expect(attributes['entity.1.inference_endpoint']).toBe('https://openrouter.ai/api/v1/systemone');
     expect(attributes['entity.2.name']).toBe('typesafe/jev-1.14-20261014');
     expect(attributes['entity.2.type']).toBe('model.decision.typesafe/jev-1.14-20261014');
+    expect(attributes['entity.2.model_type']).toBe('decision');
   });
 
   it('falls back to the requested model without a response', () => {
     const { attributes } = run(undefined);
     expect(attributes['entity.2.name']).toBe('jev-latest');
+    expect(attributes['entity.2.model_type']).toBe('decision');
   });
 
   it('records state, questions, answers and usage', () => {
