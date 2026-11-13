@@ -5,8 +5,8 @@ import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 const PROVIDER = "typesafe";
 const SYSTEM_ONE_PATH = "/v1/systemone";
 
-// Model differs by route: direct returns e.g. "jev-1.14.0", OpenRouter returns
-// "typesafe/jev-1.14-20261014". Fall back to the requested alias on errors.
+// The response carries the resolved model (e.g. "jev-1.14.0"), not the requested
+// alias. Fall back to the alias when there is no response (errors).
 function getModel({ instance, args, output }: any): string | undefined {
   return output?.model ?? args?.[0]?.model ?? instance?.defaultModel;
 }
@@ -27,30 +27,16 @@ function getFinishReason(exception: any): string {
   return exception ? "error" : "success";
 }
 
-// Token usage is returned by both routes. Everything else below is added only
-// by OpenRouter and is absent on direct TypeSafe calls, so spans from the two
-// routes differ by design: cost, is_byok, cost_details.*, response_id, provider.
-// Event attributes must be flat strings/numbers (the handler drops the whole
-// event otherwise), so cost_details is flattened and is_byok is a string.
-function getMetadata(response: any): Record<string, number | string> | null {
+function getUsage(response: any): Record<string, number> | null {
   const usage = response?.usage;
   if (!usage) return null;
   const prompt = usage.input_tokens ?? 0;
   const completion = usage.output_tokens ?? 0;
-  const result: Record<string, number | string> = {
+  return {
     prompt_tokens: prompt,
     completion_tokens: completion,
     total_tokens: prompt + completion,
   };
-  // OpenRouter only from here down.
-  if (usage.cost !== undefined) result.cost = usage.cost;
-  if (usage.is_byok !== undefined) result.is_byok = String(usage.is_byok);
-  for (const [key, value] of Object.entries(usage.cost_details ?? {})) {
-    if (typeof value === "number") result[key] = value;
-  }
-  if (response.id) result.response_id = response.id;
-  if (response.provider) result.provider = response.provider;
-  return result;
 }
 
 export const config = {
@@ -68,14 +54,13 @@ export const config = {
       },
       {
         attribute: "inference_endpoint",
-        // Derived from the client: the response says provider "TypeSafe" on both routes.
         accessor: ({ instance }: any) =>
           instance?.baseURL ? instance.baseURL + SYSTEM_ONE_PATH : undefined,
       },
     ],
     [
       {
-        _comment: "System One model, e.g. typesafe/jev-1.14-20261014",
+        _comment: "System One model, e.g. jev-1.14.0",
         attribute: "name",
         accessor: (params: any) => getModel(params),
       },
@@ -127,8 +112,8 @@ export const config = {
       name: "metadata",
       attributes: [
         {
-          _comment: "token usage, cost and provider extras",
-          accessor: ({ response }: any) => getMetadata(response),
+          _comment: "token usage",
+          accessor: ({ response }: any) => getUsage(response),
         },
         {
           attribute: "finish_reason",

@@ -4,17 +4,16 @@ import { config as methods } from '../../src/instrumentation/metamodel/typesafe/
 import { NonFrameworkSpanHandler } from '../../src/instrumentation/common/spanHandler';
 
 const response = {
-  model: 'typesafe/jev-1.14-20261014',
+  model: 'jev-1.14.0',
   answers: { refund: { type: 'noul', noul: 0.78 } },
-  usage: { input_tokens: 401, output_tokens: 69, cost: 0.000016842 },
-  provider: 'TypeSafe',
+  usage: { input_tokens: 401, output_tokens: 69 },
 };
 const request = {
   model: 'jev-latest',
   state: { ticket: 'charged twice' },
   questions: { refund: { type: 'noul', instructions: 'Refund?' } },
 };
-const instance = { baseURL: 'https://openrouter.ai/api', defaultModel: 'jev-latest' };
+const instance = { baseURL: 'https://api.typesafe.ai', defaultModel: 'jev-latest' };
 
 // Runs the real handler against a fake span and returns what it recorded.
 function run(returnValue: any, exception?: any) {
@@ -44,9 +43,9 @@ describe('typesafe systemOne metamodel', () => {
     expect(attributes['span.type']).toBe('inference');
     expect(attributes['entity.1.type']).toBe('inference.typesafe');
     expect(attributes['entity.1.provider_name']).toBe('typesafe');
-    expect(attributes['entity.1.inference_endpoint']).toBe('https://openrouter.ai/api/v1/systemone');
-    expect(attributes['entity.2.name']).toBe('typesafe/jev-1.14-20261014');
-    expect(attributes['entity.2.type']).toBe('model.decision.typesafe/jev-1.14-20261014');
+    expect(attributes['entity.1.inference_endpoint']).toBe('https://api.typesafe.ai/v1/systemone');
+    expect(attributes['entity.2.name']).toBe('jev-1.14.0');
+    expect(attributes['entity.2.type']).toBe('model.decision.jev-1.14.0');
     expect(attributes['entity.2.model_type']).toBe('decision');
   });
 
@@ -64,7 +63,7 @@ describe('typesafe systemOne metamodel', () => {
     expect(JSON.parse(input[1])).toEqual({ refund: request.questions.refund });
     expect(JSON.parse(events['data.output'].response)).toEqual(response.answers);
     expect(events['data.output'].status).toBe('success');
-    expect(events['metadata']).toMatchObject({ prompt_tokens: 401, completion_tokens: 69, total_tokens: 470, cost: 0.000016842 });
+    expect(events['metadata']).toMatchObject({ prompt_tokens: 401, completion_tokens: 69, total_tokens: 470 });
   });
 
   it('records one input entry per question after the state', () => {
@@ -76,43 +75,6 @@ describe('typesafe systemOne metamodel', () => {
   it('marks a normal return as success', () => {
     const { events } = run(response);
     expect(events['metadata']).toMatchObject({ finish_reason: 'success', finish_type: 'success' });
-  });
-
-  it('records OpenRouter extras flattened, when present', () => {
-    const viaOpenRouter = {
-      ...response,
-      id: 'gen-dec-1',
-      usage: {
-        ...response.usage,
-        is_byok: false,
-        cost_details: {
-          upstream_inference_cost: 0.000033264,
-          upstream_inference_prompt_cost: 0.000033264,
-          upstream_inference_completions_cost: 0,
-        },
-      },
-    };
-    expect(run(viaOpenRouter).events['metadata']).toEqual({
-      prompt_tokens: 401,
-      completion_tokens: 69,
-      total_tokens: 470,
-      cost: 0.000016842,
-      is_byok: 'false',
-      upstream_inference_cost: 0.000033264,
-      upstream_inference_prompt_cost: 0.000033264,
-      upstream_inference_completions_cost: 0,
-      response_id: 'gen-dec-1',
-      provider: 'TypeSafe',
-      finish_reason: 'success',
-      finish_type: 'success',
-    });
-  });
-
-  it('adds no extras on the direct route', () => {
-    const direct = { model: 'jev-1.14.0', answers: response.answers, usage: { input_tokens: 401, output_tokens: 69 } };
-    expect(run(direct).events['metadata']).toEqual({
-      prompt_tokens: 401, completion_tokens: 69, total_tokens: 470, finish_reason: 'success', finish_type: 'success',
-    });
   });
 
   it('keeps the SDK serialization for images in state', () => {
