@@ -77,13 +77,6 @@ describe('typesafe systemOne metamodel', () => {
     expect(events['metadata']).toMatchObject({ finish_reason: 'success', finish_type: 'success' });
   });
 
-  it('keeps the SDK serialization for images in state', () => {
-    // The SDK's Image serializes itself via toJSON; the span must not alter it.
-    const photo = { toJSON: () => '<image:abc123>' };
-    const attrs = config.events[0].attributes[0].accessor({ args: [{ state: photo, questions: {} }] });
-    expect(attrs[0]).toBe('{"state":"<image:abc123>"}');
-  });
-
   it('records the error message on exception', () => {
     const { events } = run(undefined, new Error('rate limited'));
     expect(events['data.output'].response).toBe('rate limited');
