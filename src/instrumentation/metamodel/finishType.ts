@@ -495,3 +495,18 @@ export function mapTeamsaiFinishReasonToFinishType(finishReason: string | null):
 
     return null;
 }
+
+// Decision models (e.g. TypeSafe Jev) return no finish reason, so the metamodel
+// synthesizes "success" on return and "error" on an exception.
+export const DECISION_FINISH_REASON_MAPPING: Record<string, string> = {
+    "success": FinishType.SUCCESS,
+    "stop": FinishType.SUCCESS,
+    "error": FinishType.ERROR
+};
+
+export function mapDecisionFinishReasonToFinishType(finishReason: string | null): string | null {
+    if (!finishReason) {
+        return null;
+    }
+    return DECISION_FINISH_REASON_MAPPING[finishReason] ?? null;
+}

@@ -14,6 +14,7 @@ import { config as a2aPackages } from "../metamodel/a2a/methods";
 import { config as openaiAgentsPackages } from "../metamodel/agents/methods";
 import { config as adkPackages } from "../metamodel/adk/methods";
 import { config as mastraPackages } from "../metamodel/mastra/methods";
+import { config as typesafePackages } from "../metamodel/typesafe/methods";
 import { MethodConfig } from "./constants";
 
 export const combinedPackages: MethodConfig[] = [
@@ -32,7 +33,8 @@ export const combinedPackages: MethodConfig[] = [
   ...a2aPackages,
   ...openaiAgentsPackages,
   ...adkPackages,
-  ...mastraPackages
+  ...mastraPackages,
+  ...typesafePackages
 ];
 
 // Bare package name from a possibly-subpath specifier.
