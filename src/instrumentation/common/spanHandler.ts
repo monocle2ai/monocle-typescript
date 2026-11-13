@@ -1,4 +1,4 @@
-import { MONOCLE_DETECTED_SPAN_ERROR, MONOCLE_SDK_LANGUAGE, MONOCLE_SDK_VERSION, service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
+import { LLM_MODEL_PREFIX, MODEL_TYPE_ATTRIBUTE, MODEL_TYPE_COMPLETION, MONOCLE_DETECTED_SPAN_ERROR, MONOCLE_SDK_LANGUAGE, MONOCLE_SDK_VERSION, service_name_map, service_type_map, WORKFLOW_TYPE_GENERIC, WORKFLOW_TYPE_KEY_SYMBOL, WrapperArguments } from "./constants";
 // import { setScopes } from "./instrumentation";
 import { getScopesInternal } from "./utils";
 import { context, SpanStatusCode } from "@opentelemetry/api";
@@ -100,6 +100,15 @@ function getWorkflowName(span: Span) {
     } catch (e) {
         console.error(`Error getting workflow name: ${e}`);
         return `workflow.${span.spanContext().traceId}`;
+    }
+}
+
+// LLM model entities default to the completion model type, unless the
+// metamodel already set one (e.g. decision models).
+function _setDefaultModelType(span: Span, index: number, entity: Record<string, any>) {
+    if (typeof entity.type === 'string' && entity.type.startsWith(LLM_MODEL_PREFIX)
+        && entity[MODEL_TYPE_ATTRIBUTE] === undefined) {
+        span.setAttribute(`entity.${index}.${MODEL_TYPE_ATTRIBUTE}`, MODEL_TYPE_COMPLETION);
     }
 }
 
@@ -207,6 +216,7 @@ export class DefaultSpanHandler implements SpanHandler {
 
                     outputProcessor.attributes.forEach((processors: any) => {
                         let attributeSet = false;
+                        const entity: Record<string, any> = {};
                         processors.forEach((processor: any) => {
                             const attribute = processor['attribute'];
                             const accessor = processor['accessor'];
@@ -219,6 +229,7 @@ export class DefaultSpanHandler implements SpanHandler {
                                         const result = accessor(accessor_args);
                                         if (result) {
                                             attributeSet = true;
+                                            entity[attribute] = result;
                                             span.setAttribute(attributeName, result);
                                         }
                                     }
@@ -230,7 +241,10 @@ export class DefaultSpanHandler implements SpanHandler {
                                 console.warn(`${['attribute', 'accessor'].filter(key => !processor[key]).join(' and ')} not found or incorrect in entity JSON`);
                             }
                         });
-                        attributeSet && spanIndex++;
+                        if (attributeSet) {
+                            _setDefaultModelType(span, spanIndex, entity);
+                            spanIndex++;
+                        }
                     });
                 } else {
                     console.warn("attributes not found or incorrect written in entity json");

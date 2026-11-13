@@ -134,6 +134,8 @@ export const TOOL_FUNCTION_TYPE = "tool.function"
 // are non-generative classifiers, unlike LLMs.
 export const MODEL_TYPE_ATTRIBUTE = "model_type"
 export const MODEL_TYPE_DECISION = "decision"
+export const MODEL_TYPE_COMPLETION = "completion"
+export const LLM_MODEL_PREFIX = "model.llm."
 export const DECISION_MODEL_PREFIX = "model.decision."
 
 // Synthesized finish reason — Gemini returns "STOP" for tool-call responses, so we set this when a functionCall part is detected.
