@@ -441,6 +441,58 @@ Notes:
 - `MONOCLE_TRACE_RETRIEVAL_CALLBACK` (`"module:export"`) replaces the key check with
   your own synchronous `(headers) => boolean`. See [.env.example](.env.example).
 
+### Adding an instruction to every model call
+
+Monocle can add a fixed instruction to every model call the app makes, on top of
+the developer's own prompt, with no app code. Point `MONOCLE_INSTRUCTION` at a
+YAML file you write:
+
+```
+MONOCLE_INSTRUCTION=config/monocle/house-style.yaml
+```
+
+```yaml
+name: house-style            # must match the file name
+description: Keeps answers short and in British English.
+instruction: |
+  Answer in British English, in three sentences or fewer.
+```
+
+The instruction goes ahead of the developer's system prompt, which is kept as it
+was. The inference span lists it first in its input, under its own label, and the
+span whose call sent it carries `monocle.instruction` with the file's name:
+
+```json
+"attributes": { "monocle.instruction": "house-style" },
+"events": [{ "name": "data.input", "attributes": { "input": [
+  "{\"instruction\":\"Answer in British English, in three sentences or fewer.\"}",
+  "{\"system\":\"You are a travel agent.\"}",
+  "{\"user\":\"Book a flight to JFK.\"}"
+] } }]
+```
+
+| SDK | Where the instruction goes |
+| --- | --- |
+| OpenAI chat completions | A system message placed first in `messages` |
+| OpenAI Responses | Ahead of `instructions` |
+| Anthropic | Ahead of `system`, text or blocks |
+| Gemini | Ahead of `config.systemInstruction` |
+| Bedrock Converse | A block placed first in `system` |
+| Mastra (router-string models) | A system message placed first in the prompt |
+| Vercel AI `generateText` | Ahead of `system` |
+
+Frameworks that call one of these SDKs, such as LangChain or ADK, need nothing more.
+
+Notes:
+- A missing file, or one without `name`, `description` and `instruction`, stops
+  `setupMonocle` with a message naming the file. After startup, a call the
+  instruction cannot be added to is sent as the developer wrote it.
+- The instruction is added whether or not the span is sampled or skipped.
+- It asks the model; it does not enforce. The trace shows it was sent, not that
+  the model followed it.
+- Not supported: Bedrock `InvokeModel` and SageMaker (the body differs per model),
+  Gemini calls that use cached content, and Mastra agents built on a raw AI-SDK
+  model object.
 
 ### Configuration
 

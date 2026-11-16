@@ -12,11 +12,11 @@ import { MastraInvocationSpanHandler, MastraTurnSpanHandler, mastraToolWrapper }
 // Each call is one agentic turn.
 const MASTRA_AGENT_PACKAGE = "@mastra/core/agent";
 
-// Mastra normalizes every model (router strings AND raw AI-SDK objects) into an
-// AI-SDK LanguageModelV2 wrapper. ModelRouterLanguageModel (exported from
-// @mastra/core/llm) is the single choke point: generate()/stream() → the agentic
-// loop → model.doGenerate()/doStream(). One wrap per method = one inference span
-// per LLM call, for every provider (read off modelId / provider).
+// Mastra wraps router-string models ("openai/gpt-4o") in ModelRouterLanguageModel
+// (exported from @mastra/core/llm): generate()/stream() → the agentic loop →
+// model.doGenerate()/doStream(). One wrap per method = one inference span per
+// LLM call (read off modelId / provider). A raw AI-SDK model object goes through
+// AISDKV5LanguageModel instead (Mastra 1.75), so it gets no inference span here.
 const MASTRA_LLM_PACKAGE = "@mastra/core/llm";
 
 export const config: MethodConfig[] = [

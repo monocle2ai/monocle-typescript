@@ -5,6 +5,8 @@ import { addInstruction as addOpenAIInstruction } from '../../src/instrumentatio
 import { addInstruction as addAnthropicInstruction } from '../../src/instrumentation/metamodel/anthropic/entities/inference';
 import { addInstruction as addBedrockInstruction } from '../../src/instrumentation/metamodel/bedrock/entities/inference';
 import { addInstruction as addGeminiInstruction } from '../../src/instrumentation/metamodel/gemini/entities/inference';
+import { addInstruction as addMastraInstruction, INFERENCE_STREAM } from '../../src/instrumentation/metamodel/mastra/entities/inference';
+import { addInstruction as addVercelInstruction } from '../../src/instrumentation/metamodel/vercelAI/entities/inference';
 
 const TEXT = 'Start every answer with 123456.';
 const messages = [{ role: 'user', content: 'hi' }];
@@ -132,5 +134,45 @@ describe('Gemini addInstruction', () => {
 
   it('returns null for a call with no contents', () => {
     expect(addGeminiInstruction({ model: 'g' }, TEXT)).toBeNull();
+  });
+});
+
+describe('Mastra addInstruction', () => {
+  const prompt = [{ role: 'system', content: 'Be kind.' }, { role: 'user', content: [{ type: 'text', text: 'hi' }] }];
+
+  it('puts a system message first in the prompt', () => {
+    const options = { prompt, maxOutputTokens: 10 };
+
+    expect(addMastraInstruction(options, TEXT)).toEqual({ prompt: [{ role: 'system', content: TEXT }, ...prompt], maxOutputTokens: 10 });
+    expect(options.prompt).toHaveLength(2);
+  });
+
+  it('returns null for a call with no prompt', () => {
+    expect(addMastraInstruction({}, TEXT)).toBeNull();
+  });
+
+  it('applies to streamed calls too', () => {
+    expect(INFERENCE_STREAM.add_instruction).toBe(addMastraInstruction);
+  });
+});
+
+describe('Vercel AI addInstruction', () => {
+  it('sets system on a prompt call that has none', () => {
+    expect(addVercelInstruction({ model: {}, prompt: 'hi' }, TEXT).system).toBe(TEXT);
+  });
+
+  it('puts the instruction ahead of system on a messages call', () => {
+    const params = { model: {}, system: 'Be kind.', messages };
+
+    expect(addVercelInstruction(params, TEXT).system).toBe(`${TEXT}\n\nBe kind.`);
+    expect(params.system).toBe('Be kind.');
+  });
+
+  it('returns null when system is not text', () => {
+    expect(addVercelInstruction({ prompt: 'hi', system: [{ role: 'system', content: 'Be kind.' }] }, TEXT)).toBeNull();
+  });
+
+  it('returns null for a call with no prompt or messages', () => {
+    expect(addVercelInstruction({ model: {} }, TEXT)).toBeNull();
   });
 });
