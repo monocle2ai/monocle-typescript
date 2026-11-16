@@ -6,6 +6,7 @@ import { updateBaggageContextWithScopes } from "../../../common/utils";
 import { Span } from "../../../common/opentelemetryUtils";
 import { getExceptionMessage, getStatus, getStatusCode } from "../../utils";
 import { mapOpenaiFinishReasonToFinishType } from "../../finishType";
+import { addSystemMessage, instructionBefore } from "../../../../instructions/sending";
 
 
 // The Responses API has no finish_reason and reports status "completed" for a
@@ -219,6 +220,19 @@ function collectModelOutput(response: any): string[] {
     return parts;
 }
 
+// Chat completions take it as a system message; Responses, ahead of `instructions`.
+// Legacy completions (`prompt`) carry none.
+export function addInstruction(params: any, text: string): any | null {
+    if (params?.messages !== undefined) {
+        return addSystemMessage(params, text);
+    }
+    if (params?.input === undefined) {
+        return null;
+    }
+    const instructions = instructionBefore(text, params.instructions);
+    return instructions === null ? null : { ...params, instructions };
+}
+
 export const config = {
     "type": "inference",
     "attributes": [
@@ -265,6 +279,7 @@ export const config = {
         ]
     ],
     "response_processor": processStream,
+    "add_instruction": addInstruction,
     "events": [
         {
             "name": "data.input",

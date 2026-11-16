@@ -7,6 +7,7 @@ import { MONOCLE_VERSION } from './monocle_version';
 import { consoleLog } from "../../common/logging";
 import { MonocleSpanException } from "../metamodel/utils";
 import { recordWorkflowType, WORKFLOW_TYPE_HOLDER_KEY, WorkflowTypeHolder } from "./workflowTypeHolder";
+import { inputWithInstruction } from "../../instructions/sending";
 export interface SpanHandler {
     setDefaultMonocleAttributes({ span, instance, args, element, sourcePath }: {
         span: Span;
@@ -257,7 +258,10 @@ export class DefaultSpanHandler implements SpanHandler {
                             if (typeof accessor === 'function') {
                                 try {
                                     const accessorFunction = accessor;
-                                    const accessorResponse = accessorFunction(accessorMapping);
+                                    let accessorResponse = accessorFunction(accessorMapping);
+                                    if (eventName === "data.input" && attributeKey === "input" && Array.isArray(accessorResponse)) {
+                                        accessorResponse = inputWithInstruction(accessorResponse, span, outputProcessor.type);
+                                    }
                                     if (accessorResponse) {
                                         if (attributeKey) {
                                             eventAttributes[attributeKey] = accessorResponse;
