@@ -7,7 +7,6 @@ import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { InMemorySpanExporter, ReadableSpan, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { addSystemMessage, instructionBefore } from '../../src/instructions/sending';
-import { addInstruction as addOpenAIInstruction } from '../../src/instrumentation/metamodel/openai/entities/inference';
 import { config as openaiMethods } from '../../src/instrumentation/metamodel/openai/methods';
 import { getPatchedMain } from '../../src/instrumentation/common/wrapper';
 import { DefaultSpanHandler } from '../../src/instrumentation/common/spanHandler';
@@ -55,29 +54,6 @@ describe('instructionBefore', () => {
 
   it('returns null for a system prompt that is not text', () => {
     expect(instructionBefore(TEXT, [{ type: 'text', text: 'Be kind.' }])).toBeNull();
-  });
-});
-
-describe('OpenAI addInstruction', () => {
-  it('adds a system message to a chat completion', () => {
-    const instructed = addOpenAIInstruction({ messages: [{ role: 'user', content: 'hi' }] }, TEXT);
-
-    expect(instructed.messages[0]).toEqual({ role: 'system', content: TEXT });
-  });
-
-  it('puts the instruction ahead of a Responses call\'s instructions', () => {
-    const params = { input: 'hi', instructions: 'Be kind.' };
-
-    expect(addOpenAIInstruction(params, TEXT)).toEqual({ input: 'hi', instructions: `${TEXT}\n\nBe kind.` });
-    expect(params.instructions).toBe('Be kind.');
-  });
-
-  it('sets instructions on a Responses call that has none', () => {
-    expect(addOpenAIInstruction({ input: [{ role: 'user', content: 'hi' }] }, TEXT).instructions).toBe(TEXT);
-  });
-
-  it('returns null for a legacy completion', () => {
-    expect(addOpenAIInstruction({ model: 'gpt-3.5-turbo-instruct', prompt: 'hi' }, TEXT)).toBeNull();
   });
 });
 

@@ -97,6 +97,14 @@ export function addSystemMessage(params: any, text: string): any | null {
     return { ...params, messages: [{ role: "system", content: text }, ...messages] };
 }
 
+// The items with this one first, unless it already is.
+export function placedFirst<T>(item: T, items: T[]): T[] {
+    if (items.length && JSON.stringify(items[0]) === JSON.stringify(item)) {
+        return items;
+    }
+    return [item, ...items];
+}
+
 // The instruction followed by the developer's system prompt. Null when that
 // prompt is not text, so it is never replaced.
 export function instructionBefore(text: string, systemPrompt: unknown): string | null {

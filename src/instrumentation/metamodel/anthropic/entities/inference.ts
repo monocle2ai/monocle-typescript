@@ -1,8 +1,22 @@
 import { detectSdkType, extractInferenceEndpoint } from "../../../common/utils";
 import { extractAssistantMessage, getExceptionMessage, getLlmMetadata, getStatus, getStatusCode } from "../../utils";
+import { instructionBefore, placedFirst } from "../../../../instructions/sending";
+
+// The instruction ahead of `system`, which is text or a list of text blocks.
+export function addInstruction(params: any, text: string): any | null {
+  if (!Array.isArray(params?.messages)) {
+    return null;
+  }
+  if (Array.isArray(params.system)) {
+    return { ...params, system: placedFirst({ type: "text", text }, params.system) };
+  }
+  const system = instructionBefore(text, params.system);
+  return system === null ? null : { ...params, system };
+}
 
 export const config = {
   "type": "inference",
+  "add_instruction": addInstruction,
   "attributes": [
     [
       {
