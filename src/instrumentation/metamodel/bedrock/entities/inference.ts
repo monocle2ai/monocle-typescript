@@ -1,5 +1,19 @@
+import { placedFirst } from "../../../../instructions/sending";
+
+// A Converse or ConverseStream command, rebuilt with the instruction as its first
+// `system` block. Other commands (InvokeModel, whose body differs per model) carry none.
+export function addInstruction(command: any, text: string): any | null {
+  const input = command?.input;
+  if (!Array.isArray(input?.messages) || typeof command.constructor !== "function") {
+    return null;
+  }
+  const system = placedFirst({ text }, Array.isArray(input.system) ? input.system : []);
+  return new command.constructor({ ...input, system });
+}
+
 export const config = {
   type: "inference",
+  add_instruction: addInstruction,
   attributes: [
     [
       {

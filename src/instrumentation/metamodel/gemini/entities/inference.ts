@@ -10,6 +10,7 @@ import {
   getStatusCode,
   resolveFromAlias,
 } from "../../utils";
+import { instructionBefore, placedFirst } from "../../../../instructions/sending";
 
 
 // Collects declared tool names from config.tools (genai/ADK shape) or
@@ -290,8 +291,36 @@ function toolEntityNames(args: any, output: any): string[] {
   return extractToolNames(args);
 }
 
+// The instruction ahead of config.systemInstruction. None for a call with no
+// contents, or one using cached content, which cannot take a system instruction.
+export function addInstruction(params: any, text: string): any | null {
+  if (params?.contents === undefined || params.config?.cachedContent) {
+    return null;
+  }
+  const systemInstruction = systemInstructionWith(text, params.config?.systemInstruction);
+  if (systemInstruction === null) {
+    return null;
+  }
+  return { ...params, config: { ...params.config, systemInstruction } };
+}
+
+// systemInstruction is text, a Part, a list of Parts, or a Content.
+function systemInstructionWith(text: string, systemInstruction: any): any | null {
+  if (Array.isArray(systemInstruction)) {
+    return placedFirst<any>({ text }, systemInstruction);
+  }
+  if (Array.isArray(systemInstruction?.parts)) {
+    return { ...systemInstruction, parts: placedFirst<any>({ text }, systemInstruction.parts) };
+  }
+  if (systemInstruction && typeof systemInstruction === "object") {
+    return placedFirst<any>({ text }, [systemInstruction]);
+  }
+  return instructionBefore(text, systemInstruction);
+}
+
 export const config = {
   type: "inference",
+  add_instruction: addInstruction,
   subtype: function ({ response, output }: any) {
     return classifyInferenceSubtype(response ?? output);
   },

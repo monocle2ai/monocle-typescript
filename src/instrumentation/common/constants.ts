@@ -17,6 +17,11 @@ export const MONOCLE_SCOPE_NAME_PREFIX = 'monocle.scope.';
 export const SCOPE_METHOD_FILE = process.env.SCOPE_METHOD_FILE || 'monocle_scopes.json';
 export const SCOPE_CONFIG_PATH = process.env.SCOPE_CONFIG_PATH
 
+// Instruction added to every model call; see src/instructions.
+export const MONOCLE_INSTRUCTION_ENV = "MONOCLE_INSTRUCTION";
+export const SENT_INSTRUCTION = "monocle.instruction";
+export const INSTRUCTION_INPUT_LABEL = "instruction";
+
 
 
 export interface MethodConfig {

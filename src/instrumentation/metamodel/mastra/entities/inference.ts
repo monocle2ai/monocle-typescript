@@ -5,10 +5,13 @@ import {
     TOOL_FUNCTION_TYPE,
 } from "../../../common/constants";
 import { getExceptionMessage } from "../../utils";
+import { placedFirst } from "../../../../instructions/sending";
 
-// Mastra routes every provider through an AI-SDK LanguageModelV2 wrapper
-// (ModelRouterLanguageModel), so one wrap point on doGenerate/doStream covers
-// all providers. This schema reads model / provider / usage / finish reason
+// Mastra routes router-string models ("openai/gpt-4o") through an AI-SDK
+// LanguageModelV2 wrapper (ModelRouterLanguageModel), so one wrap point on
+// doGenerate/doStream covers their providers. A raw AI-SDK model object is
+// wrapped in AISDKV5LanguageModel instead (Mastra 1.75), which is not traced.
+// This schema reads model / provider / usage / finish reason
 // generically off that wrapper and the aggregated result — no per-provider code.
 // Shapes follow the AI-SDK LanguageModelV2 spec:
 //   input:  options.prompt = Array<{ role, content }>, content = string | Part[]
@@ -186,8 +189,17 @@ function extractOutput({ response, exception }: any): string {
     return "";
 }
 
+// A system message placed first in the LanguageModelV2 prompt.
+export function addInstruction(options: any, text: string): any | null {
+    if (!Array.isArray(options?.prompt)) {
+        return null;
+    }
+    return { ...options, prompt: placedFirst<any>({ role: "system", content: text }, options.prompt) };
+}
+
 export const INFERENCE = {
     "type": SPAN_TYPES.INFERENCE,
+    "add_instruction": addInstruction,
     "subtype": function ({ response, output }: any) {
         return classifyInferenceSubtype(response ?? output);
     },

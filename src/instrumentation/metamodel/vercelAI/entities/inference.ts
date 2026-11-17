@@ -1,7 +1,18 @@
 import { ACCESSOR_ARGS } from "../../utils";
+import { instructionBefore } from "../../../../instructions/sending";
+
+// The instruction ahead of `system`. None for a call with no prompt or messages.
+export function addInstruction(params: any, text: string): any | null {
+  if (params?.prompt === undefined && params?.messages === undefined) {
+    return null;
+  }
+  const system = instructionBefore(text, params.system);
+  return system === null ? null : { ...params, system };
+}
 
 export const config = {
   type: "inference",
+  add_instruction: addInstruction,
   attributes: [
       [
           {

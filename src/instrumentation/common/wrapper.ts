@@ -4,6 +4,7 @@ import { attachWorkflowType, DefaultSpanHandler, isRootSpan, SpanHandler } from 
 import { ADD_NEW_WORKFLOW_SYMBOL, MethodConfig, MONOCLE_ACTIVE_SPAN_KEY, WrapperArguments } from "./constants";
 import { consoleLog } from "../../common/logging";
 import { Span } from "./opentelemetryUtils";
+import { instructedCall, recordSentInstruction } from "../../instructions/sending";
 
 export const getPatchedMain = function (element: WrapperArguments) {
     const spanHandler: SpanHandler = element.spanHandler || new DefaultSpanHandler();
@@ -129,6 +130,8 @@ function processSpanWithTracing(
     sourcePath: string
 ) {
     const tracer = element.tracer;
+    // Spans still read the developer's own args; only the call gets the instruction.
+    original = instructedCall(element, original, args);
     let currentContext = context.active();
     const skipSpan = element.skipSpan || spanHandler.skipSpan({ instance: thisArg, args: args, element });
     if (!element.skipSpan) {
@@ -271,6 +274,7 @@ function handleSpanProcess({ currentContext, tracer, element, spanHandler, thisA
             }
         }
         else {
+            recordSentInstruction(original, span);
             try {
                 returnValue = original.apply(thisArg, args);
             }

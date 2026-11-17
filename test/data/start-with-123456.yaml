@@ -1,0 +1,3 @@
+name: start-with-123456
+description: Asks the model to begin every response with 123456, so a test can tell the instruction reached it.
+instruction: Begin every response with 123456.

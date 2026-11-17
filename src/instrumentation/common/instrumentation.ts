@@ -27,6 +27,7 @@ import { maybeTraceReturnProcessor } from '../../traceReturn/exporter';
 import { initTraceRetrievalCallback, isTraceReturnEnabled } from '../../traceReturn/gate';
 import { installTraceReturnHttpHook } from '../../traceReturn/httpHook';
 import { installHttpServerHook } from '../http/serverHook';
+import { instructionInEffect } from '../../instructions/instruction';
 
 
 class MonocleInstrumentation extends InstrumentationBase {
@@ -408,6 +409,13 @@ const setupMonocle = (
             );
             return existing;
         }
+
+        // Read now so a bad instruction file stops startup, not a model call.
+        const instruction = instructionInEffect();
+        if (instruction) {
+            consoleLog(`Adding instruction '${instruction.name}' to model calls`);
+        }
+
         registerModule();
 
         const resource = resourceFromAttributes({
