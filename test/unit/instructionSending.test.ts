@@ -170,6 +170,25 @@ describe('wrapped model calls', () => {
     expect(input(span('openai_responses_stream'))).toEqual([LABELLED, "{'instructions': 'Be kind.'}", `{'input': '"hi"'}`]);
   });
 
+  it('leaves the span input alone when its reader finds no messages', async () => {
+    const { sent, method } = fakeModel();
+    const noMessages: any = {
+      ...chatElement,
+      tracer,
+      output_processor: [{
+        ...chatElement.output_processor[0],
+        events: [{ name: 'data.input', attributes: [{ attribute: 'input', accessor: () => [] }] }],
+      }],
+    };
+
+    await getPatchedMain(noMessages)(method).call(instance, developerParams());
+
+    expect(sent[0].messages[0]).toEqual({ role: 'system', content: TEXT });
+    const chat = span('openai_chat');
+    expect(chat.attributes[SENT_INSTRUCTION]).toBe('start-with-123456');
+    expect(input(chat)).toEqual([]);
+  });
+
   it('labels a framework inference span without changing its call', async () => {
     const { sent, method } = fakeModel();
     const frameworkElement: any = {

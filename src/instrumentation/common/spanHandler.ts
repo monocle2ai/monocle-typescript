@@ -259,7 +259,8 @@ export class DefaultSpanHandler implements SpanHandler {
                                 try {
                                     const accessorFunction = accessor;
                                     let accessorResponse = accessorFunction(accessorMapping);
-                                    if (eventName === "data.input" && attributeKey === "input" && Array.isArray(accessorResponse)) {
+                                    // An input the reader found no messages in is left alone.
+                                    if (eventName === "data.input" && attributeKey === "input" && Array.isArray(accessorResponse) && accessorResponse.length > 0) {
                                         accessorResponse = inputWithInstruction(accessorResponse, span, outputProcessor.type);
                                     }
                                     if (accessorResponse) {
